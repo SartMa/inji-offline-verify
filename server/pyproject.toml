@@ -10,5 +10,6 @@ dependencies = [
     "djangorestframework>=3.16.1",
     "gunicorn>=23.0.0",
     "psycopg>=3.2.9",
+    "psycopg-binary>=3.2.9",
     "python-decouple>=3.8",
 ]

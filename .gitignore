@@ -1,0 +1,26 @@
+# Virtual environment
+.venv/
+venv/
+
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# uv and poetry lock files (optional, keep if you want reproducible builds)
+uv.lock
+
+# IDE & editor settings
+.vscode/
+.idea/
+
+# System files
+.DS_Store
+Thumbs.db

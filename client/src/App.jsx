@@ -1,10 +1,10 @@
 import React from 'react';
 import { VCStorageProvider } from './context/VCStorageContext';
-import StatusBar from './components/StatusBar';
-import Statistics from './components/Statistics';
-import TestInterface from './components/TestInterface';
-import SyncControls from './components/SyncControls';
-import StorageLogs from './components/StorageLogs';
+import StatusBar from './components/StatusBar.jsx';
+import Statistics from './components/Statistics.jsx';
+import TestInterface from './components/TestInterface.jsx';
+import SyncControls from './components/SyncControls.jsx';
+import StorageLogs from './components/StorageLogs.jsx';
 import './App.css';
 
 function App() {

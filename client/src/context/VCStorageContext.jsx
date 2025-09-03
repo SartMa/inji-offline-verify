@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const VCStorageContext = createContext(null);
 
 export const useVCStorage = () => useContext(VCStorageContext);
+export { VCStorageContext };
 
 export const VCStorageProvider = ({ children }) => {
     const [db, setDb] = useState(null);
@@ -206,10 +207,13 @@ export const VCStorageProvider = ({ children }) => {
         return new Promise((resolve, reject) => {
             const transaction = db.transaction([STORE_NAME], 'readonly');
             const store = transaction.objectStore(STORE_NAME);
-            const index = store.index('synced');
-            const request = index.getAll(false);
+            const request = store.getAll();
             
-            request.onsuccess = () => resolve(request.result);
+            request.onsuccess = () => {
+                const allItems = request.result;
+                const unsyncedItems = allItems.filter(item => !item.synced);
+                resolve(unsyncedItems);
+            };
             request.onerror = () => reject(request.error);
         });
     };

@@ -98,10 +98,13 @@ export async function getUnsyncedVerifications() {
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readonly');
         const store = transaction.objectStore(STORE_NAME);
-        const index = store.index('synced');
-        const request = index.getAll(false);
+        // Avoid querying by boolean index key (not a valid IDB key in all browsers)
+        const request = store.getAll();
         
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = () => {
+            const all = request.result || [];
+            resolve(all.filter(item => !item.synced));
+        };
         request.onerror = () => reject(request.error);
     });
 }

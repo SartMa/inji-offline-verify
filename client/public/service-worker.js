@@ -1,55 +1,60 @@
-// Service Worker for VC Verifier
-const CACHE_NAME = 'vc-verifier-v1';
-const urlsToCache = [
-    '/',
-    '/static/js/bundle.js',
-    '/static/css/main.css',
-    '/manifest.json'
+const CACHE_NAME = 'inji-offline-verify-v1';
+const APP_SHELL = [
+  '/',
+  '/index.html',
+  '/vite.svg'
 ];
 
-self.addEventListener('install', event => {
-    console.log('Service Worker installing...');
-    event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then(cache => {
-                console.log('Opened cache');
-                return cache.addAll(urlsToCache);
-            })
-    );
+self.addEventListener('install', (event) => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(APP_SHELL);
+    self.skipWaiting();
+  })());
 });
 
-self.addEventListener('fetch', event => {
-    event.respondWith(
-        caches.match(event.request)
-            .then(response => {
-                // Return cached version or fetch from network
-                return response || fetch(event.request);
-            })
-    );
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+// Network falling back to cache for app assets; cache falling back to network for HTML navigations
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+
+  const isHTML = req.headers.get('accept')?.includes('text/html');
+  if (isHTML) {
+    event.respondWith((async () => {
+      try {
+        return await fetch(req);
+      } catch (e) {
+        const cache = await caches.open(CACHE_NAME);
+        return cache.match('/index.html');
+      }
+    })());
+    return;
+  }
+
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(req);
+    if (cached) return cached;
+    try {
+      const res = await fetch(req);
+      cache.put(req, res.clone());
+      return res;
+    } catch (e) {
+      return cached || Response.error();
+    }
+  })());
 });
 
 // Background sync
-self.addEventListener('sync', event => {
-    if (event.tag === 'sync-verifications') {
-        console.log('Background sync triggered');
-        event.waitUntil(syncData());
-    }
-});
-
-async function syncData() {
-    // Send message to main thread to perform sync
-    try {
-        const clients = await self.clients.matchAll();
-        clients.forEach(client => {
-            client.postMessage({ type: 'SYNC_REQUESTED' });
-        });
-    } catch (error) {
-        console.error('Error during background sync:', error);
-    }
-}
-
-self.addEventListener('message', event => {
-    if (event.data && event.data.type === 'SKIP_WAITING') {
-        self.skipWaiting();
-    }
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-verifications') {
+    event.waitUntil((async () => {
+      const clients = await self.clients.matchAll();
+      clients.forEach((c) => c.postMessage({ type: 'SYNC_REQUESTED' }));
+    })());
+  }
 });

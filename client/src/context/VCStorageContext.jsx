@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { syncToServer as syncToServerService } from '../services/syncService';
 
 const VCStorageContext = createContext(null);
 
@@ -21,7 +22,7 @@ export const VCStorageProvider = ({ children }) => {
     const DB_NAME = 'VCVerifierDB';
     const DB_VERSION = 1;
     const STORE_NAME = 'verifications';
-    const SYNC_ENDPOINT = 'https://your-django-server.com/api/sync'; // Configure your Django endpoint
+    // Sync endpoint is resolved in syncService via saved base URL and includes auth headers
 
     // Initialize IndexedDB
     useEffect(() => {
@@ -66,32 +67,16 @@ export const VCStorageProvider = ({ children }) => {
         initDB();
     }, []);
 
-    // Register service worker
+    // Track service worker state and listen for sync triggers
     useEffect(() => {
-        const registerServiceWorker = async () => {
-            if ('serviceWorker' in navigator) {
-                try {
-                    const registration = await navigator.serviceWorker.register('/service-worker.js');
-                    console.log('Service Worker registered:', registration);
-                    
-                    setServiceWorkerActive(true);
-                    
-                    // Listen for sync messages from service worker
-                    navigator.serviceWorker.addEventListener('message', event => {
-                        if (event.data.type === 'SYNC_REQUESTED') {
-                            syncToServer();
-                        }
-                    });
-                    
-                    return registration;
-                } catch (error) {
-                    console.error('Service Worker registration failed:', error);
-                    setServiceWorkerActive(false);
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('message', event => {
+                if (event.data && event.data.type === 'SYNC_REQUESTED') {
+                    syncToServer();
                 }
-            }
-        };
-
-        registerServiceWorker();
+            });
+            setServiceWorkerActive(true);
+        }
     }, []);
 
     // Online/offline detection
@@ -248,51 +233,9 @@ export const VCStorageProvider = ({ children }) => {
 
     // Sync functionality
     const syncToServer = async () => {
-        if (!navigator.onLine) {
-            console.log('Offline - sync skipped');
-            return { success: false, reason: 'offline' };
-        }
-
-        try {
-            const pendingData = await getUnsyncedVerifications();
-            
-            if (pendingData.length === 0) {
-                console.log('No pending data to sync');
-                return { success: true, synced: 0 };
-            }
-
-            console.log(`Syncing ${pendingData.length} items to server...`);
-            
-            // Batch sync to Django server
-            const response = await fetch(SYNC_ENDPOINT, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    verifications: pendingData,
-                    deviceId: getDeviceId(),
-                    timestamp: new Date().toISOString()
-                })
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                
-                // Mark successfully synced items
-                const syncedIds = pendingData.map(item => item.id);
-                await markAsSynced(syncedIds);
-                
-                console.log(`Successfully synced ${syncedIds.length} items`);
-                
-                return { success: true, synced: syncedIds.length };
-            } else {
-                throw new Error(`Server responded with ${response.status}`);
-            }
-        } catch (error) {
-            console.error('Sync failed:', error);
-            return { success: false, error: error.message };
-        }
+        // Delegate to shared sync service which handles auth, payload shape, and retries
+        const result = await syncToServerService();
+        return result;
     };
 
     // Register background sync

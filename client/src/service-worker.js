@@ -1,32 +1,37 @@
-// Service Worker for VC Verifier
-const CACHE_NAME = 'vc-verifier-v1';
-const urlsToCache = ['/'];
+/* eslint-disable no-undef */
+// PWA Service Worker (Workbox InjectManifest)
+import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching';
+import { registerRoute, NavigationRoute } from 'workbox-routing';
 
-self.addEventListener('install', event => {
-    event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(urlsToCache))
-    );
+// Immediately take control on update
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => {
+    event.waitUntil(self.clients.claim());
 });
 
-self.addEventListener('fetch', event => {
-    event.respondWith(
-        caches.match(event.request)
-            .then(response => response || fetch(event.request))
-    );
-});
+// Precache build assets
+precacheAndRoute(self.__WB_MANIFEST || []);
+cleanupOutdatedCaches();
 
-// Background sync
-self.addEventListener('sync', event => {
+// SPA navigation fallback to index.html
+const handler = createHandlerBoundToURL('/index.html');
+const navigationRoute = new NavigationRoute(handler, {
+    denylist: [/^\/api\//],
+});
+registerRoute(navigationRoute);
+
+// Background sync to trigger app sync hook
+self.addEventListener('sync', (event) => {
     if (event.tag === 'sync-verifications') {
         event.waitUntil(syncData());
     }
 });
 
 async function syncData() {
-    // Send message to main thread to perform sync
-    const clients = await self.clients.matchAll();
-    clients.forEach(client => {
-        client.postMessage({ type: 'SYNC_REQUESTED' });
-    });
+    try {
+        const clients = await self.clients.matchAll();
+        clients.forEach((client) => client.postMessage({ type: 'SYNC_REQUESTED' }));
+    } catch (err) {
+        console.error('SW sync error', err);
+    }
 }

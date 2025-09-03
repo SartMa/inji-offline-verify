@@ -1,6 +1,10 @@
 import { getUnsyncedVerifications, markAsSynced, getDeviceId } from './dbService';
+import { getApiBaseUrl, getAccessToken, refreshAccessToken } from './authService';
 
-const SYNC_ENDPOINT = 'https://your-django-server.com/api/sync'; // Configure your Django endpoint
+const SYNC_ENDPOINT = () => {
+    const base = getApiBaseUrl();
+    return base ? `${base}/api/sync/` : null;
+};
 
 export async function syncToServer() {
     if (!navigator.onLine) {
@@ -16,20 +20,48 @@ export async function syncToServer() {
             return { success: true, synced: 0 };
         }
 
+        const endpoint = SYNC_ENDPOINT();
+        if (!endpoint) throw new Error('Base URL not set. Login first.');
+
         console.log(`Syncing ${pendingData.length} items to server...`);
-        
-        // Batch sync to Django server
-        const response = await fetch(SYNC_ENDPOINT, {
+
+        // Prepare auth header, refresh if needed
+        let token = getAccessToken();
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        // Server expects a raw array of log objects
+        let response = await fetch(endpoint, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                verifications: pendingData,
-                deviceId: getDeviceId(),
-                timestamp: new Date().toISOString()
-            })
+            headers,
+            body: JSON.stringify(pendingData.map(item => ({
+                id: item.id || undefined,
+                verification_status: item.status?.toUpperCase() === 'FAILURE' ? 'FAILED' : 'SUCCESS',
+                verified_at: item.timestamp,
+                vc_hash: item.hash,
+                credential_subject: item,
+                error_message: item.error || null,
+            })))
         });
+
+        // Try one refresh on 401
+        if (response.status === 401) {
+            const newAccess = await refreshAccessToken();
+            if (!newAccess) throw new Error('Unauthorized and refresh failed');
+            headers['Authorization'] = `Bearer ${newAccess}`;
+            response = await fetch(endpoint, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(pendingData.map(item => ({
+                    id: item.id || undefined,
+                    verification_status: item.status?.toUpperCase() === 'FAILURE' ? 'FAILED' : 'SUCCESS',
+                    verified_at: item.timestamp,
+                    vc_hash: item.hash,
+                    credential_subject: item,
+                    error_message: item.error || null,
+                })))
+            });
+        }
 
         if (response.ok) {
             const result = await response.json();

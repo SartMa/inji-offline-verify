@@ -1,6 +1,53 @@
 # server/api/models.py
 from django.db import models
+from django.contrib.auth import get_user_model
 import uuid
+
+User = get_user_model()
+
+class Organization(models.Model):
+    """
+    Tenant/Organization that owns verification data and users.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ["name"]
+
+class OrganizationMember(models.Model):
+    """
+    Membership of a Django User in an Organization with a role.
+    """
+    ROLE_CHOICES = [
+        ("ADMIN", "Admin"),
+        ("USER", "User"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="memberships")
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="members")
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default="ADMIN")
+    # Worker profile fields
+    full_name = models.CharField(max_length=255, blank=True, null=True)
+    phone_number = models.CharField(max_length=32, blank=True, null=True)
+    GENDER_CHOICES = [("M", "Male"), ("F", "Female"), ("O", "Other")]
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True, null=True)
+    dob = models.DateField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "organization")
+        verbose_name = "Organization Member"
+        verbose_name_plural = "Organization Members"
+
+    def __str__(self):
+        return f"{self.user} @ {self.organization} ({self.role})"
 
 class VerificationLog(models.Model):
     """
@@ -32,6 +79,15 @@ class VerificationLog(models.Model):
 
     # If verification failed, this field can store the reason.
     error_message = models.TextField(blank=True, null=True)
+
+    # Owning organization (set from authenticated user/org context)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="verification_logs",
+        null=True,
+        blank=True,
+    )
 
     # A server-generated timestamp to track when the record was synced.
     synced_at = models.DateTimeField(auto_now_add=True)

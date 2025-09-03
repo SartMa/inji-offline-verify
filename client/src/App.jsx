@@ -5,6 +5,7 @@ import Statistics from './components/Statistics.jsx';
 import TestInterface from './components/TestInterface.jsx';
 import SyncControls from './components/SyncControls.jsx';
 import StorageLogs from './components/StorageLogs.jsx';
+import Login from './components/Login.jsx';
 import './App.css';
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
           <h1>🔐 VC Storage & Sync System</h1>
           <StatusBar />
         </div>
+  <Login />
         <Statistics />
         <TestInterface />
         <SyncControls />

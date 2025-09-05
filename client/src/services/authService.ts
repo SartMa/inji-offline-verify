@@ -1,5 +1,6 @@
 export async function registerOrganization(baseUrl: string, payload: {
   org_name: string;
+  org_did: string;
   admin_username: string;
   admin_password: string;
   admin_email?: string;
@@ -16,6 +17,7 @@ export async function registerOrganization(baseUrl: string, payload: {
   if (data?.access || data?.refresh || data?.token) {
     saveTokens({ access: data.access, refresh: data.refresh, legacyToken: data.token });
   }
+  if (data?.organization) saveOrg(data.organization);
   return data;
 }
 
@@ -31,6 +33,7 @@ export async function login(baseUrl: string, payload: { username: string; passwo
   if (data?.access || data?.refresh || data?.token) {
     saveTokens({ access: data.access, refresh: data.refresh, legacyToken: data.token });
   }
+  if (data?.organization) saveOrg(data.organization);
   return data;
 }
 
@@ -39,6 +42,7 @@ const ACCESS_KEY = 'auth.accessToken';
 const REFRESH_KEY = 'auth.refreshToken';
 const LEGACY_KEY = 'auth.legacyToken';
 const BASE_URL_KEY = 'api.baseUrl';
+const ORG_KEY = 'auth.organization';
 
 export function setApiBaseUrl(baseUrl: string) {
   try { localStorage.setItem(BASE_URL_KEY, baseUrl.replace(/\/$/, '')); } catch {}
@@ -70,6 +74,14 @@ export function clearTokens() {
     localStorage.removeItem(REFRESH_KEY);
     localStorage.removeItem(LEGACY_KEY);
   } catch {}
+}
+
+export function saveOrg(org: any) {
+  try { localStorage.setItem(ORG_KEY, JSON.stringify(org)); } catch {}
+}
+
+export function getOrg(): any | null {
+  try { const v = localStorage.getItem(ORG_KEY); return v ? JSON.parse(v) : null; } catch { return null; }
 }
 
 export async function refreshAccessToken(baseUrl?: string): Promise<string | null> {

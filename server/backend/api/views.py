@@ -69,7 +69,6 @@ class RegisterOrganizationView(APIView):
                     'organization': {
                         'id': str(org.id),
                         'name': org.name,
-                        'did': org.did,
                     },
                     'user': {
                         'username': user.username,

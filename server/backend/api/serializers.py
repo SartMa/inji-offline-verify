@@ -41,13 +41,12 @@ class VerificationLogSerializer(serializers.ModelSerializer):
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-    fields = ['id', 'name', 'did', 'created_at']
-    read_only_fields = ['id', 'created_at']
+        fields = ['id', 'name', 'created_at']
+        read_only_fields = ['id', 'created_at']
 
 
 class OrganizationRegistrationSerializer(serializers.Serializer):
     org_name = serializers.CharField(max_length=255)
-    org_did = serializers.CharField(max_length=255)
     admin_username = serializers.CharField(max_length=150)
     admin_password = serializers.CharField(write_only=True, min_length=8)
     admin_email = serializers.EmailField(required=False, allow_blank=True)
@@ -62,16 +61,8 @@ class OrganizationRegistrationSerializer(serializers.Serializer):
             raise serializers.ValidationError('Organization name already exists')
         return value
 
-    def validate_org_did(self, value):
-        if Organization.objects.filter(did__iexact=value).exists():
-            raise serializers.ValidationError('Organization DID already exists')
-        return value
-
     def create(self, validated_data):
-        org = Organization.objects.create(
-            name=validated_data['org_name'],
-            did=validated_data['org_did']
-        )
+        org = Organization.objects.create(name=validated_data['org_name'])
         user = User.objects.create_user(
             username=validated_data['admin_username'],
             password=validated_data['admin_password'],

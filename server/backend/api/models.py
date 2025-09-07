@@ -5,6 +5,27 @@ import uuid
 
 User = get_user_model()
 
+class JsonLdContext(models.Model):
+    """
+    Stores JSON-LD context documents keyed by URL for offline clients to cache.
+    Contexts are global (not per-organization) and versioned by updated timestamp.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    url = models.URLField(max_length=500, unique=True)
+    document = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["url"], name="idx_ctx_url"),
+        ]
+        verbose_name = "JSON-LD Context"
+        verbose_name_plural = "JSON-LD Contexts"
+
+    def __str__(self):
+        return self.url
+
 class Organization(models.Model):
     """
     Tenant/Organization that owns verification data and users.

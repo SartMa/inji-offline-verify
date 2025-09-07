@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { login, registerOrganization, setApiBaseUrl } from '../services/authService';
 import { PublicKeyService } from '../services/PublicKeyService';
+import { ContextService } from '../services/ContextService';
+import { ContextCache } from '../cache/KeyCacheManager';
 import { KeyCacheManager } from '../cache/KeyCacheManager';
 
 export default function Login() {
@@ -11,6 +13,7 @@ export default function Login() {
   const [output, setOutput] = useState('');
   const [cachedKeys, setCachedKeys] = useState([]);
   const [cachedCount, setCachedCount] = useState(0);
+  const [contexts, setContexts] = useState([]);
 
   const doLogin = async (e) => {
     e.preventDefault();
@@ -18,6 +21,18 @@ export default function Login() {
       setApiBaseUrl(baseUrl);
       const res = await login(baseUrl, { username, password, org_name: orgName });
       // Fetch and cache active public keys for this org after login
+      // Also fetch and cache required JSON-LD contexts for offline usage
+        try {
+          const isStaff = !!res?.is_staff;
+          const count = isStaff
+            ? await ContextService.refreshOnServerAndCache()
+            : await ContextService.fetchAndCacheDefaults();
+          console.log(`Contexts cached: ${count}`);
+          const list = await ContextCache.listContexts();
+          setContexts(list || []);
+        } catch (e) {
+          console.warn('Context fetch/cache failed:', e);
+        }
       const orgId = res?.organization?.id;
       if (orgId) {
         try {
@@ -76,6 +91,26 @@ export default function Login() {
             </ul>
           ) : (
             <em>No keys cached yet</em>
+          )}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <h3>Cached JSON-LD Contexts (IndexedDB)</h3>
+        <div>Count: {Array.isArray(contexts) ? contexts.length : 0}</div>
+        <div style={{ maxHeight: 200, overflow: 'auto', background: '#fafafa', padding: 8, border: '1px solid #eee' }}>
+          {Array.isArray(contexts) && contexts.length > 0 ? (
+            <ul style={{ margin: 0, paddingLeft: 16 }}>
+              {contexts.map(c => (
+                <li key={c.url}>
+                  <div><strong>url:</strong> {c.url}</div>
+                  <div><strong>cachedAt:</strong> {new Date(c.cachedAt).toLocaleString?.() || c.cachedAt}</div>
+                  <div><strong>source:</strong> {c.source}</div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <em>No contexts cached yet</em>
           )}
         </div>
       </div>

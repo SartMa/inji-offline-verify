@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import VerificationLog, Organization, OrganizationMember, OrganizationDID, PublicKey
+from .models import VerificationLog, Organization, OrganizationMember, OrganizationDID, PublicKey, JsonLdContext
 
 class VerificationLogSerializer(serializers.ModelSerializer):
     """
@@ -85,6 +85,16 @@ class PublicKeyListResponseSerializer(serializers.Serializer):
     keys = PublicKeySerializer(many=True)
 
 
+class JsonLdContextSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JsonLdContext
+        fields = ["id", "url", "document", "created_at", "updated_at"]
+
+
+class ContextListResponseSerializer(serializers.Serializer):
+    contexts = JsonLdContextSerializer(many=True)
+
+
 class OrganizationRegistrationSerializer(serializers.Serializer):
     org_name = serializers.CharField(max_length=255)
     admin_username = serializers.CharField(max_length=150)
@@ -145,6 +155,7 @@ class LoginSerializer(serializers.Serializer):
             'refresh': str(jwt),
             'username': user.username,
             'organization': OrganizationSerializer(org).data,
+            'is_staff': bool(user.is_staff),
         }
 
 

@@ -1,7 +1,8 @@
 // IndexedDB cache for public keys and contexts
 
 const DB_NAME = 'VCVerifierCache';
-const DB_VERSION = 1;
+// Bump to 2 to ensure 'contexts' store gets created for users who had v1
+const DB_VERSION = 2;
 const KEY_STORE = 'public_keys';
 const CTX_STORE = 'contexts';
 
@@ -88,7 +89,8 @@ export class ContextCache {
   static async putContext(ctx: CachedContext) {
     const d = await openDB();
     const tx = d.transaction([CTX_STORE], 'readwrite');
-    tx.objectStore(CTX_STORE).put(ctx);
+  tx.objectStore(CTX_STORE).put(ctx);
+  tx.onerror = () => { console.error('IndexedDB putContext error:', tx.error); };
     return new Promise<void>(res => { tx.oncomplete = () => res(); });
   }
 
@@ -98,6 +100,25 @@ export class ContextCache {
       const req = d.transaction([CTX_STORE], 'readonly').objectStore(CTX_STORE).get(url);
       req.onsuccess = () => resolve(req.result as CachedContext | undefined);
       req.onerror = () => reject(req.error);
+    });
+  }
+
+  static async listContexts(): Promise<CachedContext[]> {
+    const d = await openDB();
+    return new Promise((resolve, reject) => {
+      const req = d.transaction([CTX_STORE], 'readonly').objectStore(CTX_STORE).getAll();
+      req.onsuccess = () => resolve((req.result || []) as CachedContext[]);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  static async clearContexts() {
+    const d = await openDB();
+    const tx = d.transaction([CTX_STORE], 'readwrite');
+    tx.objectStore(CTX_STORE).clear();
+    return new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error as any);
     });
   }
 }

@@ -1,4 +1,11 @@
 from django.contrib import admin
+from .models import JsonLdContext
+
+
+@admin.register(JsonLdContext)
+class JsonLdContextAdmin(admin.ModelAdmin):
+	list_display = ("url", "created_at", "updated_at")
+	search_fields = ("url",)
 from .models import VerificationLog, Organization, OrganizationMember, OrganizationDID, PublicKey
 
 # This line makes your model visible on the admin page

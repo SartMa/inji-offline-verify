@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { login, registerOrganization, setApiBaseUrl } from '../services/authService';
+import { PublicKeyService } from '../services/PublicKeyService';
+import { KeyCacheManager } from '../cache/KeyCacheManager';
 
 export default function Login() {
   const [baseUrl, setBaseUrl] = useState('http://127.0.0.1:8000');
@@ -7,12 +9,26 @@ export default function Login() {
   const [username, setUsername] = useState('worker1');
   const [password, setPassword] = useState('W0rkerP@ss!');
   const [output, setOutput] = useState('');
+  const [cachedKeys, setCachedKeys] = useState([]);
+  const [cachedCount, setCachedCount] = useState(0);
 
   const doLogin = async (e) => {
     e.preventDefault();
     try {
       setApiBaseUrl(baseUrl);
       const res = await login(baseUrl, { username, password, org_name: orgName });
+      // Fetch and cache active public keys for this org after login
+      const orgId = res?.organization?.id;
+      if (orgId) {
+        try {
+          await PublicKeyService.fetchAndCacheKeys({ organization_id: orgId });
+          const keys = await KeyCacheManager.getKeysByOrg(orgId);
+          setCachedKeys(keys || []);
+          setCachedCount((keys || []).length);
+        } catch (e) {
+          console.warn('Key fetch/cache failed:', e);
+        }
+      }
       setOutput(JSON.stringify(res, null, 2));
     } catch (err) {
       setOutput(`Login failed: ${err.message}`);
@@ -42,6 +58,27 @@ export default function Login() {
         <button type="submit">Login</button>
       </form>
       <pre style={{ background: '#f8f8f8', padding: 8, marginTop: 12, maxHeight: 200, overflow: 'auto' }}>{output}</pre>
+
+      <div style={{ marginTop: 16 }}>
+        <h3>Cached Public Keys (IndexedDB)</h3>
+        <div>Count: {cachedCount}</div>
+        <div style={{ maxHeight: 200, overflow: 'auto', background: '#fafafa', padding: 8, border: '1px solid #eee' }}>
+          {cachedKeys && cachedKeys.length > 0 ? (
+            <ul style={{ margin: 0, paddingLeft: 16 }}>
+              {cachedKeys.map(k => (
+                <li key={k.key_id}>
+                  <div><strong>key_id:</strong> {k.key_id}</div>
+                  <div><strong>controller:</strong> {k.controller}</div>
+                  <div><strong>type:</strong> {k.key_type}</div>
+                  <div><strong>active:</strong> {String(k.is_active)}</div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <em>No keys cached yet</em>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

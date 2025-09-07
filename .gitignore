@@ -26,3 +26,6 @@ uv.lock
 Thumbs.db
 
 .env
+feature-based.txt
+normal-struct.txt
+project-tree.txt

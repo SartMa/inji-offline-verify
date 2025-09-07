@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import VerificationLog, Organization, OrganizationMember
+from .models import VerificationLog, Organization, OrganizationMember, OrganizationDID, PublicKey
 
 class VerificationLogSerializer(serializers.ModelSerializer):
     """
@@ -43,6 +43,46 @@ class OrganizationSerializer(serializers.ModelSerializer):
         model = Organization
         fields = ['id', 'name', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+
+class OrganizationDIDSubmitSerializer(serializers.Serializer):
+    org_id = serializers.UUIDField()
+    did = serializers.CharField(max_length=500)
+
+    def validate(self, attrs):
+        try:
+            org = Organization.objects.get(id=attrs['org_id'])
+        except Organization.DoesNotExist:
+            raise serializers.ValidationError('Organization not found')
+
+        # Enforce unique per org and globally unique DID
+        if OrganizationDID.objects.filter(organization=org, did=attrs['did']).exists():
+            raise serializers.ValidationError('DID already submitted for this organization')
+        if OrganizationDID.objects.filter(did=attrs['did']).exists():
+            # Optional global uniqueness policy
+            raise serializers.ValidationError('DID already submitted by another organization')
+        attrs['organization'] = org
+        return attrs
+
+    def create(self, validated_data):
+        org = validated_data['organization']
+        did = validated_data['did']
+        return OrganizationDID.objects.create(organization=org, did=did, status='SUBMITTED')
+
+
+class PublicKeySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PublicKey
+        fields = [
+            'id', 'key_id', 'key_type', 'public_key_multibase', 'public_key_hex', 'public_key_jwk',
+            'controller', 'purpose', 'created_at', 'expires_at', 'revoked_at', 'revocation_reason', 'is_active'
+        ]
+
+
+class PublicKeyListResponseSerializer(serializers.Serializer):
+    organization_id = serializers.UUIDField()
+    did = serializers.CharField(required=False, allow_blank=True)
+    keys = PublicKeySerializer(many=True)
 
 
 class OrganizationRegistrationSerializer(serializers.Serializer):

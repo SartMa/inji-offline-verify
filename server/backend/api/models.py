@@ -19,6 +19,38 @@ class Organization(models.Model):
 
     class Meta:
         ordering = ["name"]
+    indexes = []
+
+
+class OrganizationDID(models.Model):
+    """
+    A DID submitted by an organization. Separate from Organization model by design.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="dids"
+    )
+    did = models.CharField(max_length=500, unique=True)
+    STATUS_CHOICES = [
+        ("SUBMITTED", "Submitted"),
+        ("RESOLVED", "Resolved"),
+        ("REVOKED", "Revoked"),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="SUBMITTED")
+    metadata = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["did"], name="idx_orgdid_did"),
+            models.Index(fields=["organization"], name="idx_orgdid_org"),
+            models.Index(fields=["status"], name="idx_orgdid_status"),
+        ]
+        unique_together = ("organization", "did")
+
+    def __str__(self):
+        return f"{self.did} ({self.status})"
 
 class OrganizationMember(models.Model):
     """
@@ -99,3 +131,36 @@ class VerificationLog(models.Model):
         ordering = ['-verified_at']
         verbose_name = "Verification Log"
         verbose_name_plural = "Verification Logs"
+
+
+class PublicKey(models.Model):
+    """
+    Stores resolved public keys for organizations' DIDs.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="public_keys", null=True, blank=True
+    )
+    key_id = models.CharField(max_length=500, unique=True)
+    key_type = models.CharField(max_length=100)
+    public_key_multibase = models.TextField()
+    public_key_hex = models.TextField(null=True, blank=True)
+    public_key_jwk = models.JSONField(null=True, blank=True)
+    controller = models.CharField(max_length=500)
+    purpose = models.CharField(max_length=100, default="assertion")
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revocation_reason = models.CharField(max_length=255, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["organization"], name="idx_pk_org"),
+            models.Index(fields=["key_id"], name="idx_pk_keyid"),
+            models.Index(fields=["controller"], name="idx_pk_controller"),
+            models.Index(fields=["is_active", "revoked_at", "expires_at"], name="idx_pk_active"),
+        ]
+
+    def __str__(self):
+        return f"{self.key_id} ({self.key_type})"

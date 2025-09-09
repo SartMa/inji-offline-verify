@@ -7,9 +7,9 @@ import { KeyCacheManager } from '../cache/KeyCacheManager';
 
 export default function Login() {
   const [baseUrl, setBaseUrl] = useState('http://127.0.0.1:8000');
-  const [orgName, setOrgName] = useState('Acme Corp');
-  const [username, setUsername] = useState('worker1');
-  const [password, setPassword] = useState('W0rkerP@ss!');
+  const [orgName, setOrgName] = useState('Acme Corp1');
+  const [username, setUsername] = useState('sunsun');
+  const [password, setPassword] = useState('sunhith123');
   const [output, setOutput] = useState('');
   const [cachedKeys, setCachedKeys] = useState([]);
   const [cachedCount, setCachedCount] = useState(0);
@@ -60,11 +60,11 @@ export default function Login() {
         </label>
         <label>
           Organization
-          <input value={orgName} onChange={e => setOrgName(e.target.value)} placeholder="Acme Corp" />
+          <input value={orgName} onChange={e => setOrgName(e.target.value)} placeholder="Acme Corp1" />
         </label>
         <label>
           Username
-          <input value={username} onChange={e => setUsername(e.target.value)} placeholder="worker1" />
+          <input value={username} onChange={e => setUsername(e.target.value)} placeholder="sunsun" />
         </label>
         <label>
           Password

@@ -6,79 +6,87 @@ const SYNC_ENDPOINT = () => {
     return base ? `${base}/api/sync/` : null;
 };
 
-export async function syncToServer() {
-    if (!navigator.onLine) {
-        console.log('Offline - sync skipped');
-        return { success: false, reason: 'offline' };
-    }
+let inFlightSync = null;
 
-    try {
-        const pendingData = await getUnsyncedVerifications();
-        
-        if (pendingData.length === 0) {
-            console.log('No pending data to sync');
-            return { success: true, synced: 0 };
+export async function syncToServer() {
+    if (inFlightSync) {
+        console.log('Sync already in progress; coalescing request');
+        return inFlightSync;
+    }
+    inFlightSync = (async () => {
+        if (!navigator.onLine) {
+            console.log('Offline - sync skipped');
+            return { success: false, reason: 'offline' };
         }
 
-        const endpoint = SYNC_ENDPOINT();
-        if (!endpoint) throw new Error('Base URL not set. Login first.');
+        try {
+            const pendingData = await getUnsyncedVerifications();
 
-        console.log(`Syncing ${pendingData.length} items to server...`);
+            if (pendingData.length === 0) {
+                console.log('No pending data to sync');
+                return { success: true, synced: 0 };
+            }
 
-        // Prepare auth header, refresh if needed
-        let token = getAccessToken();
-        const headers = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
+            const endpoint = SYNC_ENDPOINT();
+            if (!endpoint) throw new Error('Base URL not set. Login first.');
 
-        // Server expects a raw array of log objects
-        let response = await fetch(endpoint, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(pendingData.map(item => ({
-                id: item.id || undefined,
-                verification_status: item.status?.toUpperCase() === 'FAILURE' ? 'FAILED' : 'SUCCESS',
-                verified_at: item.timestamp,
-                vc_hash: item.hash,
-                credential_subject: item,
-                error_message: item.error || null,
-            })))
-        });
+            console.log(`Syncing ${pendingData.length} items to server...`);
 
-        // Try one refresh on 401
-        if (response.status === 401) {
-            const newAccess = await refreshAccessToken();
-            if (!newAccess) throw new Error('Unauthorized and refresh failed');
-            headers['Authorization'] = `Bearer ${newAccess}`;
-            response = await fetch(endpoint, {
+            let token = getAccessToken();
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            // Do not send local "id" to avoid PK collisions during concurrent posts
+            let response = await fetch(endpoint, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(pendingData.map(item => ({
-                    id: item.id || undefined,
+                    // id: item.id, // removed to avoid duplicate PK conflicts
                     verification_status: item.status?.toUpperCase() === 'FAILURE' ? 'FAILED' : 'SUCCESS',
                     verified_at: item.timestamp,
                     vc_hash: item.hash,
                     credential_subject: item,
                     error_message: item.error || null,
+                    device_id: getDeviceId(),
                 })))
             });
-        }
 
-        if (response.ok) {
-            const result = await response.json();
-            
-            // Mark successfully synced items
-            const syncedIds = pendingData.map(item => item.id);
-            await markAsSynced(syncedIds);
-            
-            console.log(`Successfully synced ${syncedIds.length} items`);
-            
-            return { success: true, synced: syncedIds.length };
-        } else {
-            throw new Error(`Server responded with ${response.status}`);
+            if (response.status === 401) {
+                const newAccess = await refreshAccessToken();
+                if (!newAccess) throw new Error('Unauthorized and refresh failed');
+                headers['Authorization'] = `Bearer ${newAccess}`;
+                response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(pendingData.map(item => ({
+                        verification_status: item.status?.toUpperCase() === 'FAILURE' ? 'FAILED' : 'SUCCESS',
+                        verified_at: item.timestamp,
+                        vc_hash: item.hash,
+                        credential_subject: item,
+                        error_message: item.error || null,
+                        device_id: getDeviceId(),
+                    })))
+                });
+            }
+
+            if (response.ok) {
+                const syncedIds = pendingData.map(item => item.id);
+                await markAsSynced(syncedIds);
+                console.log(`Successfully synced ${syncedIds.length} items`);
+                return { success: true, synced: syncedIds.length };
+            } else {
+                throw new Error(`Server responded with ${response.status}`);
+            }
+        } catch (error) {
+            console.error('Sync failed:', error);
+            return { success: false, error: error.message };
         }
-    } catch (error) {
-        console.error('Sync failed:', error);
-        return { success: false, error: error.message };
+    })();
+
+    try {
+        return await inFlightSync;
+    } finally {
+        inFlightSync = null;
     }
 }
 
@@ -86,8 +94,13 @@ export async function registerBackgroundSync() {
     if ('serviceWorker' in navigator && 'SyncManager' in window) {
         try {
             const registration = await navigator.serviceWorker.ready;
-            await registration.sync.register('sync-verifications');
-            console.log('Background sync registered');
+            const tags = await registration.sync.getTags();
+            if (!tags.includes('sync-verifications')) {
+                await registration.sync.register('sync-verifications');
+                console.log('Background sync registered');
+            } else {
+                console.log('Background sync already registered');
+            }
         } catch (error) {
             console.error('Background sync registration failed:', error);
         }

@@ -1,6 +1,8 @@
 import { NetworkManager } from '../network/NetworkManager';
 import { KeyCacheManager } from '../cache/KeyCacheManager';
 import type { CachedKey } from '../cache/KeyCacheManager';
+import { PublicKeyGetterFactory } from './publicKey/PublicKeyGetterFactory.ts';
+import type { PublicKeyData } from './publicKey/Types.ts';
 
 export class PublicKeyService {
   // Submit DID for an organization; backend resolves and stores keys
@@ -37,5 +39,11 @@ export class PublicKeyService {
     }));
     if (keys.length) await KeyCacheManager.putKeys(keys);
     return keys.length;
+  }
+
+  // Resolve a verification method URI to a PublicKeyData (client-side parity with Kotlin)
+  static async resolveVerificationMethod(verificationMethod: string): Promise<PublicKeyData> {
+    const factory = new PublicKeyGetterFactory();
+    return factory.get(verificationMethod);
   }
 }

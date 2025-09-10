@@ -11,6 +11,10 @@ from .views import (
     ContextUpsertView,
     ContextDefaultsView,
     ContextRefreshFromSourceView,
+    EmailLoginCodeRequestView,
+    EmailLoginCodeVerifyView,
+    PasswordResetRequestView,
+    PasswordResetConfirmView,
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -28,4 +32,9 @@ urlpatterns = [
     path('contexts/defaults/', ContextDefaultsView.as_view(), name='contexts_defaults'),
     path('contexts/upsert/', ContextUpsertView.as_view(), name='contexts_upsert'),
     path('contexts/refresh/', ContextRefreshFromSourceView.as_view(), name='contexts_refresh'),
+    # Email code login & password reset
+    path('auth/email/request-code/', EmailLoginCodeRequestView.as_view(), name='email_login_request_code'),
+    path('auth/email/verify-code/', EmailLoginCodeVerifyView.as_view(), name='email_login_verify_code'),
+    path('auth/password/reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),
+    path('auth/password/reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
 ]

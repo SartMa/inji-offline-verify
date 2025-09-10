@@ -10,6 +10,8 @@ dependencies = [
     "djangorestframework>=3.16.1",
     "djangorestframework-simplejwt>=5.3.1",
     "django-cors-headers>=4.4.0",
+    "django-allauth>=64.1.0",
+    "dj-rest-auth>=5.1.0",
     "gunicorn>=23.0.0",
     "psycopg>=3.2.9",
     "psycopg-binary>=3.2.9",
@@ -17,4 +19,5 @@ dependencies = [
     "requests>=2.32.3",
     "uvicorn>=0.30.1",
     "python-dotenv>=1.0.1",
+    "google-auth>=2.35.0",
 ]

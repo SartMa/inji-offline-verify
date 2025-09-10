@@ -1,0 +1,38 @@
+{
+  "name": "server",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "root": "server",
+  "sourceRoot": "server/backend",
+  "targets": {
+    "install-deps": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "uv sync",
+        "cwd": "server"
+      },
+      "outputs": ["{projectRoot}/.venv"]
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "uv run uvicorn backend.asgi:application --reload",
+        "cwd": "server/backend"
+      }
+    },
+    "migrate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "uv run python manage.py migrate",
+        "cwd": "server/backend"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "uv run python manage.py test",
+        "cwd": "server/backend"
+      }
+    }
+  }
+}

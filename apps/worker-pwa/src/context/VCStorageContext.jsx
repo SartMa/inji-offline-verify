@@ -332,3 +332,5 @@ export const VCStorageProvider = ({ children }) => {
         </VCStorageContext.Provider>
     );
 };
+
+export default VCStorageProvider;

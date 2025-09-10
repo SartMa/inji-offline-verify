@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { getAccessToken, clearTokens } from '../services/authService';
 
 interface User {
   email: string;
@@ -10,6 +11,7 @@ interface AuthContextType {
   user: User | null;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => void;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,16 +31,34 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check for existing authentication on component mount
+  useEffect(() => {
+    const checkExistingAuth = () => {
+      const token = getAccessToken();
+      if (token) {
+        // If we have a token, consider user authenticated
+        setIsAuthenticated(true);
+        // You could also decode the token to get user info if needed
+        setUser({ email: 'authenticated_user' }); // Placeholder user
+      }
+      setIsLoading(false);
+    };
+
+    checkExistingAuth();
+  }, []);
 
   const signIn = async (email: string, _password: string): Promise<void> => {
-    // Add your authentication logic here
-    // For now, just simulate successful login
+    // This should be called after successful API login
     setUser({ email });
     setIsAuthenticated(true);
     return Promise.resolve();
   };
 
   const signOut = (): void => {
+    // Clear tokens from localStorage
+    clearTokens();
     setUser(null);
     setIsAuthenticated(false);
   };
@@ -47,7 +67,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated,
     user,
     signIn,
-    signOut
+    signOut,
+    isLoading
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

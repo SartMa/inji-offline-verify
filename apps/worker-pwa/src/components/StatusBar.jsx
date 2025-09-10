@@ -1,6 +1,6 @@
 import React from 'react';
 import { useVCStorage } from '../context/VCStorageContext.jsx';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext.tsx';
 import './styles/StatusBar.css';
 
 const StatusBar = () => {

@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
@@ -16,8 +17,7 @@ import { styled } from '@mui/material/styles';
 import AppTheme from './theme/AppTheme';
 import ColorModeSelect from './theme/ColorModeSelect';
 import { GoogleIcon, FacebookIcon, SitemarkIcon } from './components/CustomIcons';
-import { useAuth } from './context/AuthContext';
-import { registerOrganization, setApiBaseUrl } from './services/authService';
+import { registerOrganization } from './services/authService';
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -64,9 +64,11 @@ const SignUpContainer = styled(Stack)(({ theme }) => ({
 interface SignUpProps {
   disableCustomTheme?: boolean;
   onSwitchToSignIn?: () => void;
+  onSwitchToOrgSignIn?: () => void; // Add this new prop
 }
 
-export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpProps) {
+export default function SignUp({ disableCustomTheme, onSwitchToSignIn, onSwitchToOrgSignIn }: SignUpProps) {
+  const navigate = useNavigate();
   const [baseUrl] = React.useState('http://127.0.0.1:8000'); // Hidden - always the same
   const [orgName, setOrgName] = React.useState('');
   const [username, setUsername] = React.useState('');
@@ -86,7 +88,6 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
   const [confirmPasswordErrorMessage, setConfirmPasswordErrorMessage] = React.useState('');
   
   const [isLoading, setIsLoading] = React.useState(false);
-  const { signIn } = useAuth();
 
   const validateInputs = () => {
     const orgInput = document.getElementById('organization') as HTMLInputElement;
@@ -158,41 +159,28 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
 
     setIsLoading(true);
     try {
-      setApiBaseUrl(baseUrl);
-      
-      // Register the organization using EXACT format from Postman collection
+      // Register the organization - baseUrl first, then payload object
       const registrationData = {
-        "org_name": orgName.trim(),
-        "admin_username": username.trim(), 
-        "admin_password": password,
-        "admin_email": email.trim()
+        org_name: orgName.trim(),
+        admin_username: username.trim(), 
+        admin_password: password,
+        admin_email: email.trim(),
       };
 
-      console.log('Registering organization with exact Postman format:', registrationData);
-      const registrationResult = await registerOrganization(baseUrl, registrationData);
-      console.log('Registration successful:', registrationResult);
+      console.log('Registration request:', registrationData);
+      const response = await registerOrganization(baseUrl, registrationData);
+      console.log('Registration successful:', response);
+
+      // Show success message and redirect to organization sign-in
+      alert('Organization registered successfully! Please sign in with your credentials.');
       
-      // After successful registration, sign in the user with the AuthContext
-      // The signIn function will set the authentication state
-      await signIn(email, password); // Use email as the identifier for AuthContext
+      // Redirect to organization sign-in page using React Router
+      navigate('/org-signin');
       
     } catch (error) {
-      console.error('Sign up failed:', error);
-      
-      // Enhanced error handling to show the actual server response
-      let errorMessage = 'Registration failed: ';
-      if (error instanceof Error) {
-        errorMessage += error.message;
-        // If it's a fetch error, try to get more details
-        if (error.message.includes('Register failed:')) {
-          errorMessage += '. Please check all required fields are filled correctly.';
-        }
-      } else {
-        errorMessage += 'Unknown error';
-      }
-      
+      console.error('Registration failed:', error);
       setPasswordError(true);
-      setPasswordErrorMessage(errorMessage);
+      setPasswordErrorMessage(`Registration failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }

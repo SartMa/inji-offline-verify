@@ -6,10 +6,14 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    margin: 0;
+}
+
+/* Apply background only to the main app container (when authenticated) */
+.app-container {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
     padding: 16px;
-    margin: 0;
 }
 
 .container {
@@ -24,7 +28,7 @@ body {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    body {
+    .app-container {
         padding: 8px;
     }
     
@@ -34,7 +38,7 @@ body {
 }
 
 @media (min-width: 1400px) {
-    body {
+    .app-container {
         padding: 20px;
     }
     

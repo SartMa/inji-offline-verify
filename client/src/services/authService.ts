@@ -4,13 +4,27 @@ export async function registerOrganization(baseUrl: string, payload: {
   admin_password: string;
   admin_email?: string;
 }) {
+  console.log('Making registration request to:', `${baseUrl}/api/auth/register/`);
+  console.log('Request payload:', JSON.stringify(payload, null, 2));
+  
   const res = await fetch(`${baseUrl}/api/auth/register/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(`Register failed: ${res.status}`);
+  
+  console.log('Response status:', res.status);
+  console.log('Response headers:', res.headers);
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Registration failed. Response:', errorText);
+    throw new Error(`Register failed: ${res.status} - ${errorText}`);
+  }
+  
   const data = await res.json();
+  console.log('Registration successful. Response:', data);
+  
   // Optional: persist baseUrl and tokens for later client calls
   setApiBaseUrl(baseUrl);
   if (data?.access || data?.refresh || data?.token) {

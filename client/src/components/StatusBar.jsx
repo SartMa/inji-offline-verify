@@ -1,9 +1,17 @@
 import React from 'react';
 import { useVCStorage } from '../context/VCStorageContext.jsx';
+import { useAuth } from '../context/AuthContext';
 import './styles/StatusBar.css';
 
 const StatusBar = () => {
     const { isOnline, serviceWorkerActive, stats } = useVCStorage();
+    const { signOut, user } = useAuth();
+
+    const handleLogout = () => {
+        if (confirm('Are you sure you want to sign out?')) {
+            signOut();
+        }
+    };
 
     const statusItems = [
         {
@@ -41,6 +49,16 @@ const StatusBar = () => {
                     <span className="status-title-icon">📊</span>
                     System Status
                 </h3>
+                <div className="status-user-info">
+                    <span>Welcome, {user?.email}</span>
+                    <button 
+                        onClick={handleLogout} 
+                        className="logout-btn"
+                        title="Sign out"
+                    >
+                        🚪 Logout
+                    </button>
+                </div>
                 <div className="status-timestamp">
                     Last updated: {new Date().toLocaleTimeString()}
                 </div>

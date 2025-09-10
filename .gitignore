@@ -37,3 +37,6 @@ client/organisation_postman_collection.json
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 node_modules
+apps/worker-pwa/node_modules
+apps/worker-pwa/dist/
+apps/worker-pwa/dev-dist/

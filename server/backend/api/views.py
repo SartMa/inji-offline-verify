@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from .serializers import (
     VerificationLogSerializer,
     OrganizationRegistrationSerializer,
+    OrganizationRegistrationConfirmSerializer,
     LoginSerializer,
     WorkerRegistrationSerializer,
     OrganizationDIDSubmitSerializer,
@@ -80,23 +81,26 @@ class RegisterOrganizationView(APIView):
         serializer = OrganizationRegistrationSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.save()
+            return Response(data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ConfirmOrganizationRegistrationView(APIView):
+    """Confirm OTP for organization registration and finalize creation."""
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = OrganizationRegistrationConfirmSerializer(data=request.data)
+        if serializer.is_valid():
+            data = serializer.save()
             org = data['organization']
             user = data['user']
             token = data['token']
-            return Response(
-                {
-                    'organization': {
-                        'id': str(org.id),
-                        'name': org.name,
-                    },
-                    'user': {
-                        'username': user.username,
-                        'email': user.email,
-                    },
-                    'token': token,
-                },
-                status=status.HTTP_201_CREATED,
-            )
+            return Response({
+                'organization': {'id': str(org.id), 'name': org.name},
+                'user': {'username': user.username, 'email': user.email},
+                'token': token,
+            }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

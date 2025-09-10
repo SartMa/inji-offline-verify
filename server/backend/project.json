@@ -1,0 +1,30 @@
+{
+  "name": "backend",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "root": "server/backend",
+  "sourceRoot": "server/backend",
+  "targets": {
+    "serve": {
+      "executor": "@nx/run-commands",
+      "options": {
+        "command": "uvicorn backend.asgi:application --reload",
+        "cwd": "server/backend"
+      }
+    },
+    "install-deps": {
+      "executor": "@nx/run-commands",
+      "options": {
+        "command": "pip install -r requirements.txt",
+        "cwd": "server/backend"
+      }
+    },
+    "test": {
+      "executor": "@nx/run-commands",
+      "options": {
+        "command": "python manage.py test",
+        "cwd": "server/backend"
+      }
+    }
+  }
+}

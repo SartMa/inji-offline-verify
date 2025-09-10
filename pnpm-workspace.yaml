@@ -1,0 +1,6 @@
+# Create the file and add this content
+# You can use a text editor or a command like 'echo'
+packages:
+  - 'apps/*'
+  - 'packages/*'
+  - 'services/*'

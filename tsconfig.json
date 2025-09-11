@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    {
+      "path": "./apps/organization-portal"
+    },
+    {
+      "path": "./apps/worker-pwa"
+    },
+    {
+      "path": "./packages/inji-verify-sdk"
+    },
+    {
+      "path": "./packages/shared-types"
+    }
+  ]
+}

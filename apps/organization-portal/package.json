@@ -1,0 +1,8 @@
+{
+  "name": "organization-portal",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "@inji-offline-verify/shared-ui": "workspace:*"
+  }
+}

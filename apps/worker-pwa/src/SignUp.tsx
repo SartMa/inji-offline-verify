@@ -14,9 +14,8 @@ import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
 import { styled } from '@mui/material/styles';
-import AppTheme from './theme/AppTheme';
-import ColorModeSelect from './theme/ColorModeSelect';
-import { GoogleIcon, FacebookIcon, SitemarkIcon } from './components/CustomIcons';
+import { AppTheme, ColorModeSelect } from '@inji-offline-verify/shared-ui/src/theme';
+import { GoogleIcon, FacebookIcon, SitemarkIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons';
 import { registerOrganization, confirmRegistration } from './services/authService';
 import OTPVerificationDialog from './components/OTPVerificationDialog';
 

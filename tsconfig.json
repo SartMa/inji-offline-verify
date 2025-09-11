@@ -13,7 +13,10 @@
       "path": "./packages/inji-verify-sdk"
     },
     {
-      "path": "./packages/shared-types"
+      "path": "./packages/shared-ui"
+    },
+    {
+      "path": "./packages/shared-auth"
     }
   ]
 }

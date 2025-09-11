@@ -1,6 +1,6 @@
-import type { PublicKeyGetter } from '../PublicKeyGetter.ts';
-import type { PublicKeyData } from '../Types.ts';
-import { ED25519_KEY_TYPE_2020, getPublicKeyFromMultibaseEd25519 } from '../Utils.ts';
+import type { PublicKeyGetter } from '../PublicKeyGetter.js';
+import type { PublicKeyData } from '../Types.js';
+import { ED25519_KEY_TYPE_2020, getPublicKeyFromMultibaseEd25519 } from '../Utils.js';
 
 export class DidKeyPublicKeyGetter implements PublicKeyGetter {
   async get(verificationMethod: string): Promise<PublicKeyData> {

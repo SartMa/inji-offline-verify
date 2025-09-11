@@ -1,0 +1,11 @@
+{
+  "name": "@inji-offline-verify/shared-auth",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "peerDependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  }
+}

@@ -1,6 +1,6 @@
 import type { PublicKeyGetter } from '../PublicKeyGetter.ts';
 import type { PublicKeyData } from '../Types.ts';
-import { base64UrlDecode, buildEd25519SpkiFromRaw } from '../Utils.ts';
+import { base64UrlDecode, buildEd25519SpkiFromRaw } from '../Utils.js';
 
 export class DidJwkPublicKeyGetter implements PublicKeyGetter {
   async get(verificationMethod: string): Promise<PublicKeyData> {

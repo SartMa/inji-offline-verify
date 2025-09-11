@@ -1,8 +1,8 @@
 import { NetworkManager } from '../network/NetworkManager';
 import { KeyCacheManager } from '../cache/KeyCacheManager';
 import type { CachedKey } from '../cache/KeyCacheManager';
-import { PublicKeyGetterFactory } from './publicKey/PublicKeyGetterFactory.ts';
-import type { PublicKeyData } from './publicKey/Types.ts';
+import { PublicKeyGetterFactory } from '../../../../packages/inji-verify-sdk/src/services/offline-verifier/publicKey/PublicKeyGetterFactory.ts';
+import type { PublicKeyData } from '../../../../packages/inji-verify-sdk/src/services/offline-verifier/publicKey/Types.ts';
 
 export class PublicKeyService {
   // Submit DID for an organization; backend resolves and stores keys

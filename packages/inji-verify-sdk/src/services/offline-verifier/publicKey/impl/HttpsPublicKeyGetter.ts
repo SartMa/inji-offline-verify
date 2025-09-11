@@ -1,7 +1,7 @@
-import type { PublicKeyGetter } from '../PublicKeyGetter.ts';
-import type { PublicKeyData } from '../Types.ts';
-import { NetworkManager } from '../../../network/NetworkManager.ts';
-import { getPublicKeyFromPem, getPublicKeyFromJwk, getPublicKeyFromHex, getPublicKeyFromMultibaseEd25519 } from '../Utils.ts';
+import type { PublicKeyGetter } from '../PublicKeyGetter.js';
+import type { PublicKeyData } from '../Types.js';
+import { NetworkManager } from '../../../../../../../apps/worker-pwa/src/network/NetworkManager.js';
+import { getPublicKeyFromPem, getPublicKeyFromJwk, getPublicKeyFromHex, getPublicKeyFromMultibaseEd25519 } from '../Utils.js';
 
 export class HttpsPublicKeyGetter implements PublicKeyGetter {
   async get(verificationMethod: string): Promise<PublicKeyData> {

@@ -14,12 +14,11 @@
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.2",
     "@mui/material": "^7.3.2",
-    "@noble/curves": "^1.9.7",
-    "multiformats": "^13.4.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.8.2",
-    "@inji-offline-verify/shared-ui": "workspace:*"
+    "@inji-offline-verify/shared-ui": "workspace:*",
+    "@inji-offline-verify/shared-auth": "workspace:*"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",

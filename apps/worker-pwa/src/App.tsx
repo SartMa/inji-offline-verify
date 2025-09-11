@@ -8,7 +8,7 @@ import TestInterface from './components/TestInterface.jsx';
 import SyncControls from './components/SyncControls.jsx';
 import StorageLogs from './components/StorageLogs.jsx';
 import SignIn from './SignIn.tsx';
-import SignUp from './SignUp.tsx';
+import SignUp from '../../organization-portal/src/pages/SignUpPage/SignUp.tsx';
 import OrgSignIn from './orgSignIn.tsx';
 import './App.css';
 

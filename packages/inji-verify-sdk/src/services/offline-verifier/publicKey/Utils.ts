@@ -1,5 +1,5 @@
-import type { PublicKeyData } from './Types.ts';
-import { PublicKeyNotFoundError, PublicKeyTypeNotSupportedError } from './Types.ts';
+import type { PublicKeyData } from './Types.js';
+import { PublicKeyNotFoundError, PublicKeyTypeNotSupportedError } from './Types.js';
 import { base58btc } from 'multiformats/bases/base58';
 import { secp256k1 } from '@noble/curves/secp256k1';
 

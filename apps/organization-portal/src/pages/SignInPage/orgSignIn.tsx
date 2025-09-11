@@ -14,14 +14,11 @@ import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
 import { styled } from '@mui/material/styles';
-import ForgotPassword from './components/ForgotPassword';
+import ForgotPassword from '@inji-offline-verify/shared-ui/src/components/ForgotPassword';
 import { AppTheme, ColorModeSelect } from '@inji-offline-verify/shared-ui/src/theme';
-import { GoogleIcon, FacebookIcon, SitemarkIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons.tsx';
-import { useAuth } from './context/AuthContext.tsx';
-import { login, setApiBaseUrl } from './services/authService';
-import { PublicKeyService } from './services/PublicKeyService';
-import { ContextService } from './services/ContextService';
-import { KeyCacheManager } from './cache/KeyCacheManager';
+import { GoogleIcon, FacebookIcon, SitemarkIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons';
+import { useAuth } from '@inji-offline-verify/shared-auth';
+import { login, setApiBaseUrl } from '@inji-offline-verify/shared-auth';
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -115,29 +112,6 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
       console.log('Organization login request:', loginData);
       const res = await login(baseUrl, loginData);
       console.log('Organization login successful:', res);
-
-      // Fetch and cache active public keys for this org after login
-      // Also fetch and cache required JSON-LD contexts for offline usage
-      try {
-        const isStaff = !!res?.is_staff;
-        const count = isStaff
-          ? await ContextService.refreshOnServerAndCache()
-          : await ContextService.fetchAndCacheDefaults();
-        console.log(`Contexts cached: ${count}`);
-      } catch (e) {
-        console.warn('Context fetch/cache failed:', e);
-      }
-
-      const orgId = res?.organization?.id;
-      if (orgId) {
-        try {
-          await PublicKeyService.fetchAndCacheKeys({ organization_id: orgId });
-          const keys = await KeyCacheManager.getKeysByOrg(orgId);
-          console.log(`Keys cached: ${(keys || []).length}`);
-        } catch (e) {
-          console.warn('Key fetch/cache failed:', e);
-        }
-      }
 
       // Use the auth context signIn method to update the global state
       await signIn(username, password);

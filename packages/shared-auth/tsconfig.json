@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": false,
+    "noEmit": false,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "jsx": "react-jsx",
+    "moduleResolution": "node",
+    "module": "esnext",
+    "target": "es2022",
+    "lib": ["dom", "dom.iterable", "es2022"],
+    "strict": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "importHelpers": true,
+    "noEmitOnError": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.*", "**/*.spec.*"]
+}

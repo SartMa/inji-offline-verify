@@ -124,18 +124,15 @@ importers:
 
   apps/organization-portal:
     dependencies:
-      '@inji-offline-verify/shared-ui':
-        specifier: workspace:*
-        version: link:../../packages/shared-ui
-
-  apps/worker-pwa:
-    dependencies:
       '@emotion/react':
         specifier: ^11.14.0
         version: 11.14.0(@types/react@18.3.24)(react@19.1.1)
       '@emotion/styled':
         specifier: ^11.14.1
         version: 11.14.1(@emotion/react@11.14.0(@types/react@18.3.24)(react@19.1.1))(@types/react@18.3.24)(react@19.1.1)
+      '@inji-offline-verify/shared-auth':
+        specifier: workspace:*
+        version: link:../../packages/shared-auth
       '@inji-offline-verify/shared-ui':
         specifier: workspace:*
         version: link:../../packages/shared-ui
@@ -145,12 +142,36 @@ importers:
       '@mui/material':
         specifier: ^7.3.2
         version: 7.3.2(@emotion/react@11.14.0(@types/react@18.3.24)(react@19.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.24)(react@19.1.1))(@types/react@18.3.24)(react@19.1.1))(@types/react@18.3.24)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
-      '@noble/curves':
-        specifier: ^1.9.7
-        version: 1.9.7
-      multiformats:
-        specifier: ^13.4.0
-        version: 13.4.0
+      react:
+        specifier: ^19.1.1
+        version: 19.1.1
+      react-dom:
+        specifier: ^19.1.1
+        version: 19.1.1(react@19.1.1)
+      react-router-dom:
+        specifier: ^7.8.2
+        version: 7.8.2(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+
+  apps/worker-pwa:
+    dependencies:
+      '@emotion/react':
+        specifier: ^11.14.0
+        version: 11.14.0(@types/react@18.3.24)(react@19.1.1)
+      '@emotion/styled':
+        specifier: ^11.14.1
+        version: 11.14.1(@emotion/react@11.14.0(@types/react@18.3.24)(react@19.1.1))(@types/react@18.3.24)(react@19.1.1)
+      '@inji-offline-verify/shared-auth':
+        specifier: workspace:*
+        version: link:../../packages/shared-auth
+      '@inji-offline-verify/shared-ui':
+        specifier: workspace:*
+        version: link:../../packages/shared-ui
+      '@mui/icons-material':
+        specifier: ^7.3.2
+        version: 7.3.2(@mui/material@7.3.2(@emotion/react@11.14.0(@types/react@18.3.24)(react@19.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.24)(react@19.1.1))(@types/react@18.3.24)(react@19.1.1))(@types/react@18.3.24)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(@types/react@18.3.24)(react@19.1.1)
+      '@mui/material':
+        specifier: ^7.3.2
+        version: 7.3.2(@emotion/react@11.14.0(@types/react@18.3.24)(react@19.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.24)(react@19.1.1))(@types/react@18.3.24)(react@19.1.1))(@types/react@18.3.24)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       react:
         specifier: ^19.1.1
         version: 19.1.1
@@ -285,6 +306,9 @@ importers:
       '@babel/preset-typescript':
         specifier: ^7.27.0
         version: 7.27.1(@babel/core@7.28.4)
+      '@noble/curves':
+        specifier: ^1.9.7
+        version: 1.9.7
       '@testing-library/dom':
         specifier: ^10.4.0
         version: 10.4.1
@@ -345,6 +369,9 @@ importers:
       mini-css-extract-plugin:
         specifier: ^2.9.2
         version: 2.9.4(webpack@5.101.3)
+      multiformats:
+        specifier: ^13.4.0
+        version: 13.4.0
       style-loader:
         specifier: ^4.0.0
         version: 4.0.0(webpack@5.101.3)
@@ -360,6 +387,15 @@ importers:
       webpack-cli:
         specifier: ^6.0.1
         version: 6.0.1(webpack@5.101.3)
+
+  packages/shared-auth:
+    dependencies:
+      react:
+        specifier: ^19.1.1
+        version: 19.1.1
+      react-dom:
+        specifier: ^19.1.1
+        version: 19.1.1(react@19.1.1)
 
   packages/shared-types: {}
 

@@ -14,7 +14,7 @@ import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
 import { styled } from '@mui/material/styles';
-import ForgotPassword from './components/ForgotPassword';
+import ForgotPassword from '@inji-offline-verify/shared-ui/src/components/ForgotPassword';
 import { AppTheme, ColorModeSelect } from '@inji-offline-verify/shared-ui/src/theme';
 import { GoogleIcon, FacebookIcon, SitemarkIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons.tsx';
 import { useAuth } from './context/AuthContext.tsx';

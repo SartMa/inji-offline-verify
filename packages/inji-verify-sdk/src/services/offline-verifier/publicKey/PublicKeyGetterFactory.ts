@@ -1,9 +1,9 @@
 import type { PublicKeyData } from './Types';
 import type { PublicKeyGetter } from './PublicKeyGetter';
-import { DidWebPublicKeyGetter } from './impl/DidWebPublicKeyGetter.ts';
-import { DidKeyPublicKeyGetter } from './impl/DidKeyPublicKeyGetter.ts';
-import { DidJwkPublicKeyGetter } from './impl/DidJwkPublicKeyGetter.ts';
-import { HttpsPublicKeyGetter } from './impl/HttpsPublicKeyGetter.ts';
+import { DidWebPublicKeyGetter } from './impl/DidWebPublicKeyGetter.js';
+import { DidKeyPublicKeyGetter } from './impl/DidKeyPublicKeyGetter.js';
+import { DidJwkPublicKeyGetter } from './impl/DidJwkPublicKeyGetter.js';
+import { HttpsPublicKeyGetter } from './impl/HttpsPublicKeyGetter.js';
 
 export class PublicKeyGetterFactory {
   async get(verificationMethod: string): Promise<PublicKeyData> {

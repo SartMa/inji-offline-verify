@@ -16,8 +16,8 @@ import MuiCard from '@mui/material/Card';
 import { styled } from '@mui/material/styles';
 import { AppTheme, ColorModeSelect } from '@inji-offline-verify/shared-ui/src/theme';
 import { GoogleIcon, FacebookIcon, SitemarkIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons';
-import { registerOrganization, confirmRegistration } from './services/authService';
-import OTPVerificationDialog from './components/OTPVerificationDialog';
+import { registerOrganization, confirmRegistration } from '../../services/registrationService';
+import OTPVerificationDialog from '../../components/OTPVerificationDialog';
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',

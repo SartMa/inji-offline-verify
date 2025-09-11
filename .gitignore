@@ -42,3 +42,4 @@ apps/worker-pwa/dist/
 apps/worker-pwa/dev-dist/
 
 client
+server/db.sql3lite

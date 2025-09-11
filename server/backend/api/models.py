@@ -1,10 +1,8 @@
 # server/api/models.py
 from django.db import models
-from django.contrib.auth import get_user_model
 from datetime import datetime, timezone as dt_timezone
 import uuid
 
-User = get_user_model()
 
 class JsonLdContext(models.Model):
     """
@@ -27,81 +25,6 @@ class JsonLdContext(models.Model):
     def __str__(self):
         return self.url
 
-class Organization(models.Model):
-    """
-    Tenant/Organization that owns verification data and users.
-    """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=255, unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        ordering = ["name"]
-    indexes = []
-
-
-class OrganizationDID(models.Model):
-    """
-    A DID submitted by an organization. Separate from Organization model by design.
-    """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="dids"
-    )
-    did = models.CharField(max_length=500, unique=True)
-    STATUS_CHOICES = [
-        ("SUBMITTED", "Submitted"),
-        ("RESOLVED", "Resolved"),
-        ("REVOKED", "Revoked"),
-    ]
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="SUBMITTED")
-    metadata = models.JSONField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        indexes = [
-            models.Index(fields=["did"], name="idx_orgdid_did"),
-            models.Index(fields=["organization"], name="idx_orgdid_org"),
-            models.Index(fields=["status"], name="idx_orgdid_status"),
-        ]
-        unique_together = ("organization", "did")
-
-    def __str__(self):
-        return f"{self.did} ({self.status})"
-
-class OrganizationMember(models.Model):
-    """
-    Membership of a Django User in an Organization with a role.
-    """
-    ROLE_CHOICES = [
-        ("ADMIN", "Admin"),
-        ("USER", "User"),
-    ]
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="memberships")
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="members")
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default="ADMIN")
-    # Worker profile fields
-    full_name = models.CharField(max_length=255, blank=True, null=True)
-    phone_number = models.CharField(max_length=32, blank=True, null=True)
-    GENDER_CHOICES = [("M", "Male"), ("F", "Female"), ("O", "Other")]
-    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True, null=True)
-    dob = models.DateField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ("user", "organization")
-        verbose_name = "Organization Member"
-        verbose_name_plural = "Organization Members"
-
-    def __str__(self):
-        return f"{self.user} @ {self.organization} ({self.role})"
 
 class VerificationLog(models.Model):
     """
@@ -136,7 +59,7 @@ class VerificationLog(models.Model):
 
     # Owning organization (set from authenticated user/org context)
     organization = models.ForeignKey(
-        Organization,
+        'organization.Organization',
         on_delete=models.CASCADE,
         related_name="verification_logs",
         null=True,
@@ -153,94 +76,3 @@ class VerificationLog(models.Model):
         ordering = ['-verified_at']
         verbose_name = "Verification Log"
         verbose_name_plural = "Verification Logs"
-
-
-class PublicKey(models.Model):
-    """
-    Stores resolved public keys for organizations' DIDs.
-    """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="public_keys", null=True, blank=True
-    )
-    key_id = models.CharField(max_length=500, unique=True)
-    key_type = models.CharField(max_length=100)
-    public_key_multibase = models.TextField()
-    public_key_hex = models.TextField(null=True, blank=True)
-    public_key_jwk = models.JSONField(null=True, blank=True)
-    controller = models.CharField(max_length=500)
-    purpose = models.CharField(max_length=100, default="assertion")
-    created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField(null=True, blank=True)
-    revoked_at = models.DateTimeField(null=True, blank=True)
-    revocation_reason = models.CharField(max_length=255, null=True, blank=True)
-    is_active = models.BooleanField(default=True)
-
-    class Meta:
-        indexes = [
-            models.Index(fields=["organization"], name="idx_pk_org"),
-            models.Index(fields=["key_id"], name="idx_pk_keyid"),
-            models.Index(fields=["controller"], name="idx_pk_controller"),
-            models.Index(fields=["is_active", "revoked_at", "expires_at"], name="idx_pk_active"),
-        ]
-
-    def __str__(self):
-        return f"{self.key_id} ({self.key_type})"
-
-
-class EmailLoginCode(models.Model):
-    """One-time email-based login code for passwordless worker login."""
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='email_login_codes')
-    code = models.CharField(max_length=12)
-    created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField()
-    consumed_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        indexes = [
-            models.Index(fields=['user', 'code'], name='idx_emailcode_user_code'),
-            models.Index(fields=['expires_at'], name='idx_emailcode_expires'),
-        ]
-
-    def is_valid(self):
-        now = datetime.now(dt_timezone.utc)
-        return self.consumed_at is None and self.expires_at > now
-
-    def __str__(self):
-        return f"Code for {self.user} (@ {'used' if self.consumed_at else 'active'})"
-
-
-class PendingOrganizationRegistration(models.Model):
-    """Holds a pending organization admin registration awaiting email OTP confirmation."""
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    org_name = models.CharField(max_length=255)
-    admin_username = models.CharField(max_length=150)
-    admin_email = models.EmailField()
-    # Store hashed password (not raw). We'll set it on user creation after OTP verify.
-    password_hash = models.CharField(max_length=256)
-    otp_code = models.CharField(max_length=12)
-    attempts = models.PositiveSmallIntegerField(default=0)
-    expires_at = models.DateTimeField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    consumed_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        indexes = [
-            models.Index(fields=["org_name"], name="idx_pending_org_name"),
-            models.Index(fields=["admin_username"], name="idx_pending_admin_user"),
-            models.Index(fields=["admin_email"], name="idx_pending_admin_email"),
-            models.Index(fields=["expires_at"], name="idx_pending_expires"),
-        ]
-
-    def is_valid(self):
-        now = datetime.now(dt_timezone.utc)
-        return self.consumed_at is None and self.expires_at > now
-
-    def mark_consumed(self):
-        self.consumed_at = datetime.now(dt_timezone.utc)
-        self.save(update_fields=["consumed_at"]) 
-
-    def __str__(self):
-        state = 'used' if self.consumed_at else 'pending'
-        return f"Pending org {self.org_name} admin {self.admin_username} ({state})"

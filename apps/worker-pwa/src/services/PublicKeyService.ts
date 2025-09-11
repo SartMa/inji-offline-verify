@@ -7,7 +7,7 @@ import type { PublicKeyData } from '../../../../packages/inji-verify-sdk/src/ser
 export class PublicKeyService {
   // Submit DID for an organization; backend resolves and stores keys
   static async submitDID(orgId: string, did: string) {
-    const res = await NetworkManager.fetch(`/api/org/submit-did/`, {
+    const res = await NetworkManager.fetch(`/organization/api/submit-did/`, {
       method: 'POST',
       body: JSON.stringify({ org_id: orgId, did }),
     });
@@ -19,7 +19,7 @@ export class PublicKeyService {
     const q = new URLSearchParams();
     if (params.organization_id) q.set('organization_id', params.organization_id);
     if (params.did) q.set('did', params.did);
-    const res = await NetworkManager.fetch(`/api/org/public-keys/?${q.toString()}`, { method: 'GET' });
+    const res = await NetworkManager.fetch(`/organization/api/public-keys/?${q.toString()}`, { method: 'GET' });
     const json = await res.json();
     const keys: CachedKey[] = (json.keys || []).map((k: any) => ({
       key_id: k.key_id,

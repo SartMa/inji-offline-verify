@@ -7,10 +7,10 @@ export async function registerOrganization(baseUrl: string, payload: {
   admin_password: string;
   admin_email: string;
 }) {
-  console.log('Making registration request to:', `${baseUrl}/api/auth/register/`);
+  console.log('Making registration request to:', `${baseUrl}/organization/api/register/`);
   console.log('Request payload:', JSON.stringify(payload, null, 2));
   
-  const res = await fetch(`${baseUrl}/api/auth/register/`, {
+  const res = await fetch(`${baseUrl}/organization/api/register/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -36,10 +36,10 @@ export async function confirmRegistration(baseUrl: string, payload: {
   pending_id: string;
   otp_code: string;
 }) {
-  console.log('Making OTP confirmation request to:', `${baseUrl}/api/auth/register/confirm/`);
+  console.log('Making OTP confirmation request to:', `${baseUrl}/organization/api/confirm/`);
   console.log('Request payload:', JSON.stringify(payload, null, 2));
   
-  const res = await fetch(`${baseUrl}/api/auth/register/confirm/`, {
+  const res = await fetch(`${baseUrl}/organization/api/confirm/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

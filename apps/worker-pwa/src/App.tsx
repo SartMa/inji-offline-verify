@@ -8,8 +8,8 @@ import TestInterface from './components/TestInterface.jsx';
 import SyncControls from './components/SyncControls.jsx';
 import StorageLogs from './components/StorageLogs.jsx';
 import SignIn from './SignIn.tsx';
-import SignUp from '../../organization-portal/src/pages/SignUpPage/SignUp.tsx';
-import OrgSignIn from './orgSignIn.tsx';
+// import SignUp from '../../organization-portal/src/pages/SignUpPage/SignUp.tsx';
+// import OrgSignIn from './orgSignIn.tsx';
 import './App.css';
 
 // Landing page component
@@ -78,25 +78,25 @@ function LandingPage() {
   );
 }
 
-// Auth wrapper components for each route
-function OrgSignInPage() {
-  const navigate = useNavigate();
-  return (
-    <OrgSignIn 
-      onSwitchToSignUp={() => navigate('/org-signup')}
-      onSwitchToWorkerSignIn={() => navigate('/worker-signin')}
-    />
-  );
-}
+// // Auth wrapper components for each route
+// function OrgSignInPage() {
+//   const navigate = useNavigate();
+//   return (
+//     <OrgSignIn 
+//       onSwitchToSignUp={() => navigate('/org-signup')}
+//       onSwitchToWorkerSignIn={() => navigate('/worker-signin')}
+//     />
+//   );
+// }
 
-function OrgSignUpPage() {
-  const navigate = useNavigate();
-  return (
-    <SignUp 
-      onSwitchToSignIn={() => navigate('/org-signin')}
-    />
-  );
-}
+// function OrgSignUpPage() {
+//   const navigate = useNavigate();
+//   return (
+//     <SignUp 
+//       onSwitchToSignIn={() => navigate('/org-signin')}
+//     />
+//   );
+// }
 
 function WorkerSignInPage() {
   const navigate = useNavigate();
@@ -197,8 +197,8 @@ function AppContent() {
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<LandingPage />} />
-      <Route path="/org-signin" element={<OrgSignInPage />} />
-      <Route path="/org-signup" element={<OrgSignUpPage />} />
+      {/* <Route path="/org-signin" element={<OrgSignInPage />} />
+      <Route path="/org-signup" element={<OrgSignUpPage />} /> */}
       <Route path="/worker-signin" element={<WorkerSignInPage />} />
       
       {/* Protected routes */}

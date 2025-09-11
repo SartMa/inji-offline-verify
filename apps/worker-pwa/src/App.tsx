@@ -94,7 +94,6 @@ function OrgSignUpPage() {
   return (
     <SignUp 
       onSwitchToSignIn={() => navigate('/org-signin')}
-      onSwitchToOrgSignIn={() => navigate('/org-signin')}
     />
   );
 }

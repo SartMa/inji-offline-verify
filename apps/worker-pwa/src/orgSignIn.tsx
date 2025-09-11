@@ -22,7 +22,6 @@ import { useAuth } from './context/AuthContext.tsx';
 import { login, setApiBaseUrl } from './services/authService';
 import { PublicKeyService } from './services/PublicKeyService';
 import { ContextService } from './services/ContextService';
-import { ContextCache } from './cache/KeyCacheManager';
 import { KeyCacheManager } from './cache/KeyCacheManager';
 
 const Card = styled(MuiCard)(({ theme }) => ({

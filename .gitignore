@@ -40,3 +40,5 @@ node_modules
 apps/worker-pwa/node_modules
 apps/worker-pwa/dist/
 apps/worker-pwa/dev-dist/
+
+client

@@ -66,6 +66,12 @@ ACCOUNT_EMAIL_VERIFICATION = 'optional'
 ACCOUNT_USERNAME_REQUIRED = True
 ACCOUNT_ADAPTER = 'allauth.account.adapter.DefaultAccountAdapter'
 
+# New Django Allauth configuration to avoid deprecation warnings
+ACCOUNT_SIGNUP_FIELDS = {
+    'username': {'required': True},
+    'email': {'required': True},
+}
+
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',

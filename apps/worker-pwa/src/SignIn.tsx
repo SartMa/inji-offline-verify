@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
@@ -17,11 +18,10 @@ import ForgotPassword from './components/ForgotPassword';
 import AppTheme from './theme/AppTheme';
 import ColorModeSelect from './theme/ColorModeSelect';
 import { GoogleIcon, FacebookIcon, SitemarkIcon } from './components/CustomIcons';
-import { useAuth } from './context/AuthContext';
+import { useAuth } from './context/AuthContext.tsx';
 import { login, setApiBaseUrl } from './services/authService';
 import { PublicKeyService } from './services/PublicKeyService';
 import { ContextService } from './services/ContextService';
-// import { ContextCache } from './cache/KeyCacheManager';
 import { KeyCacheManager } from './cache/KeyCacheManager';
 
 const Card = styled(MuiCard)(({ theme }) => ({
@@ -71,6 +71,7 @@ export default function SignIn(props: {
   onSwitchToSignUp?: () => void;
   onSwitchToOrgSignIn?: () => void;
 }) {
+  const navigate = useNavigate();
   const [baseUrl] = React.useState('http://127.0.0.1:8000'); // Hidden - always the same
   const [orgName, setOrgName] = React.useState('Acme Corp1');
   const [username, setUsername] = React.useState('sunsun');
@@ -133,6 +134,9 @@ export default function SignIn(props: {
 
       // Use the auth context signIn method to update the global state
       await signIn(username, password);
+      
+      // Redirect to dashboard after successful login
+      navigate('/dashboard');
     } catch (error) {
       console.error('Sign in failed:', error);
       setPasswordError(true);

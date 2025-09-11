@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
@@ -16,8 +17,8 @@ import { styled } from '@mui/material/styles';
 import AppTheme from './theme/AppTheme';
 import ColorModeSelect from './theme/ColorModeSelect';
 import { GoogleIcon, FacebookIcon, SitemarkIcon } from './components/CustomIcons';
-import { useAuth } from './context/AuthContext';
-import { registerOrganization, setApiBaseUrl } from './services/authService';
+import { registerOrganization, confirmRegistration } from './services/authService';
+import OTPVerificationDialog from './components/OTPVerificationDialog';
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -67,6 +68,7 @@ interface SignUpProps {
 }
 
 export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpProps) {
+  const navigate = useNavigate();
   const [baseUrl] = React.useState('http://127.0.0.1:8000'); // Hidden - always the same
   const [orgName, setOrgName] = React.useState('');
   const [username, setUsername] = React.useState('');
@@ -86,7 +88,12 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
   const [confirmPasswordErrorMessage, setConfirmPasswordErrorMessage] = React.useState('');
   
   const [isLoading, setIsLoading] = React.useState(false);
-  const { signIn } = useAuth();
+  
+  // OTP verification state
+  const [showOTPDialog, setShowOTPDialog] = React.useState(false);
+  const [pendingId, setPendingId] = React.useState('');
+  const [otpLoading, setOtpLoading] = React.useState(false);
+  const [otpError, setOtpError] = React.useState('');
 
   const validateInputs = () => {
     const orgInput = document.getElementById('organization') as HTMLInputElement;
@@ -158,43 +165,143 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
 
     setIsLoading(true);
     try {
-      setApiBaseUrl(baseUrl);
-      
-      // Register the organization using EXACT format from Postman collection
+      // Register the organization - this will return pending registration data
       const registrationData = {
-        "org_name": orgName.trim(),
-        "admin_username": username.trim(), 
-        "admin_password": password,
-        "admin_email": email.trim()
+        org_name: orgName.trim(),
+        admin_username: username.trim(), 
+        admin_password: password,
+        admin_email: email.trim(),
       };
 
-      console.log('Registering organization with exact Postman format:', registrationData);
-      const registrationResult = await registerOrganization(baseUrl, registrationData);
-      console.log('Registration successful:', registrationResult);
-      
-      // After successful registration, sign in the user with the AuthContext
-      // The signIn function will set the authentication state
-      await signIn(email, password); // Use email as the identifier for AuthContext
-      
-    } catch (error) {
-      console.error('Sign up failed:', error);
-      
-      // Enhanced error handling to show the actual server response
-      let errorMessage = 'Registration failed: ';
-      if (error instanceof Error) {
-        errorMessage += error.message;
-        // If it's a fetch error, try to get more details
-        if (error.message.includes('Register failed:')) {
-          errorMessage += '. Please check all required fields are filled correctly.';
-        }
+      console.log('Registration request:', registrationData);
+      const response = await registerOrganization(baseUrl, registrationData);
+      console.log('Registration response:', response);
+
+      // Store the pending ID and show OTP dialog
+      if (response.pending_id) {
+        setPendingId(response.pending_id);
+        setShowOTPDialog(true);
+        setOtpError('');
       } else {
-        errorMessage += 'Unknown error';
+        throw new Error('Registration failed: No pending ID received');
       }
       
-      setPasswordError(true);
-      setPasswordErrorMessage(errorMessage);
+    } catch (error) {
+      console.error('Registration failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Check if the error is about an existing OTP
+      if (errorMessage.includes('An OTP has already been sent') || errorMessage.includes('already been sent')) {
+        // Show a dialog asking if they want to use the existing OTP
+        const useExistingOTP = window.confirm(
+          'An OTP has already been sent for this registration. Would you like to enter the existing OTP code? (Check your email or use the debug OTP from server logs)'
+        );
+        
+        if (useExistingOTP) {
+          // We don't have the pending_id from this error, so we'll need to create a mock one
+          // or ask the user to wait. For now, let's show the OTP dialog and let them try.
+          setShowOTPDialog(true);
+          setOtpError('Please enter the OTP that was previously sent to your email. If you don\'t see it, check the server console for debug_otp.');
+        } else {
+          setPasswordError(true);
+          setPasswordErrorMessage('Please wait for the current OTP to expire (usually 10-15 minutes) or check your email for the existing OTP.');
+        }
+      } else {
+        setPasswordError(true);
+        setPasswordErrorMessage(`Registration failed: ${errorMessage}`);
+      }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleOTPVerification = async (otp: string) => {
+    setOtpLoading(true);
+    setOtpError('');
+    
+    try {
+      // If we don't have a pending_id (e.g., from "OTP already sent" error),
+      // we'll try to get it by making another registration request
+      let currentPendingId = pendingId;
+      
+      if (!currentPendingId) {
+        console.log('No pending ID, attempting to get it...');
+        try {
+          const registrationData = {
+            org_name: orgName.trim(),
+            admin_username: username.trim(), 
+            admin_password: password,
+            admin_email: email.trim(),
+          };
+          const response = await registerOrganization(baseUrl, registrationData);
+          if (response.pending_id) {
+            currentPendingId = response.pending_id;
+            setPendingId(currentPendingId);
+          }
+        } catch (regError) {
+          // If registration fails again, we might still be able to proceed if the user has the right OTP
+          console.log('Registration for pending_id failed, trying with empty pending_id');
+        }
+      }
+
+      const confirmationData = {
+        pending_id: currentPendingId || 'unknown', // Fallback value
+        otp_code: otp,
+      };
+
+      console.log('OTP confirmation request:', confirmationData);
+      const response = await confirmRegistration(baseUrl, confirmationData);
+      console.log('OTP confirmation successful:', response);
+
+      // Close OTP dialog and show success message
+      setShowOTPDialog(false);
+      alert('Organization registered successfully! You can now sign in with your credentials.');
+      
+      // Redirect to organization sign-in page
+      navigate('/org-signin');
+      
+    } catch (error) {
+      console.error('OTP verification failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'OTP verification failed';
+      
+      // Provide more helpful error messages
+      if (errorMessage.includes('404')) {
+        setOtpError('Invalid OTP or expired session. Please try registering again.');
+      } else if (errorMessage.includes('400')) {
+        setOtpError('Invalid OTP code. Please check the code and try again.');
+      } else {
+        setOtpError(errorMessage);
+      }
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleOTPDialogClose = () => {
+    setShowOTPDialog(false);
+    setOtpError('');
+    setPendingId('');
+  };
+
+  const handleResendOTP = async () => {
+    // Resend OTP by making the registration request again
+    if (!email || !orgName || !username || !password) return;
+    
+    try {
+      const registrationData = {
+        org_name: orgName.trim(),
+        admin_username: username.trim(), 
+        admin_password: password,
+        admin_email: email.trim(),
+      };
+
+      const response = await registerOrganization(baseUrl, registrationData);
+      if (response.pending_id) {
+        setPendingId(response.pending_id);
+        setOtpError('');
+      }
+    } catch (error) {
+      setOtpError('Failed to resend OTP. Please try again.');
     }
   };
 
@@ -271,6 +378,7 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
+                autoFocus
                 required
                 fullWidth
                 variant="outlined"
@@ -361,6 +469,17 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
             </Typography>
           </Box>
         </Card>
+
+        {/* OTP Verification Dialog */}
+        <OTPVerificationDialog
+          open={showOTPDialog}
+          onClose={handleOTPDialogClose}
+          onVerify={handleOTPVerification}
+          email={email}
+          isLoading={otpLoading}
+          error={otpError}
+          onResend={handleResendOTP}
+        />
       </SignUpContainer>
     </AppTheme>
   );

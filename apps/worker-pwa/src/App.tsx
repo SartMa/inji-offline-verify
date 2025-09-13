@@ -8,11 +8,9 @@ import TestInterface from './components/TestInterface.jsx';
 import SyncControls from './components/SyncControls.jsx';
 import StorageLogs from './components/StorageLogs.jsx';
 import SignIn from './SignIn.tsx';
-// import SignUp from '../../organization-portal/src/pages/SignUpPage/SignUp.tsx';
-// import OrgSignIn from './orgSignIn.tsx';
 import './App.css';
 
-// Landing page component
+// Landing page component - only for workers
 function LandingPage() {
   const navigate = useNavigate();
   
@@ -26,38 +24,8 @@ function LandingPage() {
       gap: '20px',
       backgroundColor: '#f5f5f5'
     }}>
-      <h1 style={{ color: '#333', marginBottom: '30px' }}>VC Verification System</h1>
+      <h1 style={{ color: '#333', marginBottom: '30px' }}>Worker VC Verification System</h1>
       <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
-        <button 
-          onClick={() => navigate('/org-signin')}
-          style={{ 
-            padding: '12px 24px', 
-            fontSize: '16px', 
-            borderRadius: '8px', 
-            border: '1px solid #ddd',
-            backgroundColor: '#1976d2',
-            color: 'white',
-            cursor: 'pointer',
-            transition: 'background-color 0.3s'
-          }}
-        >
-          Organization Admin Sign In
-        </button>
-        <button 
-          onClick={() => navigate('/org-signup')}
-          style={{ 
-            padding: '12px 24px', 
-            fontSize: '16px', 
-            borderRadius: '8px',
-            border: '1px solid #ddd',
-            backgroundColor: '#2e7d32',
-            color: 'white', 
-            cursor: 'pointer',
-            transition: 'background-color 0.3s'
-          }}
-        >
-          Register New Organization
-        </button>
         <button 
           onClick={() => navigate('/worker-signin')}
           style={{ 
@@ -74,54 +42,39 @@ function LandingPage() {
           Worker Sign In
         </button>
       </div>
+      <div style={{ marginTop: '20px', textAlign: 'center' }}>
+        <p style={{ color: '#666' }}>
+          Are you an organization admin? 
+          <br />
+          Please use the Organization Portal instead.
+        </p>
+      </div>
     </div>
   );
 }
 
-// // Auth wrapper components for each route
-// function OrgSignInPage() {
-//   const navigate = useNavigate();
-//   return (
-//     <OrgSignIn 
-//       onSwitchToSignUp={() => navigate('/org-signup')}
-//       onSwitchToWorkerSignIn={() => navigate('/worker-signin')}
-//     />
-//   );
-// }
-
-// function OrgSignUpPage() {
-//   const navigate = useNavigate();
-//   return (
-//     <SignUp 
-//       onSwitchToSignIn={() => navigate('/org-signin')}
-//     />
-//   );
-// }
-
+// Worker sign in page
 function WorkerSignInPage() {
   const navigate = useNavigate();
   return (
     <SignIn 
-      onSwitchToSignUp={() => navigate('/org-signup')}
-      onSwitchToOrgSignIn={() => navigate('/org-signin')}
+      onSwitchToOrgSignIn={() => navigate('/')}
     />
   );
 }
 
-// Main dashboard component
-function Dashboard() {
+// Worker Dashboard component - only VC verification functionality
+function WorkerDashboard() {
   const { signOut, user } = useAuth();
   
   const handleSignOut = () => {
     signOut();
-    // Navigate to home page after sign out
     window.location.href = '/';
   };
   
   return (
     <div className="App">
       <VCStorageProvider>
-        {/* Add header with logout */}
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
@@ -130,9 +83,9 @@ function Dashboard() {
           backgroundColor: '#f5f5f5',
           borderBottom: '1px solid #ddd'
         }}>
-          <h2 style={{ margin: 0 }}>VC Verification Dashboard</h2>
+          <h2 style={{ margin: 0 }}>Worker VC Verification Dashboard</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <span>Welcome, {user?.email || 'User'}</span>
+            <span>Welcome, {user?.email || 'Worker'}</span>
             <button 
               onClick={handleSignOut}
               style={{
@@ -169,7 +122,6 @@ function Dashboard() {
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   
-  // Show loading while checking authentication
   if (isLoading) {
     return (
       <div style={{ 
@@ -185,7 +137,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
   
   if (!isAuthenticated) {
-    return <Navigate to="/org-signin" replace />;
+    return <Navigate to="/worker-signin" replace />;
   }
   
   return <>{children}</>;
@@ -197,17 +149,15 @@ function AppContent() {
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<LandingPage />} />
-      {/* <Route path="/org-signin" element={<OrgSignInPage />} />
-      <Route path="/org-signup" element={<OrgSignUpPage />} /> */}
       <Route path="/worker-signin" element={<WorkerSignInPage />} />
       
       {/* Protected routes */}
       <Route 
         path="/dashboard" 
         element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
+          // <ProtectedRoute>
+            <WorkerDashboard />
+          // </ProtectedRoute>
         } 
       />
       

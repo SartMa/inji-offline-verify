@@ -41,6 +41,8 @@ apps/worker-pwa/node_modules
 apps/worker-pwa/dist/
 apps/worker-pwa/dev-dist/
 
+apps/organization-portal/dashboard_new
+
 client
 server/db.sql3lite
 vite.config.*.timestamp*

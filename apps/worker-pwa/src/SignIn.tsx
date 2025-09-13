@@ -18,10 +18,11 @@ import ForgotPassword from '@inji-offline-verify/shared-ui/src/components/Forgot
 import { AppTheme, ColorModeSelect } from '@inji-offline-verify/shared-ui/src/theme';
 import { GoogleIcon, FacebookIcon, SitemarkIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons.tsx';
 import { useAuth } from './context/AuthContext.tsx';
-import { login, setApiBaseUrl } from './services/authService';
+import { login, googleLogin, setApiBaseUrl } from './services/authService';
 import { PublicKeyService } from './services/PublicKeyService';
 import { ContextService } from './services/ContextService';
 import { KeyCacheManager } from './cache/KeyCacheManager';
+import { useGoogleSignIn } from './hooks/useGoogleSignIn';
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -83,7 +84,71 @@ export default function SignIn(props: {
   const [orgErrorMessage, setOrgErrorMessage] = React.useState('');
   const [open, setOpen] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = React.useState(false);
   const { signIn } = useAuth();
+
+  const handleGoogleSuccess = async (accessToken: string) => {
+    if (!orgName.trim()) {
+      setOrgError(true);
+      setOrgErrorMessage('Please enter organization name for Google sign-in.');
+      return;
+    }
+
+    setIsGoogleLoading(true);
+    try {
+      setApiBaseUrl(baseUrl);
+      const res = await googleLogin(baseUrl, { 
+        access_token: accessToken, 
+        org_name: orgName 
+      });
+
+      // Fetch and cache contexts and keys like regular login
+      try {
+        const isStaff = !!res?.is_staff;
+        const count = isStaff
+          ? await ContextService.refreshOnServerAndCache()
+          : await ContextService.fetchAndCacheDefaults();
+        console.log(`Contexts cached: ${count}`);
+      } catch (e) {
+        console.warn('Context fetch/cache failed:', e);
+      }
+
+      const orgId = res?.organization?.id;
+      if (orgId) {
+        try {
+          await PublicKeyService.fetchAndCacheKeys({ organization_id: orgId });
+          const keys = await KeyCacheManager.getKeysByOrg(orgId);
+          console.log(`Keys cached: ${(keys || []).length}`);
+        } catch (e) {
+          console.warn('Key fetch/cache failed:', e);
+        }
+      }
+
+      // Use the auth context signIn method to update the global state
+      // For Google login, we'll use the email as username if available
+      await signIn(res.email || res.username || 'google-user', '');
+      
+      // Redirect to dashboard after successful login
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Google sign in failed:', error);
+      setPasswordError(true);
+      setPasswordErrorMessage(`Google sign in failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleError = (error: any) => {
+    console.error('Google sign in error:', error);
+    setPasswordError(true);
+    setPasswordErrorMessage('Google sign in was cancelled or failed.');
+  };
+
+  const { signIn: triggerGoogleSignIn, isReady: isGoogleReady } = useGoogleSignIn({
+    onSuccess: handleGoogleSuccess,
+    onError: handleGoogleError,
+  });
 
   const handleClickOpen = () => {
     setOpen(true);
@@ -294,10 +359,11 @@ export default function SignIn(props: {
             <Button
               fullWidth
               variant="outlined"
-              onClick={() => alert('Sign in with Google')}
+              onClick={triggerGoogleSignIn}
+              disabled={!isGoogleReady || isGoogleLoading}
               startIcon={<GoogleIcon />}
             >
-              Sign in with Google
+              {isGoogleLoading ? 'Signing in with Google...' : 'Sign in with Google'}
             </Button>
             <Button
               fullWidth

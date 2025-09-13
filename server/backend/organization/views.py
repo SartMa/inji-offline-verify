@@ -9,6 +9,7 @@ from .serializers import (
     OrganizationDIDSubmitSerializer,
     PublicKeyListResponseSerializer,
     OrganizationSerializer,
+    OrganizationLoginSerializer,
 )
 from django.db import transaction
 from .models import Organization, OrganizationDID, PublicKey
@@ -143,6 +144,17 @@ class OrganizationPublicKeysView(APIView):
             'keys': keys,
         }
         return Response(payload, status=status.HTTP_200_OK)
+
+
+class OrganizationLoginView(APIView):
+    """Login endpoint specifically for organization admins."""
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = OrganizationLoginSerializer(data=request.data)
+        if serializer.is_valid():
+            return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 # --- DID resolution helpers (minimal, can be replaced by robust resolver) ---

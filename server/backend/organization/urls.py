@@ -12,6 +12,7 @@ router = DefaultRouter()
 urlpatterns = [
     path('api/', include(router.urls)),
     # Organization-specific endpoints
+    path('api/login/', views.OrganizationLoginView.as_view(), name='organization-login'),
     path('api/register/', views.RegisterOrganizationView.as_view(), name='organization-register'),
     path('api/confirm/', views.ConfirmOrganizationRegistrationView.as_view(), name='organization-confirm'),
     path('api/submit-did/', views.SubmitOrganizationDIDView.as_view(), name='organization-submit-did'),

@@ -3,7 +3,7 @@ import { getApiBaseUrl, getAccessToken, refreshAccessToken } from './authService
 
 const SYNC_ENDPOINT = () => {
     const base = getApiBaseUrl();
-    return base ? `${base}/api/sync/` : null;
+    return base ? `${base}/worker/api/sync/` : null;
 };
 
 let inFlightSync = null;

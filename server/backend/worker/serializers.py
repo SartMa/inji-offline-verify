@@ -4,47 +4,9 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import OrganizationMember, EmailLoginCode
+from .models import OrganizationMember
 from organization.models import Organization
 from organization.serializers import OrganizationSerializer
-from datetime import datetime, timedelta, timezone as dt_timezone
-import random, string
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes
-from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
-from django.conf import settings
-
-
-class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
-    password = serializers.CharField(write_only=True)
-    org_name = serializers.CharField()
-
-    def validate(self, attrs):
-        user = authenticate(username=attrs['username'], password=attrs['password'])
-        if not user:
-            raise serializers.ValidationError('Invalid credentials')
-
-        try:
-            org = Organization.objects.get(name__iexact=attrs['org_name'])
-        except Organization.DoesNotExist:
-            raise serializers.ValidationError('Organization not found')
-
-        if not OrganizationMember.objects.filter(user=user, organization=org).exists():
-            raise serializers.ValidationError('User is not a member of this organization')
-
-        # Issue both DRF token (backward compat) and JWT pair
-        token, _ = Token.objects.get_or_create(user=user)
-        jwt = RefreshToken.for_user(user)
-        return {
-            'token': token.key,
-            'access': str(jwt.access_token),
-            'refresh': str(jwt),
-            'username': user.username,
-            'organization': OrganizationSerializer(org).data,
-            'is_staff': bool(user.is_staff),
-        }
 
 
 class WorkerRegistrationSerializer(serializers.Serializer):
@@ -94,105 +56,103 @@ class WorkerRegistrationSerializer(serializers.Serializer):
         }
 
 
-class EmailLoginCodeRequestSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-
-    def validate_email(self, value):
-        if not User.objects.filter(email__iexact=value).exists():
-            raise serializers.ValidationError('User with this email not found')
-        return value
-
-    def create(self, validated_data):
-        user = User.objects.filter(email__iexact=validated_data['email']).first()
-        code = ''.join(random.choices(string.digits, k=6))
-        expires_at = datetime.now(dt_timezone.utc) + timedelta(minutes=10)
-        EmailLoginCode.objects.create(user=user, code=code, expires_at=expires_at)
-        # Real implementation would email the code. For now we return it for testing.
-        return {'email': user.email, 'code': code, 'expires_at': expires_at}
-
-
-class EmailLoginCodeVerifySerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    code = serializers.CharField(max_length=12)
+class WorkerLoginSerializer(serializers.Serializer):
+    """Login serializer specifically for worker users."""
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+    org_name = serializers.CharField()
 
     def validate(self, attrs):
-        user = User.objects.filter(email__iexact=attrs['email']).first()
+        user = authenticate(username=attrs['username'], password=attrs['password'])
         if not user:
-            raise serializers.ValidationError('Invalid code or email')
-        record = EmailLoginCode.objects.filter(user=user, code=attrs['code']).order_by('-created_at').first()
-        if not record or not record.is_valid():
-            raise serializers.ValidationError('Invalid or expired code')
-        attrs['user'] = user
-        attrs['record'] = record
-        return attrs
+            raise serializers.ValidationError('Invalid credentials')
 
-    def create(self, validated_data):
-        record: EmailLoginCode = validated_data['record']
-        record.consumed_at = datetime.now(dt_timezone.utc)
-        record.save(update_fields=['consumed_at'])
-        user = validated_data['user']
-        jwt = RefreshToken.for_user(user)
+        try:
+            org = Organization.objects.get(name__iexact=attrs['org_name'])
+        except Organization.DoesNotExist:
+            raise serializers.ValidationError('Organization not found')
+
+        # Check if user is a member of this organization
+        membership = OrganizationMember.objects.filter(user=user, organization=org).first()
+        if not membership:
+            raise serializers.ValidationError('User is not a member of this organization')
+
+        # Issue both DRF token (backward compat) and JWT pair
         token, _ = Token.objects.get_or_create(user=user)
-        # Attempt to include first org membership context if exists
-        membership = OrganizationMember.objects.filter(user=user).first()
-        org_data = OrganizationSerializer(membership.organization).data if membership else None
+        jwt = RefreshToken.for_user(user)
+        
         return {
             'token': token.key,
             'access': str(jwt.access_token),
             'refresh': str(jwt),
             'username': user.username,
-            'organization': org_data,
+            'organization': OrganizationSerializer(org).data,
             'is_staff': bool(user.is_staff),
-            'email_login': True,
+            'role': membership.role,
+            'member_id': str(membership.id),
+            'login_type': 'worker',
         }
 
 
-class PasswordResetRequestSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-
-    def validate_email(self, value):
-        if not User.objects.filter(email__iexact=value).exists():
-            raise serializers.ValidationError('User with this email not found')
-        return value
-
-    def create(self, validated_data):
-        """Generate password reset token and send email (console backend in dev)."""
-        users = User.objects.filter(email__iexact=validated_data['email'])
-        payloads = []
-        for user in users:
-            uid = urlsafe_base64_encode(force_bytes(user.pk))
-            token = default_token_generator.make_token(user)
-            reset_link_base = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
-            link = f"{reset_link_base}/reset-password?uid={uid}&token={token}"
-            subject = 'Password Reset Request'
-            message = f"Use the following link to reset your password: {link}"
-            try:
-                send_mail(subject, message, getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@example.com'), [user.email])
-            except Exception:
-                pass  # Silent fail for now
-            payloads.append({'uid': uid, 'token': token})
-        # Return first for convenience in testing (avoid exposing multiple)
-        return {'status': 'password reset email sent', 'debug': payloads[0] if payloads else None}
-
-
-class PasswordResetConfirmSerializer(serializers.Serializer):
-    uid = serializers.CharField()
-    token = serializers.CharField()
-    new_password = serializers.CharField(min_length=8)
+class GoogleWorkerLoginSerializer(serializers.Serializer):
+    """Google OAuth login serializer specifically for worker users."""
+    access_token = serializers.CharField()
+    org_name = serializers.CharField()
 
     def validate(self, attrs):
+        access_token = attrs['access_token']
+        org_name = attrs['org_name']
+        
         try:
-            uid_int = urlsafe_base64_decode(attrs['uid']).decode()
-            user = User.objects.get(pk=uid_int)
-        except Exception:
-            raise serializers.ValidationError('Invalid uid or token')
-        if not default_token_generator.check_token(user, attrs['token']):
-            raise serializers.ValidationError('Invalid or expired token')
-        attrs['user'] = user
-        return attrs
-
-    def create(self, validated_data):
-        user = validated_data['user']
-        user.set_password(validated_data['new_password'])
-        user.save(update_fields=['password'])
-        return {'status': 'password reset successful'}
+            # Verify the Google access token by making a request to Google's API
+            import requests as http_requests
+            response = http_requests.get(
+                f'https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={access_token}',
+                timeout=10
+            )
+            
+            if response.status_code != 200:
+                raise serializers.ValidationError('Invalid Google access token')
+            
+            token_info = response.json()
+            email = token_info.get('email')
+            
+            if not email:
+                raise serializers.ValidationError('Could not retrieve email from Google token')
+                
+        except Exception as e:
+            raise serializers.ValidationError(f'Failed to verify Google token: {str(e)}')
+        
+        # Check if organization exists
+        try:
+            org = Organization.objects.get(name__iexact=org_name)
+        except Organization.DoesNotExist:
+            raise serializers.ValidationError('Organization not found')
+        
+        # Check if user with this email exists and is a member of the organization
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError('No worker account found with this email address. Please contact your admin to register first.')
+        
+        # Check if user is a member of this organization
+        membership = OrganizationMember.objects.filter(user=user, organization=org).first()
+        if not membership:
+            raise serializers.ValidationError('This email is not registered as a worker for this organization')
+        
+        # Issue both DRF token (backward compat) and JWT pair
+        token, _ = Token.objects.get_or_create(user=user)
+        jwt = RefreshToken.for_user(user)
+        
+        return {
+            'token': token.key,
+            'access': str(jwt.access_token),
+            'refresh': str(jwt),
+            'username': user.username,
+            'email': user.email,
+            'organization': OrganizationSerializer(org).data,
+            'is_staff': bool(user.is_staff),
+            'role': membership.role,
+            'member_id': str(membership.id),
+            'login_type': 'worker_google',
+        }

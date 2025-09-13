@@ -1,8 +1,11 @@
 # server/organization/serializers.py
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
+from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Organization, OrganizationDID, PublicKey, PendingOrganizationRegistration
+from worker.models import OrganizationMember
 from datetime import datetime, timedelta, timezone as dt_timezone
 import random, string
 from django.core.mail import send_mail
@@ -165,4 +168,44 @@ class OrganizationRegistrationConfirmSerializer(serializers.Serializer):
             'organization': org,
             'user': user,
             'token': token.key,
+        }
+
+
+class OrganizationLoginSerializer(serializers.Serializer):
+    """Login serializer specifically for organization admins."""
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+    org_name = serializers.CharField()
+
+    def validate(self, attrs):
+        user = authenticate(username=attrs['username'], password=attrs['password'])
+        if not user:
+            raise serializers.ValidationError('Invalid credentials')
+
+        try:
+            org = Organization.objects.get(name__iexact=attrs['org_name'])
+        except Organization.DoesNotExist:
+            raise serializers.ValidationError('Organization not found')
+
+        # Check if user is an admin of this organization
+        membership = OrganizationMember.objects.filter(user=user, organization=org).first()
+        if not membership:
+            raise serializers.ValidationError('User is not a member of this organization')
+        
+        if membership.role != 'ADMIN':
+            raise serializers.ValidationError('Organization login requires admin privileges')
+
+        # Issue both DRF token (backward compat) and JWT pair
+        token, _ = Token.objects.get_or_create(user=user)
+        jwt = RefreshToken.for_user(user)
+        
+        return {
+            'token': token.key,
+            'access': str(jwt.access_token),
+            'refresh': str(jwt),
+            'username': user.username,
+            'organization': OrganizationSerializer(org).data,
+            'is_staff': bool(user.is_staff),
+            'role': membership.role,
+            'login_type': 'organization_admin',
         }

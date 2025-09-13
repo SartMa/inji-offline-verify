@@ -3,9 +3,12 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework.views import APIView
 from .serializers import (
-    VerificationLogSerializer,
     JsonLdContextSerializer,
     ContextListResponseSerializer,
+    EmailLoginCodeRequestSerializer,
+    EmailLoginCodeVerifySerializer,
+    PasswordResetRequestSerializer,
+    PasswordResetConfirmSerializer,
 )
 from django.db import transaction
 from .models import JsonLdContext
@@ -16,44 +19,6 @@ try:
     import requests
 except Exception:  # pragma: no cover
     requests = None
-
-
-class SyncVerificationLogsView(APIView):
-    """
-    View to handle synchronization of verification logs.
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        """Create or update verification logs for the authenticated organization."""
-        logs_data = request.data
-        if not isinstance(logs_data, list):
-            return Response(
-                {"error": "Request body must be a list of log objects."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        serializer = VerificationLogSerializer(
-            data=logs_data,
-            many=True,
-            context={"request": request},
-        )
-
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            with transaction.atomic():
-                serializer.save()
-            return Response(
-                {"status": "success", "synced_count": len(serializer.data)},
-                status=status.HTTP_201_CREATED,
-            )
-        except Exception as e:
-            return Response(
-                {"error": f"An error occurred during database transaction: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
 
 
 class ContextListView(APIView):
@@ -126,3 +91,49 @@ class ContextRefreshFromSourceView(APIView):
             except Exception as e:
                 failed.append({'url': url, 'error': str(e)})
         return Response({'updated': updated, 'failed': failed}, status=status.HTTP_200_OK)
+
+
+# Shared Authentication Views (login endpoints are now app-specific)
+class EmailLoginCodeRequestView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = EmailLoginCodeRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            data = serializer.save()
+            # In production, don't return code. Provided here for test convenience.
+            return Response({'email': data['email'], 'code': data['code'], 'expires_at': data['expires_at']}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EmailLoginCodeVerifyView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = EmailLoginCodeVerifySerializer(data=request.data)
+        if serializer.is_valid():
+            data = serializer.save()
+            return Response(data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordResetRequestView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            data = serializer.save()
+            return Response(data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        if serializer.is_valid():
+            data = serializer.save()
+            return Response(data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

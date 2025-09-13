@@ -18,7 +18,7 @@ import ForgotPassword from '@inji-offline-verify/shared-ui/src/components/Forgot
 import { AppTheme, ColorModeSelect } from '@inji-offline-verify/shared-ui/src/theme';
 import { GoogleIcon, FacebookIcon, SitemarkIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons';
 import { useAuth } from '@inji-offline-verify/shared-auth';
-import { login, setApiBaseUrl } from '@inji-offline-verify/shared-auth';
+import { loginorg, setApiBaseUrl } from '@inji-offline-verify/shared-auth';
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -71,9 +71,9 @@ interface OrgSignInProps {
 export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwitchToWorkerSignIn }: OrgSignInProps) {
   const navigate = useNavigate();
   const [baseUrl] = React.useState('http://127.0.0.1:8000'); // Hidden - always the same
-  const [orgName, setOrgName] = React.useState('Acme Corp1');
-  const [username, setUsername] = React.useState('alice1');
-  const [password, setPassword] = React.useState('admin123');
+  const [orgName, setOrgName] = React.useState('AcmeCorp10');
+  const [username, setUsername] = React.useState('org1');
+  const [password, setPassword] = React.useState('12345678');
   const [orgError, setOrgError] = React.useState(false);
   const [orgErrorMessage, setOrgErrorMessage] = React.useState('');
   const [usernameError, setUsernameError] = React.useState(false);
@@ -110,7 +110,7 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
       };
 
       console.log('Organization login request:', loginData);
-      const res = await login(baseUrl, loginData);
+      const res = await loginorg(baseUrl, loginData);
       console.log('Organization login successful:', res);
 
       // Use the auth context signIn method to update the global state

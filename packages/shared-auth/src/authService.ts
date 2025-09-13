@@ -28,6 +28,21 @@ export async function login(baseUrl: string, payload: { username: string; passwo
   return data;
 }
 
+export async function loginorg(baseUrl: string, payload: { username: string; password: string; org_name: string }): Promise<LoginResponse> {
+  const res = await fetch(`${baseUrl}/organization/api/login/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Login failed: ${res.status}`);
+  const data: LoginResponse = await res.json();
+  setApiBaseUrl(baseUrl);
+  if (data?.access || data?.refresh || data?.token) {
+    saveTokens({ access: data.access, refresh: data.refresh, legacyToken: data.token });
+  }
+  return data;
+}
+
 export async function googleLogin(baseUrl: string, payload: { access_token: string; org_name: string }): Promise<LoginResponse> {
   const res = await fetch(`${baseUrl}/worker/api/google-login/`, {
     method: 'POST',

@@ -25,9 +25,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
   
-  // if (!isAuthenticated) {
-  //   return <Navigate to="/signin" replace />;
-  // }
+  if (!isAuthenticated) {
+    return <Navigate to="/signin" replace />;
+  }
   
   return <>{children}</>;
 }

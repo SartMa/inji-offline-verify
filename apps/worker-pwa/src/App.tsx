@@ -155,9 +155,9 @@ function AppContent() {
       <Route 
         path="/dashboard" 
         element={
-          // <ProtectedRoute>
+          <ProtectedRoute>
             <WorkerDashboard />
-          // </ProtectedRoute>
+          </ProtectedRoute>
         } 
       />
       

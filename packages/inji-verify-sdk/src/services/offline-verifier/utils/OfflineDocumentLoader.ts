@@ -4,268 +4,125 @@
  * This utility extracts JSON-LD contexts from IndexedDB cache for offline verification.
  * No network calls are made - everything is resolved from local cache.
  */
-export class OfflineDocumentLoader {
-  private static readonly DB_NAME = 'ContextCache';
-  private static readonly DB_VERSION = 1;
-  private static readonly STORE_NAME = 'contexts';
-  
-  // Built-in fallback contexts (embedded in code for critical contexts)
-  private static readonly BUILTIN_CONTEXTS: Record<string, any> = {
-    'https://www.w3.org/2018/credentials/v1': {
-      '@context': {
-        '@version': 1.1,
-        '@protected': true,
-        
-        // Core VC vocabulary
-        'VerifiableCredential': {
-          '@id': 'https://www.w3.org/2018/credentials#VerifiableCredential',
-          '@context': {
-            '@version': 1.1,
-            '@protected': true,
-            'id': '@id',
-            'type': '@type',
-            'credentialSubject': {
-              '@id': 'https://www.w3.org/2018/credentials#credentialSubject',
-              '@type': '@id'
-            },
-            'issuer': {
-              '@id': 'https://www.w3.org/2018/credentials#issuer', 
-              '@type': '@id'
-            },
-            'issuanceDate': {
-              '@id': 'https://www.w3.org/2018/credentials#issuanceDate',
-              '@type': 'http://www.w3.org/2001/XMLSchema#dateTime'
-            },
-            'expirationDate': {
-              '@id': 'https://www.w3.org/2018/credentials#expirationDate',
-              '@type': 'http://www.w3.org/2001/XMLSchema#dateTime'
-            }
-          }
-        },
-        
-        // Individual terms
-        'credentialSubject': 'https://www.w3.org/2018/credentials#credentialSubject',
-        'issuer': 'https://www.w3.org/2018/credentials#issuer',
-        'issuanceDate': 'https://www.w3.org/2018/credentials#issuanceDate',
-        'expirationDate': 'https://www.w3.org/2018/credentials#expirationDate',
-        'credentialStatus': 'https://www.w3.org/2018/credentials#credentialStatus'
-      }
-    },
+const DB_NAME = 'VCVerifierCache';
+const DB_VERSION = 2;
+const CONTEXT_STORE = 'contexts';
+const KEY_STORE = 'public_keys';
 
-    'https://w3id.org/security/v1': {
-      '@context': {
-        '@version': 1.1,
-        '@protected': true,
-        
-        // Security/Proof vocabulary  
-        'proof': {
-          '@id': 'https://w3id.org/security#proof',
-          '@type': '@id',
-          '@container': '@graph'
-        },
-        'Ed25519Signature2020': 'https://w3id.org/security#Ed25519Signature2020',
-        'Ed25519VerificationKey2020': 'https://w3id.org/security#Ed25519VerificationKey2020',
-        'verificationMethod': {
-          '@id': 'https://w3id.org/security#verificationMethod',
-          '@type': '@id'
-        },
-        'proofPurpose': {
-          '@id': 'https://w3id.org/security#proofPurpose',
-          '@type': '@vocab'
-        },
-        'proofValue': {
-          '@id': 'https://w3id.org/security#proofValue',
-          '@type': 'https://w3id.org/security#multibase'
-        },
-        'jws': 'https://w3id.org/security#jws',
-        'created': {
-          '@id': 'http://purl.org/dc/terms/created',
-          '@type': 'http://www.w3.org/2001/XMLSchema#dateTime'
-        }
-      }
-    },
+async function openDB(): Promise<IDBDatabase> {
+  return await new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => resolve(req.result);
+  });
+}
 
-    'https://w3id.org/security/v2': {
-      '@context': {
-        '@version': 1.1,
-        '@protected': true,
-        
-        // Same as v1 but version 2
-        'proof': {
-          '@id': 'https://w3id.org/security#proof',
-          '@type': '@id',
-          '@container': '@graph'
-        },
-        'Ed25519Signature2020': 'https://w3id.org/security#Ed25519Signature2020',
-        'Ed25519VerificationKey2020': 'https://w3id.org/security#Ed25519VerificationKey2020',
-        'verificationMethod': {
-          '@id': 'https://w3id.org/security#verificationMethod',
-          '@type': '@id'
-        },
-        'proofPurpose': {
-          '@id': 'https://w3id.org/security#proofPurpose',
-          '@type': '@vocab'
-        },
-        'proofValue': {
-          '@id': 'https://w3id.org/security#proofValue',
-          '@type': 'https://w3id.org/security#multibase'
-        },
-        'jws': 'https://w3id.org/security#jws',
-        'created': {
-          '@id': 'http://purl.org/dc/terms/created',
-          '@type': 'http://www.w3.org/2001/XMLSchema#dateTime'
-        }
-      }
-    }
+async function getContext(db: IDBDatabase, url: string) {
+  return await new Promise<any | null>((resolve) => {
+    const tx = db.transaction([CONTEXT_STORE], 'readonly');
+    const store = tx.objectStore(CONTEXT_STORE);
+    const r = store.get(url);
+    r.onsuccess = () => resolve(r.result?.document ?? null);
+    r.onerror = () => resolve(null);
+  });
+}
+
+async function getKeyById(db: IDBDatabase, keyId: string) {
+  return await new Promise<any | null>((resolve) => {
+    const tx = db.transaction([KEY_STORE], 'readonly');
+    const store = tx.objectStore(KEY_STORE);
+    const r = store.get(keyId);
+    r.onsuccess = () => resolve(r.result ?? null);
+    r.onerror = () => resolve(null);
+  });
+}
+
+async function getAnyKeyForDid(db: IDBDatabase, did: string) {
+  return await new Promise<any | null>((resolve) => {
+    const tx = db.transaction([KEY_STORE], 'readonly');
+    const store = tx.objectStore(KEY_STORE);
+    const idx = store.index('controller'); // requires controller = DID without fragment
+    const r = idx.get(did);
+    r.onsuccess = () => resolve(r.result ?? null);
+    r.onerror = () => resolve(null);
+  });
+}
+
+function vmFromKey(key: any) {
+  return {
+    '@context': ['https://w3id.org/security/suites/ed25519-2020/v1'],
+    id: key.key_id,
+    type: key.key_type ?? 'Ed25519VerificationKey2020',
+    controller: key.controller,
+    publicKeyMultibase: key.public_key_multibase
   };
+}
 
+function didDocFromKey(did: string, key: any) {
+  return {
+    '@context': ['https://www.w3.org/ns/did/v1', 'https://w3id.org/security/suites/ed25519-2020/v1'],
+    id: did,
+    verificationMethod: [vmFromKey(key)],
+    assertionMethod: [key.key_id]
+  };
+}
+
+// Remove or comment out any BUILTIN_CONTEXTS approximations to avoid canonization drift
+// const BUILTIN_CONTEXTS = { /* remove approximations */ };
+
+// Always load from cache first; only use network when explicitly online.
+// Throw if missing to avoid using wrong contexts that break verification.
+
+export class OfflineDocumentLoader {
   /**
    * Get document loader function for jsonld-signatures library
-   * This is the main method called by the crypto library
    */
   static getDocumentLoader(): (url: string) => Promise<{ document: any; documentUrl: string; contextUrl?: string }> {
-    return async (url: string) => {
-      console.log(`📄 [OfflineDocumentLoader] Resolving context: ${url}`);
-      
-      try {
-        // STEP 1: Try IndexedDB cache first (contexts downloaded during login)
-        const cachedContext = await this.getFromCache(url);
-        if (cachedContext) {
-          console.log(`📋 [OfflineDocumentLoader] Using cached context: ${url}`);
-          return {
-            document: cachedContext.document,
-            documentUrl: url,
-            contextUrl: undefined
-          };
-        }
+    const loader = new OfflineDocumentLoader();
+    return loader.documentLoader.bind(loader);
+  }
 
-        // STEP 2: Try built-in contexts (embedded in code)
-        const builtinContext = this.BUILTIN_CONTEXTS[url];
-        if (builtinContext) {
-          console.log(`📚 [OfflineDocumentLoader] Using built-in context: ${url}`);
-          return {
-            document: builtinContext,
-            documentUrl: url,
-            contextUrl: undefined
-          };
-        }
+  async documentLoader(url: string) {
+    console.log(`📄 [OfflineDocumentLoader] Resolving: ${url}`);
 
-        // STEP 3: Context not available offline - this is an error
-        console.error(`❌ [OfflineDocumentLoader] Context not available offline: ${url}`);
-        throw new Error(`Context not available offline: ${url}. Ensure it's cached during login.`);
-
-      } catch (error: any) {
-        console.error(`💥 [OfflineDocumentLoader] Error loading context: ${url}`, error);
-        throw error;
+    // 1) DID resolution via key cache (unchanged)
+    if (url.startsWith('did:')) {
+      console.log(`🔐 [OfflineDocumentLoader] Resolving DID: ${url}`);
+      if (url.includes('#')) {
+        const key = await getKeyById(db, url);
+        if (!key) throw new Error(`DID verification method not available offline: ${url}`);
+        return { contextUrl: undefined, document: vmFromKey(key), documentUrl: url };
+      } else {
+        const key = await getAnyKeyForDid(db, url);
+        if (!key) throw new Error(`DID document not available offline: ${url}`);
+        return { contextUrl: undefined, document: didDocFromKey(url, key), documentUrl: url };
       }
-    };
-  }
+    }
 
-  /**
-   * Get context from IndexedDB cache
-   */
-  private static async getFromCache(url: string): Promise<{ document: any } | null> {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
-      
-      request.onerror = () => {
-        console.warn(`⚠️ [OfflineDocumentLoader] IndexedDB error: ${request.error}`);
-        resolve(null); // Don't fail, try built-in contexts
-      };
-      
-      request.onsuccess = () => {
-        const db = request.result;
-        
-        if (!db.objectStoreNames.contains(this.STORE_NAME)) {
-          console.warn(`⚠️ [OfflineDocumentLoader] Context store not found`);
-          resolve(null);
-          return;
-        }
-        
-        const transaction = db.transaction([this.STORE_NAME], 'readonly');
-        const store = transaction.objectStore(this.STORE_NAME);
-        const getRequest = store.get(url);
-        
-        getRequest.onsuccess = () => {
-          const result = getRequest.result;
-          if (result && this.isValidCachedContext(result)) {
-            resolve(result);
-          } else {
-            resolve(null);
-          }
-        };
-        
-        getRequest.onerror = () => {
-          console.warn(`⚠️ [OfflineDocumentLoader] Error reading from cache: ${getRequest.error}`);
-          resolve(null);
-        };
-      };
-    });
-  }
+    // 2) Try cached contexts
+    const db = await openDB();
+    const ctx = await getContext(db, url);
+    if (ctx) {
+      console.log(`💾 [OfflineDocumentLoader] Using cached context: ${url}`);
+      return { contextUrl: undefined, document: ctx, documentUrl: url };
+    }
 
-  /**
-   * Validate cached context structure
-   */
-  private static isValidCachedContext(context: any): boolean {
-    return (
-      context &&
-      typeof context === 'object' &&
-      context.document &&
-      typeof context.document === 'object' &&
-      !this.isCacheExpired(context)
+    // 3) If online, fetch and cache exact context
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      console.log(`🌐 [OfflineDocumentLoader] Fetching exact context: ${url}`);
+      const resp = await fetch(url, { headers: { Accept: 'application/ld+json, application/json' } });
+      if (!resp.ok) throw new Error(`Failed to fetch context: ${url} (${resp.status})`);
+      const document = await resp.json();
+      try {
+        const tx = db.transaction(['contexts'], 'readwrite');
+        tx.objectStore('contexts').put({ url, document, cachedAt: Date.now(), source: 'network' });
+      } catch { /* best effort */ }
+      return { contextUrl: undefined, document, documentUrl: url };
+    }
+
+    // 4) Offline and not cached -> fail fast with clear message
+    throw new Error(
+      `Missing JSON-LD context offline: ${url}. Pre-cache exact contexts before going offline (e.g., credentials/v1, ed25519-2020/v1, did/v1).`
     );
-  }
-
-  /**
-   * Check if cached context is expired
-   */
-  private static isCacheExpired(context: any): boolean {
-    if (!context.cachedAt) return false; // No expiration info
-    
-    const cacheAge = Date.now() - context.cachedAt;
-    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-    
-    if (cacheAge > maxAge) {
-      console.warn(`⚠️ [OfflineDocumentLoader] Cached context expired`);
-      return true;
-    }
-    
-    return false;
-  }
-
-  /**
-   * Get all required contexts for offline operation
-   * Used to validate cache completeness
-   */
-  static getRequiredContexts(): string[] {
-    return [
-      'https://www.w3.org/2018/credentials/v1',
-      'https://w3id.org/security/v1',
-      'https://w3id.org/security/v2'
-    ];
-  }
-
-  /**
-   * Check if all required contexts are available offline
-   */
-  static async validateOfflineReadiness(): Promise<{ ready: boolean; missing: string[] }> {
-    const required = this.getRequiredContexts();
-    const missing: string[] = [];
-    
-    for (const contextUrl of required) {
-      try {
-        const loader = this.getDocumentLoader();
-        await loader(contextUrl);
-        console.log(`✅ [OfflineDocumentLoader] Context available: ${contextUrl}`);
-      } catch (error) {
-        console.error(`❌ [OfflineDocumentLoader] Context missing: ${contextUrl}`);
-        missing.push(contextUrl);
-      }
-    }
-    
-    return {
-      ready: missing.length === 0,
-      missing
-    };
   }
 }

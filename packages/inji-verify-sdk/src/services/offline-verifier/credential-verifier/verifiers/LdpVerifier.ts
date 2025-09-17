@@ -180,55 +180,66 @@ export class LdpVerifier {
    */
   private async verifyEd25519Proof(vcObject: any, proof: any): Promise<boolean> {
     try {
-      this.logger.info(`🔑 Resolving public key for: ${proof.verificationMethod}`);
+      console.log('🔐 [Ed25519] Starting signature verification');
+      console.log('📝 [Ed25519] Proof:', JSON.stringify(proof, null, 2));
 
-      // STEP 1: Get the public key for this verification method
-      // The verificationMethod is like an ID that points to a public key
-      // Example: "did:web:example.com#key-1" or "https://issuer.com/keys/1"
+      // 1) Resolve public key from local cache
       const publicKey = await this.getPublicKey(proof.verificationMethod);
       if (!publicKey) {
         this.logger.error(`❌ Could not resolve public key for: ${proof.verificationMethod}`);
         return false;
       }
+      console.log('🔑 [Ed25519] Public key info:', JSON.stringify(publicKey, null, 2));
 
-      // STEP 2: Create an Ed25519 verification key object
-      // This converts our public key data into the format expected by the crypto library
-      const keyPair = await Ed25519VerificationKey2020.from({
-        id: proof.verificationMethod,                              // Unique identifier for this key
-        type: 'Ed25519VerificationKey2020',                        // Key type specification
-        controller: publicKey.controller || proof.verificationMethod.split('#')[0],  // Who controls this key
-        publicKeyMultibase: publicKey.publicKeyMultibase           // The actual public key bytes
-      });
+      // 2) Build minimal controller + VM docs for offline purpose authorization
+      const controllerDid = publicKey.controller || proof.verificationMethod.split('#')[0];
 
-      // STEP 3: Create the signature suite (cryptographic algorithm + key)
-      // This sets up the verification algorithm with the public key
+      const verificationMethodDoc = {
+        id: proof.verificationMethod,
+        type: 'Ed25519VerificationKey2020',
+        controller: controllerDid,
+        publicKeyMultibase: publicKey.publicKeyMultibase
+      };
+
+      const controllerDoc = {
+        '@context': [
+          'https://www.w3.org/ns/did/v1',
+          'https://w3id.org/security/suites/ed25519-2020/v1'
+        ],
+        id: controllerDid,
+        verificationMethod: [verificationMethodDoc],
+        assertionMethod: [verificationMethodDoc.id]
+      };
+
+      // 3) Create suite
+      const keyPair = await Ed25519VerificationKey2020.from(verificationMethodDoc);
       const suite = new Ed25519Signature2020({
-        key: keyPair
+        key: keyPair,
+        verificationMethod: verificationMethodDoc.id
       });
 
-      // STEP 4: Perform the actual cryptographic verification
-      // This is where the magic happens - the library will:
-      // a) Canonicalize the credential (convert to standard format)
-      // b) Hash the canonicalized data
-      // c) Verify the signature against the hash using the public key
+      console.log('🔒 [Ed25519] Starting jsigs.verify...');
       const verificationResult = await jsigs.verify(
-        { ...vcObject, proof }, // The complete credential with proof
+        { ...vcObject, proof },
         {
-          suite: suite,                                            // Which crypto algorithm to use
-          purpose: new jsigs.purposes.AssertionProofPurpose(),    // What this signature is for
-          documentLoader: this.getConfigurableDocumentLoader()    // How to resolve @context URLs
+          suite,
+          // Supply controller so purpose check passes offline
+          purpose: new jsigs.purposes.AssertionProofPurpose({ controller: controllerDoc }),
+          documentLoader: this.getConfigurableDocumentLoader()
         }
       );
 
-      // STEP 5: Check the result
+      console.log('✅ [Ed25519] Verification result:', verificationResult);
+      console.log('✅ [Ed25519] Verification verified:', verificationResult.verified);
+
       if (verificationResult.verified) {
         this.logger.info("✅ Ed25519 signature verification successful!");
         return true;
       } else {
-        this.logger.error('❌ Ed25519 signature verification failed:', verificationResult.error?.message);
+        const detail = verificationResult.error?.message || 'Unknown error';
+        this.logger.error('❌ Ed25519 signature verification failed:', detail || verificationResult.error?.message || 'Unknown error');
         return false;
       }
-
     } catch (error: any) {
       this.logger.error('💥 Ed25519 verification error:', error.message);
       return false;

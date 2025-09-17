@@ -16,17 +16,18 @@ class CredentialsVerifier {
      * Please use verify(credentials, format) instead, which is designed for supporting different VC formats.
      * This method only supports LDP VC format
      */
-    verifyCredentials(credentials: string | null | undefined): boolean {
+    async verifyCredentials(credentials: string | null | undefined): Promise<boolean> {
         if (credentials === null || credentials === undefined) {
             this.logger.error("Error - Input credential is null");
             throw new Error("Input credential is null");
         }
         
         const credentialVerifier = new CredentialVerifierFactory().get(CredentialFormat.LDP_VC);
-        return credentialVerifier.verify(credentials);
+        return await credentialVerifier.verify(credentials);
     }
 
-    verify(credential: string, credentialFormat: CredentialFormat): VerificationResult {
+    // Make this async and RETURN a Promise<VerificationResult>
+    async verify(credential: string, credentialFormat: CredentialFormat): Promise<VerificationResult> {
         const credentialVerifier = new CredentialVerifierFactory().get(credentialFormat);
         const validationStatus = credentialVerifier.validate(credential);
         
@@ -40,7 +41,8 @@ class CredentialsVerifier {
         }
         
         try {
-            const verifySignatureStatus = credentialVerifier.verify(credential);
+            // Await the async verifier (bug fix)
+            const verifySignatureStatus = await credentialVerifier.verify(credential);
             if (!verifySignatureStatus) {
                 return new VerificationResult(
                     false, 
@@ -48,6 +50,8 @@ class CredentialsVerifier {
                     CredentialVerifierConstants.ERROR_CODE_VERIFICATION_FAILED
                 );
             }
+
+            // Only report "expired" info if signature verification succeeded
             return new VerificationResult(
                 true, 
                 validationStatus.validationMessage, 

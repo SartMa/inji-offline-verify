@@ -6,12 +6,9 @@ import {
 } from "./constants";
 import { readBarcodes } from "zxing-wasm/full";
 import * as pdfjsLib from "pdfjs-dist";
-import workerCode from "pdfjs-dist/build/pdf.worker.mjs";
+import workerSrc from "pdfjs-dist/build/pdf.worker.mjs?url";
 
-const blob = new Blob([workerCode], { type: "application/javascript" });
-const workerBlobUrl = URL.createObjectURL(blob);
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerBlobUrl;
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 export const extractRedirectUrlFromQrData = (qrData: string) => {
   // qr data format = OVP://payload:text-content
@@ -55,6 +52,7 @@ const readQRcodeFromPdf = async (file: File, format: string) => {
     const renderContext = {
       canvasContext: context,
       viewport: viewport,
+      canvas: canvas,
     };
     await page.render(renderContext).promise;
     const dataURL = canvas.toDataURL();

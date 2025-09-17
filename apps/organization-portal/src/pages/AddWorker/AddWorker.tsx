@@ -21,7 +21,6 @@ import SideMenu from '../../components/dash_comp/SideMenu';
 import Header from '../../components/dash_comp/Header';
 import AppTheme from '../../theme/dash_theme/AppTheme';
 import { registerWorker } from '../../services/workerService';
-import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 import BusinessIcon from '@mui/icons-material/Business';
 import EmailIcon from '@mui/icons-material/Email';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -33,6 +32,90 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+
+// Custom Step Icon Component for better visibility
+const CustomStepIcon = styled('div')<{ active?: boolean; completed?: boolean }>(({ theme, active, completed }) => ({
+  width: '40px', // Reduced from 48px
+  height: '40px', // Reduced from 48px
+  borderRadius: '50%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '1rem', // Reduced from 1.2rem
+  fontWeight: 'bold',
+  border: '2px solid', // Reduced from 3px
+  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+  position: 'relative',
+  zIndex: 2,
+  
+  // Default state
+  ...(!active && !completed && {
+    backgroundColor: '#1a1a1a',
+    borderColor: 'rgba(59, 130, 246, 0.4)',
+    color: 'rgba(59, 130, 246, 0.6)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+  }),
+  
+  // Active state
+  ...(active && {
+    backgroundColor: '#3b82f6',
+    borderColor: '#60a5fa',
+    color: '#ffffff',
+    boxShadow: '0 0 20px rgba(59, 130, 246, 0.6), 0 6px 16px rgba(59, 130, 246, 0.4)',
+    transform: 'scale(1.05)', // Reduced from 1.08
+    animation: 'activeStepPulse 2.5s infinite ease-in-out',
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      width: '48px', // Reduced from 58px
+      height: '48px', // Reduced from 58px
+      borderRadius: '50%',
+      backgroundColor: 'rgba(59, 130, 246, 0.2)',
+      animation: 'ripple 2s infinite ease-out',
+    },
+  }),
+  
+  // Completed state
+  ...(completed && {
+    backgroundColor: '#10b981',
+    borderColor: '#34d399',
+    color: '#ffffff',
+    boxShadow: '0 0 16px rgba(16, 185, 129, 0.5), 0 4px 12px rgba(16, 185, 129, 0.3)',
+    transform: 'scale(1.02)', // Reduced from 1.03
+  }),
+  
+  '@keyframes activeStepPulse': {
+    '0%, 100%': {
+      transform: 'scale(1.05)', // Reduced from 1.08
+      boxShadow: '0 0 20px rgba(59, 130, 246, 0.6), 0 6px 16px rgba(59, 130, 246, 0.4)',
+    },
+    '50%': {
+      transform: 'scale(1.08)', // Reduced from 1.12
+      boxShadow: '0 0 25px rgba(59, 130, 246, 0.8), 0 8px 20px rgba(59, 130, 246, 0.5)',
+    },
+  },
+  
+  '@keyframes ripple': {
+    '0%': {
+      transform: 'scale(1)',
+      opacity: 0.6,
+    },
+    '100%': {
+      transform: 'scale(1.5)',
+      opacity: 0,
+    },
+  },
+  
+  [theme.breakpoints.down('sm')]: {
+    width: '32px', // Reduced from 40px
+    height: '32px', // Reduced from 40px
+    fontSize: '0.9rem', // Reduced from 1rem
+    '&::before': {
+      width: '38px', // Reduced from 48px
+      height: '38px', // Reduced from 48px
+    },
+  },
+}));
 
 // Styled Components
 const StyledTextField = styled(TextField)(({ theme, error }) => ({
@@ -192,36 +275,122 @@ const StepCard = styled(Paper)(({ theme }) => ({
 }));
 
 const ProgressStepper = styled(Stepper)(({ theme }) => ({
-  '& .MuiStepLabel-root .MuiStepLabel-iconContainer .MuiSvgIcon-root': {
-    fontSize: '2rem',
-    color: alpha('#3b82f6', 0.4),
-  },
-  '& .MuiStepLabel-root.Mui-active .MuiStepLabel-iconContainer .MuiSvgIcon-root': {
-    color: '#3b82f6',
-    animation: 'pulse 2s infinite',
-  },
-  '& .MuiStepLabel-root.Mui-completed .MuiStepLabel-iconContainer .MuiSvgIcon-root': {
-    color: '#10b981',
-  },
-  '& .MuiStepLabel-label': {
-    color: '#e5e7eb !important',
-    fontWeight: '600 !important',
-  },
-  '& .MuiStepLabel-label.Mui-active': {
-    color: '#3b82f6 !important',
-  },
-  '& .MuiStepLabel-label.Mui-completed': {
-    color: '#10b981 !important',
-  },
-  '@keyframes pulse': {
-    '0%': {
-      transform: 'scale(1)',
+  padding: '32px 0',
+  
+  // Connector lines between steps
+  '& .MuiStepConnector-root': {
+    top: '20px', // Adjusted for smaller icons (40px/2 = 20px)
+    left: 'calc(-50% + 20px)',
+    right: 'calc(50% + 20px)',
+    zIndex: 1,
+    '& .MuiStepConnector-line': {
+      height: '6px',
+      border: 0,
+      backgroundColor: 'rgba(59, 130, 246, 0.2)',
+      borderRadius: '3px',
+      transition: 'all 0.4s ease-in-out',
+      position: 'relative',
+      overflow: 'hidden',
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        height: '100%',
+        width: '0%',
+        backgroundColor: '#3b82f6',
+        borderRadius: '3px',
+        transition: 'width 0.6s ease-in-out',
+      },
     },
-    '50%': {
-      transform: 'scale(1.1)',
+  },
+  
+  // Active step connector - show 100% progress when moving to next step
+  '& .MuiStepConnector-root.Mui-active .MuiStepConnector-line': {
+    backgroundColor: '#10b981', // Changed to green to match completed state
+    boxShadow: '0 0 15px rgba(16, 185, 129, 0.5)', // Green glow like completed
+    '&::before': {
+      width: '100%',
+      backgroundColor: '#34d399', // Green progress fill
     },
-    '100%': {
-      transform: 'scale(1)',
+  },
+  
+  '& .MuiStepConnector-root.Mui-completed .MuiStepConnector-line': {
+    backgroundColor: '#10b981',
+    boxShadow: '0 0 15px rgba(16, 185, 129, 0.5)',
+    '&::before': {
+      width: '100%',
+      backgroundColor: '#34d399',
+    },
+  },
+  
+  // Step label container
+  '& .MuiStepLabel-root': {
+    '& .MuiStepLabel-iconContainer': {
+      padding: '0',
+      zIndex: 2,
+    },
+    
+    // Label text styling
+    '& .MuiStepLabel-label': {
+      color: 'rgba(229, 231, 235, 0.9) !important', // Brighter - increased from 0.8 to 0.9
+      fontWeight: '500 !important',
+      fontSize: '0.95rem !important',
+      marginTop: '10px !important', // Reduced margin for smaller icons
+      textAlign: 'center',
+      transition: 'all 0.3s ease-in-out !important',
+      textTransform: 'uppercase',
+      letterSpacing: '0.4px',
+    },
+    
+    '&.Mui-active .MuiStepLabel-label': {
+      color: '#93c5fd !important', // Brighter blue - changed from #60a5fa to #93c5fd
+      fontWeight: '700 !important',
+      fontSize: '1rem !important',
+      textShadow: '0 0 10px rgba(147, 197, 253, 0.5)', // Brighter glow
+      letterSpacing: '0.6px',
+    },
+    
+    '&.Mui-completed .MuiStepLabel-label': {
+      color: '#6ee7b7 !important', // Brighter green - changed from #34d399 to #6ee7b7
+      fontWeight: '600 !important',
+      fontSize: '0.98rem !important',
+      textShadow: '0 0 8px rgba(110, 231, 183, 0.5)', // Brighter glow
+      letterSpacing: '0.5px',
+    },
+  },
+  
+  // Hide default step icons
+  '& .MuiStepIcon-root': {
+    display: 'none',
+  },
+  
+  // Mobile responsiveness
+  [theme.breakpoints.down('sm')]: {
+    padding: '18px 0', // Reduced padding for smaller icons
+    '& .MuiStepConnector-root': {
+      top: '16px', // Adjusted for smaller mobile icons (32px/2 = 16px)
+      left: 'calc(-50% + 16px)',
+      right: 'calc(50% + 16px)',
+      '& .MuiStepConnector-line': {
+        height: '4px',
+      },
+    },
+    '& .MuiStepLabel-label': {
+      fontSize: '0.85rem !important',
+      marginTop: '8px !important', // Reduced margin
+      letterSpacing: '0.3px !important',
+      color: 'rgba(229, 231, 235, 0.85) !important', // Brighter on mobile too
+    },
+    '&.Mui-active .MuiStepLabel-label': {
+      fontSize: '0.9rem !important',
+      letterSpacing: '0.4px !important',
+      color: '#93c5fd !important', // Brighter blue
+    },
+    '&.Mui-completed .MuiStepLabel-label': {
+      fontSize: '0.88rem !important',
+      letterSpacing: '0.35px !important',
+      color: '#6ee7b7 !important', // Brighter green
     },
   },
 }));
@@ -759,47 +928,60 @@ export default function AddWorker() {
               <Stack spacing={4}>
                 {/* Page Header */}
                 <Box sx={{ textAlign: 'center', py: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mb: 2 }}>
-                    <Box
-                      sx={{
-                        p: 2,
-                        borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <PersonAddAlt1Icon sx={{ fontSize: 32, color: 'white' }} />
-                    </Box>
-                    <Box>
-                      <Typography variant="h3" sx={{ fontWeight: 800, color: '#ffffff', mb: 1 }}>
-                        Add New Worker
-                      </Typography>
-                      <Typography variant="h6" sx={{ color: '#9ca3af', fontWeight: 400 }}>
-                        Register a new team member in a few simple steps
-                      </Typography>
-                    </Box>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="h3" sx={{ fontWeight: 800, color: '#ffffff', mb: 1 }}>
+                      Add New Worker
+                    </Typography>
+                    <Typography variant="h6" sx={{ color: '#9ca3af', fontWeight: 400 }}>
+                      Register a new team member in a few simple steps
+                    </Typography>
                   </Box>
                 </Box>
 
                 {/* Progress Stepper */}
                 <Box sx={{ mb: 4 }}>
                   <ProgressStepper activeStep={activeStep} alternativeLabel>
-                    {steps.map((label, index) => (
-                      <Step key={label}>
-                        <StepLabel
-                          sx={{
-                            '& .MuiStepLabel-label': {
-                              fontWeight: 600,
-                              fontSize: '1rem',
-                            }
-                          }}
-                        >
-                          {label}
-                        </StepLabel>
-                      </Step>
-                    ))}
+                    {steps.map((label, index) => {
+                      const isActive = index === activeStep;
+                      const isCompleted = index < activeStep;
+                      
+                      // Define icons for each step
+                      const getStepIcon = (stepIndex: number) => {
+                        switch (stepIndex) {
+                          case 0:
+                            return <BusinessIcon />;
+                          case 1:
+                            return <PersonIcon />;
+                          case 2:
+                            return <LockIcon />;
+                          default:
+                            return <CheckCircleIcon />;
+                        }
+                      };
+                      
+                      return (
+                        <Step key={label}>
+                          <StepLabel
+                            StepIconComponent={() => (
+                              <CustomStepIcon 
+                                active={isActive} 
+                                completed={isCompleted}
+                              >
+                                {getStepIcon(index)}
+                              </CustomStepIcon>
+                            )}
+                            sx={{
+                              '& .MuiStepLabel-label': {
+                                fontWeight: 600,
+                                fontSize: '1rem',
+                              }
+                            }}
+                          >
+                            {label}
+                          </StepLabel>
+                        </Step>
+                      );
+                    })}
                   </ProgressStepper>
                 </Box>
 
@@ -852,13 +1034,13 @@ export default function AddWorker() {
                             textTransform: 'none',
                             fontWeight: 600,
                             fontSize: '1rem',
-                            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                            background: '#3b82f6',
                             color: '#ffffff',
-                            boxShadow: `0 8px 25px ${alpha('#3b82f6', 0.25)}`,
+                            boxShadow: `0 4px 12px ${alpha('#3b82f6', 0.25)}`,
                             '&:hover': {
-                              background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
-                              transform: 'translateY(-2px)',
-                              boxShadow: `0 12px 30px ${alpha('#3b82f6', 0.35)}`,
+                              background: '#60a5fa',
+                              transform: 'translateY(-1px)',
+                              boxShadow: `0 6px 20px ${alpha('#3b82f6', 0.3)}`,
                             }
                           }}
                         >

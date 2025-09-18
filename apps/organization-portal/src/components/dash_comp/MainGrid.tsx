@@ -1,22 +1,22 @@
 import * as React from 'react';
-import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
+import { useOrganizationUsers } from '../../hooks/useOrganizationUsers';
 import Copyright from '../../internals/components/Copyright';
 import ChartUserByCountry from './ChartUserByCountry';
 import CustomizedTreeView from './CustomizedTreeView';
-import CustomizedDataGrid from './CustomizedDataGrid';
 import HighlightedCard from './HighlightedCard';
 import PageViewsBarChart from './PageViewsBarChart';
 import SessionsChart from './SessionsChart';
 import StatCard, { StatCardProps } from './StatCard';
+import { OrganizationUsersTableSimple } from '../OrganizationUsersTableSimple';
 
-const data: StatCardProps[] = [
+const baseData: Omit<StatCardProps, 'value'>[] = [
   {
-    title: 'Users',
-    value: '14k',
-    interval: 'Last 30 days',
+    title: 'Organization Users',
+    interval: 'Total members',
     trend: 'up',
     data: [
       200, 24, 220, 260, 240, 380, 100, 240, 280, 240, 300, 340, 320, 360, 340, 380,
@@ -25,7 +25,6 @@ const data: StatCardProps[] = [
   },
   {
     title: 'Conversions',
-    value: '325',
     interval: 'Last 30 days',
     trend: 'down',
     data: [
@@ -35,7 +34,6 @@ const data: StatCardProps[] = [
   },
   {
     title: 'Event count',
-    value: '200k',
     interval: 'Last 30 days',
     trend: 'neutral',
     data: [
@@ -45,48 +43,127 @@ const data: StatCardProps[] = [
   },
 ];
 
-export default function MainGrid() {
+interface MainGridProps {
+  orgId?: string;
+}
+
+export default function MainGrid({ orgId }: MainGridProps) {
+  const { organizationId, organizationName, loading, error } = useCurrentUser();
+  
+  // Use provided orgId or get from current user context
+  const finalOrgId = orgId || organizationId;
+  
+  // Fetch organization users data to get the total count
+  const { data: orgUsersData, loading: usersLoading } = useOrganizationUsers({
+    orgId: finalOrgId || '',
+    page: 1,
+    pageSize: 1, // We only need the stats, not the actual users
+  });
+
+  // Create the data array with dynamic user count
+  const data: StatCardProps[] = baseData.map((item, index) => {
+    if (index === 0) {
+      // First card is the organization users count
+      return {
+        ...item,
+        value: usersLoading ? '...' : (orgUsersData?.stats.total_members?.toString() || '0'),
+      };
+    }
+    // For other cards, use static values for now
+    return {
+      ...item,
+      value: index === 1 ? '325' : '200k',
+    };
+  });
   return (
     <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
       {/* cards */}
       <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
         Overview
       </Typography>
-      <Grid
-        container
-        spacing={2}
-        columns={12}
-        sx={{ mb: (theme) => theme.spacing(2) }}
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm: 'repeat(2, 1fr)',
+            lg: 'repeat(4, 1fr)',
+          },
+          gap: 2,
+          mb: 2,
+        }}
       >
         {data.map((card, index) => (
-          <Grid key={index} size={{ xs: 12, sm: 6, lg: 3 }}>
+          <Box key={index}>
             <StatCard {...card} />
-          </Grid>
+          </Box>
         ))}
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <Box>
           <HighlightedCard />
-        </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
+        </Box>
+      </Box>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: '1fr',
+            md: 'repeat(2, 1fr)',
+          },
+          gap: 2,
+          mb: 2,
+        }}
+      >
+        {/* <Box>
           <SessionsChart />
-        </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
+        </Box>
+        <Box>
           <PageViewsBarChart />
-        </Grid>
-      </Grid>
+        </Box> */}
+      </Box>
       <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
-        Details
+        {organizationName ? `${organizationName} Members` : 'Organization Members'}
       </Typography>
-      <Grid container spacing={2} columns={12}>
-        <Grid size={{ xs: 12, lg: 9 }}>
-          <CustomizedDataGrid />
-        </Grid>
-        <Grid size={{ xs: 12, lg: 3 }}>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: '1fr',
+            // lg: '3fr 1fr',
+            lg: '3fr',
+          },
+          gap: 2,
+        }}
+      >
+        <Box>
+          {loading ? (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+              <Typography variant="body1" color="text.secondary">
+                Loading organization information...
+              </Typography>
+            </Box>
+          ) : error ? (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+              <Typography variant="body1" color="error">
+                Error loading organization: {error}
+              </Typography>
+            </Box>
+          ) : finalOrgId ? (
+            <OrganizationUsersTableSimple orgId={finalOrgId} />
+          ) : (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+              <Typography variant="body1" color="text.secondary">
+                No organization ID available. Please ensure you're logged in to an organization.
+              </Typography>
+            </Box>
+          )}
+        </Box>
+        {/* <Box>
           <Stack gap={2} direction={{ xs: 'column', sm: 'row', lg: 'column' }}>
             <CustomizedTreeView />
             <ChartUserByCountry />
           </Stack>
-        </Grid>
-      </Grid>
+        </Box> */}
+      </Box>
       <Copyright sx={{ my: 4 }} />
     </Box>
   );

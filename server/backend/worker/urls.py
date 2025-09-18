@@ -14,4 +14,13 @@ urlpatterns = [
     path('api/google-login/', views.GoogleWorkerLoginView.as_view(), name='worker-google-login'),
     path('api/register/', views.RegisterWorkerView.as_view(), name='worker-register'),
     path('api/sync/', views.SyncVerificationLogsView.as_view(), name='worker-sync'),
+    
+    # User information endpoints
+    path('api/me/', views.get_current_user, name='current-user'),
+    
+    # Organization member management endpoints
+    path('api/organizations/<uuid:org_id>/users/', views.get_organization_users, name='organization-users'),
+    path('api/organizations/<uuid:org_id>/users/<uuid:member_id>/', views.get_organization_user_detail, name='organization-user-detail'),
+    path('api/organizations/<uuid:org_id>/users/<uuid:member_id>/update/', views.update_organization_user, name='organization-user-update'),
+    path('api/organizations/<uuid:org_id>/users/<uuid:member_id>/delete/', views.delete_organization_user, name='organization-user-delete'),
 ]

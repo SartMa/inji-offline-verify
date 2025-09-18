@@ -1,12 +1,16 @@
 # server/worker/views.py
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework.views import APIView
+from rest_framework.decorators import api_view, permission_classes
+from django.core.paginator import Paginator
+from django.db import models
 from .serializers import (
     WorkerRegistrationSerializer,
     WorkerLoginSerializer,
     GoogleWorkerLoginSerializer,
+    OrganizationMemberSerializer,
 )
 from .models import OrganizationMember
 from organization.models import Organization
@@ -166,6 +170,292 @@ class SyncVerificationLogsView(APIView):
                 {"error": f"An error occurred during database transaction: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_organization_users(request, org_id):
+    """
+    Get all users/members of a specific organization
+    Supports filtering by role, search, and pagination
+    """
+    try:
+        # Get the organization
+        organization = get_object_or_404(Organization, id=org_id)
+        
+        # Check if the requesting user has permission to view this org's data
+        user_membership = OrganizationMember.objects.filter(
+            user=request.user,
+            organization=organization,
+            role='ADMIN'
+        ).first()
+        
+        if not user_membership:
+            return Response({
+                'success': False,
+                'error': 'You do not have permission to view this organization\'s members'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get query parameters for filtering and pagination
+        role_filter = request.GET.get('role', None)  # 'ADMIN' or 'USER'
+        search = request.GET.get('search', None)
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 20))
+        
+        # Build the queryset
+        queryset = OrganizationMember.objects.select_related('user').filter(
+            organization=organization
+        )
+        
+        # Apply filters
+        if role_filter and role_filter in ['ADMIN', 'USER']:
+            queryset = queryset.filter(role=role_filter)
+        
+        if search:
+            queryset = queryset.filter(
+                models.Q(user__username__icontains=search) |
+                models.Q(user__email__icontains=search) |
+                models.Q(full_name__icontains=search) |
+                models.Q(phone_number__icontains=search)
+            )
+        
+        # Order by creation date (newest first)
+        queryset = queryset.order_by('-created_at')
+        
+        # Pagination
+        paginator = Paginator(queryset, page_size)
+        page_obj = paginator.get_page(page)
+        
+        # Serialize the data
+        serializer = OrganizationMemberSerializer(page_obj, many=True)
+        
+        # Response data
+        response_data = {
+            'success': True,
+            'organization': {
+                'id': str(organization.id),
+                'name': getattr(organization, 'name', 'Unknown'),
+            },
+            'members': serializer.data,
+            'pagination': {
+                'current_page': page,
+                'total_pages': paginator.num_pages,
+                'total_count': paginator.count,
+                'page_size': page_size,
+                'has_next': page_obj.has_next(),
+                'has_previous': page_obj.has_previous(),
+            },
+            'stats': {
+                'total_members': organization.members.count(),
+                'admin_count': organization.members.filter(role='ADMIN').count(),
+                'user_count': organization.members.filter(role='USER').count(),
+                'active_members': organization.members.filter(user__is_active=True).count(),
+            }
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+        
+    except ValueError as e:
+        return Response({
+            'success': False,
+            'error': 'Invalid organization ID format'
+        }, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_organization_user_detail(request, org_id, member_id):
+    """
+    Get detailed information of a specific organization member
+    """
+    try:
+        organization = get_object_or_404(Organization, id=org_id)
+        
+        # Check permission
+        user_membership = OrganizationMember.objects.filter(
+            user=request.user,
+            organization=organization,
+            role='ADMIN'
+        ).first()
+        
+        if not user_membership:
+            return Response({
+                'success': False,
+                'error': 'You do not have permission to view this organization\'s members'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        member = get_object_or_404(
+            OrganizationMember.objects.select_related('user'),
+            id=member_id,
+            organization=organization
+        )
+        
+        serializer = OrganizationMemberSerializer(member)
+        
+        return Response({
+            'success': True,
+            'member': serializer.data
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_organization_user(request, org_id, member_id):
+    """
+    Update organization member details
+    """
+    try:
+        organization = get_object_or_404(Organization, id=org_id)
+        
+        # Check permission
+        user_membership = OrganizationMember.objects.filter(
+            user=request.user,
+            organization=organization,
+            role='ADMIN'
+        ).first()
+        
+        if not user_membership:
+            return Response({
+                'success': False,
+                'error': 'You do not have permission to modify this organization\'s members'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        member = get_object_or_404(
+            OrganizationMember.objects.select_related('user'),
+            id=member_id,
+            organization=organization
+        )
+        
+        serializer = OrganizationMemberSerializer(member, data=request.data, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'success': True,
+                'member': serializer.data
+            }, status=status.HTTP_200_OK)
+        
+        return Response({
+            'success': False,
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_organization_user(request, org_id, member_id):
+    """
+    Remove a user from organization
+    """
+    try:
+        organization = get_object_or_404(Organization, id=org_id)
+        
+        # Check permission
+        user_membership = OrganizationMember.objects.filter(
+            user=request.user,
+            organization=organization,
+            role='ADMIN'
+        ).first()
+        
+        if not user_membership:
+            return Response({
+                'success': False,
+                'error': 'You do not have permission to modify this organization\'s members'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        member = get_object_or_404(
+            OrganizationMember.objects.select_related('user'),
+            id=member_id,
+            organization=organization
+        )
+        
+        # Prevent self-deletion
+        if member.user == request.user:
+            return Response({
+                'success': False,
+                'error': 'You cannot remove yourself from the organization'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        member.delete()
+        
+        return Response({
+            'success': True,
+            'message': 'Member removed successfully'
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_current_user(request):
+    """
+    Get current authenticated user's information including organization details
+    """
+    try:
+        user = request.user
+        
+        # Get user's organization membership
+        membership = OrganizationMember.objects.select_related('organization').filter(
+            user=user
+        ).first()
+        
+        if not membership:
+            return Response({
+                'success': False,
+                'error': 'User is not associated with any organization'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        response_data = {
+            'success': True,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'full_name': membership.full_name,  # Include full_name from membership
+                'is_active': user.is_active,
+                'last_login': user.last_login.isoformat() if user.last_login else None,
+                'date_joined': user.date_joined.isoformat(),
+            },
+            'organization': {
+                'id': str(membership.organization.id),
+                'name': getattr(membership.organization, 'name', 'Unknown'),
+                'role': membership.role,
+                'member_id': str(membership.id),
+            }
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 def get_tokens_for_user(user):  # add helper if not already defined

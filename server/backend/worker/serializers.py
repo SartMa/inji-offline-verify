@@ -156,3 +156,37 @@ class GoogleWorkerLoginSerializer(serializers.Serializer):
             'member_id': str(membership.id),
             'login_type': 'worker_google',
         }
+
+
+class OrganizationMemberSerializer(serializers.ModelSerializer):
+    """Serializer for OrganizationMember model with user details"""
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.CharField(source='user.email', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+    is_active = serializers.BooleanField(source='user.is_active', read_only=True)
+    last_login = serializers.DateTimeField(source='user.last_login', read_only=True)
+    date_joined = serializers.DateTimeField(source='user.date_joined', read_only=True)
+    role_display = serializers.CharField(source='get_role_display', read_only=True)
+    gender_display = serializers.CharField(source='get_gender_display', read_only=True)
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+
+    class Meta:
+        model = OrganizationMember
+        fields = [
+            'id', 'user_id', 'username', 'email', 'first_name', 'last_name',
+            'role', 'role_display', 'full_name', 'phone_number', 'gender',
+            'gender_display', 'dob', 'created_at', 'is_active', 'last_login',
+            'date_joined'
+        ]
+        read_only_fields = ['id', 'created_at']
+
+    def update(self, instance, validated_data):
+        # Update OrganizationMember fields
+        instance.role = validated_data.get('role', instance.role)
+        instance.full_name = validated_data.get('full_name', instance.full_name)
+        instance.phone_number = validated_data.get('phone_number', instance.phone_number)
+        instance.gender = validated_data.get('gender', instance.gender)
+        instance.dob = validated_data.get('dob', instance.dob)
+        instance.save()
+        return instance

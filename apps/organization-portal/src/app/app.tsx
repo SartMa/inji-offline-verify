@@ -5,6 +5,7 @@ import { Route, Routes, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '@inji-offline-verify/shared-auth';
 import Dashboard from "../pages/Dashboard";
 import AddWorker from "../pages/AddWorker/AddWorker";
+import AddDID from "../pages/AddDID";
 import VerificationLogsPage from "../pages/VerificationLogsPage";
 import OrgSignIn from "../pages/SignInPage/orgSignIn";
 import SignUp from "../pages/SignUpPage/SignUp";
@@ -114,6 +115,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <AddWorker />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/add-did" 
+          element={
+            <ProtectedRoute>
+              <AddDID />
             </ProtectedRoute>
           } 
         />

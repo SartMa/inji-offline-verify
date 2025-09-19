@@ -12,8 +12,11 @@ import {
   IconButton,
   InputAdornment,
   GlobalStyles,
+  useTheme,
+  Snackbar,
+  Alert,
 } from '@mui/material';
-import { alpha, styled } from '@mui/material/styles';
+import { alpha, styled, useColorScheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Grid from '@mui/material/Grid';
 import AppNavbar from '../../components/dash_comp/AppNavbar';
@@ -36,63 +39,67 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
 // Custom Step Icon Component for better visibility
 const CustomStepIcon = styled('div')<{ active?: boolean; completed?: boolean }>(({ theme, active, completed }) => ({
-  width: '40px', // Reduced from 48px
-  height: '40px', // Reduced from 48px
+  width: '40px',
+  height: '40px',
   borderRadius: '50%',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontSize: '1rem', // Reduced from 1.2rem
+  fontSize: '1rem',
   fontWeight: 'bold',
-  border: '2px solid', // Reduced from 3px
+  border: '2px solid',
   transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
   position: 'relative',
   zIndex: 2,
   
-  // Default state
+  // Default state - using CSS variables
   ...(!active && !completed && {
-    backgroundColor: '#1a1a1a',
-    borderColor: 'rgba(59, 130, 246, 0.4)',
-    color: 'rgba(59, 130, 246, 0.6)',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'var(--template-palette-grey-100)',
+    borderColor: 'var(--template-palette-grey-300)',
+    color: 'var(--template-palette-text-secondary)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    ['[data-mui-color-scheme="dark"] &']: {
+      backgroundColor: 'var(--template-palette-grey-800)',
+      borderColor: 'var(--template-palette-grey-600)',
+      color: 'var(--template-palette-grey-400)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
+    },
   }),
   
   // Active state
   ...(active && {
-    backgroundColor: '#3b82f6',
-    borderColor: '#60a5fa',
+    backgroundColor: 'var(--template-palette-primary-main)',
+    borderColor: 'var(--template-palette-primary-light)',
     color: '#ffffff',
-    boxShadow: '0 0 20px rgba(59, 130, 246, 0.6), 0 6px 16px rgba(59, 130, 246, 0.4)',
-    transform: 'scale(1.05)', // Reduced from 1.08
+    boxShadow: '0 0 20px var(--template-palette-primary-main), 0 6px 16px var(--template-palette-primary-main)',
+    transform: 'scale(1.05)',
     animation: 'activeStepPulse 2.5s infinite ease-in-out',
     '&::before': {
       content: '""',
       position: 'absolute',
-      width: '48px', // Reduced from 58px
-      height: '48px', // Reduced from 58px
+      width: '48px',
+      height: '48px',
       borderRadius: '50%',
-      backgroundColor: 'rgba(59, 130, 246, 0.2)',
+      backgroundColor: alpha(theme.palette.primary.main, 0.2),
       animation: 'ripple 2s infinite ease-out',
     },
   }),
   
   // Completed state
   ...(completed && {
-    backgroundColor: '#10b981',
-    borderColor: '#34d399',
+    backgroundColor: 'var(--template-palette-success-main)',
+    borderColor: 'var(--template-palette-success-light)',
     color: '#ffffff',
-    boxShadow: '0 0 16px rgba(16, 185, 129, 0.5), 0 4px 12px rgba(16, 185, 129, 0.3)',
-    transform: 'scale(1.02)', // Reduced from 1.03
+    boxShadow: '0 0 16px var(--template-palette-success-main), 0 4px 12px var(--template-palette-success-main)',
+    transform: 'scale(1.02)',
   }),
   
   '@keyframes activeStepPulse': {
     '0%, 100%': {
-      transform: 'scale(1.05)', // Reduced from 1.08
-      boxShadow: '0 0 20px rgba(59, 130, 246, 0.6), 0 6px 16px rgba(59, 130, 246, 0.4)',
+      transform: 'scale(1.05)',
     },
     '50%': {
-      transform: 'scale(1.08)', // Reduced from 1.12
-      boxShadow: '0 0 25px rgba(59, 130, 246, 0.8), 0 8px 20px rgba(59, 130, 246, 0.5)',
+      transform: 'scale(1.08)',
     },
   },
   
@@ -108,51 +115,71 @@ const CustomStepIcon = styled('div')<{ active?: boolean; completed?: boolean }>(
   },
   
   [theme.breakpoints.down('sm')]: {
-    width: '32px', // Reduced from 40px
-    height: '32px', // Reduced from 40px
-    fontSize: '0.9rem', // Reduced from 1rem
+    width: '32px',
+    height: '32px',
+    fontSize: '0.9rem',
     '&::before': {
-      width: '38px', // Reduced from 48px
-      height: '38px', // Reduced from 48px
+      width: '38px',
+      height: '38px',
     },
   },
 }));
 
-// Styled Components
+// Styled Components - Theme Aware with CSS Variables
 const StyledTextField = styled(TextField)(({ theme, error }) => ({
   '& .MuiOutlinedInput-root': {
     borderRadius: '16px',
-    backgroundColor: '#1a1a1a',
-    border: `2px solid ${error ? '#ef4444' : alpha('#3b82f6', 0.3)}`,
+    backgroundColor: 'var(--template-palette-background-paper)',
+    border: `2px solid ${error ? 'var(--template-palette-error-main)' : 'var(--template-palette-grey-300)'}`,
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    color: '#ffffff',
-    // Completely disable autocomplete styling
-    '&[data-autocompleted]': {
-      backgroundColor: '#1a1a1a !important',
-      backgroundImage: 'none !important',
-      boxShadow: 'none !important',
-    },
-    '& input': {
+    color: 'var(--template-palette-text-primary)',
+    
+    // Dark mode overrides
+    '[data-mui-color-scheme="dark"] &': {
+      backgroundColor: '#2d3748',
+      border: `2px solid ${error ? '#e53e3e' : '#4a5568'}`,
       color: '#ffffff',
+    },
+    
+    '& input': {
+      color: 'var(--template-palette-text-primary)',
       fontSize: '1rem',
       padding: '16px 14px',
+      
+      '[data-mui-color-scheme="dark"] &': {
+        color: '#ffffff',
+      },
+      
       // Date picker specific styling
       '&[type="date"]': {
         cursor: 'pointer',
         fontSize: '1rem',
         fontWeight: '500',
         letterSpacing: '0.5px',
+        color: 'var(--template-palette-text-primary)',
+        colorScheme: 'light',
+        '[data-mui-color-scheme="dark"] &': {
+          color: '#ffffff',
+          colorScheme: 'dark',
+        },
         '&::-webkit-calendar-picker-indicator': {
           backgroundColor: 'transparent',
           cursor: 'pointer',
-          filter: 'invert(1) brightness(0.8)',
+          filter: 'invert(0.5) brightness(1.2)',
           borderRadius: '8px',
           padding: '4px',
           transition: 'all 0.2s ease-in-out',
+          '[data-mui-color-scheme="dark"] &': {
+            filter: 'invert(0.3) brightness(1.8)',
+          },
           '&:hover': {
-            backgroundColor: alpha('#3b82f6', 0.2),
-            filter: 'invert(0.4) sepia(1) saturate(3) hue-rotate(200deg) brightness(1.2)',
+            backgroundColor: alpha(theme.palette.primary.main, 0.2),
+            filter: 'invert(0.2) sepia(1) saturate(3) hue-rotate(200deg) brightness(1.2)',
             transform: 'scale(1.1)',
+            '[data-mui-color-scheme="dark"] &': {
+              backgroundColor: alpha('#4299e1', 0.2),
+              filter: 'invert(0.4) sepia(1) saturate(3) hue-rotate(200deg) brightness(1.2)',
+            },
           },
         },
         '&::-webkit-inner-spin-button': {
@@ -161,86 +188,167 @@ const StyledTextField = styled(TextField)(({ theme, error }) => ({
         '&::-webkit-clear-button': {
           display: 'none',
         },
+        '&::-webkit-datetime-edit': {
+          color: 'var(--template-palette-text-primary)',
+          '[data-mui-color-scheme="dark"] &': {
+            color: '#ffffff',
+          },
+        },
+        '&::-webkit-datetime-edit-text': {
+          color: 'var(--template-palette-text-secondary)',
+          '[data-mui-color-scheme="dark"] &': {
+            color: '#a0aec0',
+          },
+        },
+        '&::-webkit-datetime-edit-month-field': {
+          color: 'var(--template-palette-text-primary)',
+          '[data-mui-color-scheme="dark"] &': {
+            color: '#ffffff',
+          },
+        },
+        '&::-webkit-datetime-edit-day-field': {
+          color: 'var(--template-palette-text-primary)',
+          '[data-mui-color-scheme="dark"] &': {
+            color: '#ffffff',
+          },
+        },
+        '&::-webkit-datetime-edit-year-field': {
+          color: 'var(--template-palette-text-primary)',
+          '[data-mui-color-scheme="dark"] &': {
+            color: '#ffffff',
+          },
+        },
       },
+      
+      // Comprehensive autocomplete styling - removes all boxes
       '&:-webkit-autofill': {
+        WebkitTextFillColor: 'var(--template-palette-text-primary) !important',
         WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
-        WebkitTextFillColor: '#ffffff !important',
-        borderRadius: '16px',
-        transition: 'background-color 5000s ease-in-out 0s',
+        '-webkit-box-shadow': '0 0 0 1000px transparent inset !important',
+        transition: 'background-color 5000s ease-in-out 0s !important',
         backgroundColor: 'transparent !important',
         backgroundImage: 'none !important',
+        border: 'none !important',
+        outline: 'none !important',
         boxShadow: 'none !important',
+        filter: 'none !important',
+        '-webkit-filter': 'none !important',
+        '[data-mui-color-scheme="dark"] &': {
+          WebkitTextFillColor: '#ffffff !important',
+          WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+          '-webkit-box-shadow': '0 0 0 1000px transparent inset !important',
+        },
       },
       '&:-webkit-autofill:hover': {
+        WebkitTextFillColor: 'var(--template-palette-text-primary) !important',
         WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
-        WebkitTextFillColor: '#ffffff !important',
+        '-webkit-box-shadow': '0 0 0 1000px transparent inset !important',
         backgroundColor: 'transparent !important',
         backgroundImage: 'none !important',
+        border: 'none !important',
+        outline: 'none !important',
         boxShadow: 'none !important',
+        filter: 'none !important',
+        '-webkit-filter': 'none !important',
+        '[data-mui-color-scheme="dark"] &': {
+          WebkitTextFillColor: '#ffffff !important',
+          WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+          '-webkit-box-shadow': '0 0 0 1000px transparent inset !important',
+        },
       },
       '&:-webkit-autofill:focus': {
+        WebkitTextFillColor: 'var(--template-palette-text-primary) !important',
         WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
-        WebkitTextFillColor: '#ffffff !important',
+        '-webkit-box-shadow': '0 0 0 1000px transparent inset !important',
         backgroundColor: 'transparent !important',
         backgroundImage: 'none !important',
+        border: 'none !important',
+        outline: 'none !important',
         boxShadow: 'none !important',
+        filter: 'none !important',
+        '-webkit-filter': 'none !important',
+        '[data-mui-color-scheme="dark"] &': {
+          WebkitTextFillColor: '#ffffff !important',
+          WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+          '-webkit-box-shadow': '0 0 0 1000px transparent inset !important',
+        },
       },
       '&:-webkit-autofill:active': {
+        WebkitTextFillColor: 'var(--template-palette-text-primary) !important',
         WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
-        WebkitTextFillColor: '#ffffff !important',
+        '-webkit-box-shadow': '0 0 0 1000px transparent inset !important',
         backgroundColor: 'transparent !important',
         backgroundImage: 'none !important',
+        border: 'none !important',
+        outline: 'none !important',
         boxShadow: 'none !important',
-      },
-      // Additional autocomplete overrides
-      '&:-moz-autofill': {
-        backgroundColor: 'transparent !important',
-        backgroundImage: 'none !important',
-        boxShadow: 'none !important',
-        color: '#ffffff !important',
-      },
-      '&:-ms-input-placeholder': {
-        color: '#9ca3af !important',
-      },
-      '&::-webkit-input-placeholder': {
-        color: '#9ca3af !important',
-      },
-      '&::-moz-placeholder': {
-        color: '#9ca3af !important',
+        filter: 'none !important',
+        '-webkit-filter': 'none !important',
+        '[data-mui-color-scheme="dark"] &': {
+          WebkitTextFillColor: '#ffffff !important',
+          WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+          '-webkit-box-shadow': '0 0 0 1000px transparent inset !important',
+        },
       },
     },
+    
     '& input::placeholder': {
-      color: '#9ca3af',
+      color: 'var(--template-palette-text-secondary)',
       opacity: 1,
+      '[data-mui-color-scheme="dark"] &': {
+        color: '#a0aec0',
+      },
     },
+    
     '&:hover': {
-      border: `2px solid ${error ? '#ef4444' : alpha('#3b82f6', 0.5)}`,
-      backgroundColor: '#242424',
+      border: `2px solid ${error ? 'var(--template-palette-error-main)' : 'var(--template-palette-primary-main)'}`,
+      backgroundColor: 'var(--template-palette-grey-50)',
       transform: 'translateY(-2px)',
-      boxShadow: `0 8px 25px ${alpha(error ? '#ef4444' : '#3b82f6', 0.15)}`,
+      boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.15)}`,
+      '[data-mui-color-scheme="dark"] &': {
+        border: `2px solid ${error ? '#e53e3e' : '#4299e1'}`,
+        backgroundColor: '#4a5568',
+        boxShadow: `0 8px 25px ${alpha('#4299e1', 0.15)}`,
+      },
     },
+    
     '&.Mui-focused': {
-      border: `2px solid ${error ? '#ef4444' : '#3b82f6'}`,
-      backgroundColor: '#242424',
+      border: `2px solid ${error ? 'var(--template-palette-error-main)' : 'var(--template-palette-primary-main)'}`,
+      backgroundColor: 'var(--template-palette-grey-50)',
       transform: 'translateY(-2px)',
-      boxShadow: `0 8px 25px ${alpha(error ? '#ef4444' : '#3b82f6', 0.25)}`,
+      boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.25)}`,
+      '[data-mui-color-scheme="dark"] &': {
+        border: `2px solid ${error ? '#e53e3e' : '#4299e1'}`,
+        backgroundColor: '#4a5568',
+        boxShadow: `0 8px 25px ${alpha('#4299e1', 0.25)}`,
+      },
     },
+    
     '& .MuiOutlinedInput-notchedOutline': {
       border: 'none',
     },
   },
+  
   '& .MuiInputLabel-root': {
-    display: 'none', // Hide the label completely
+    display: 'none',
   },
+  
   '& .MuiInputAdornment-root svg': {
-    color: error ? '#ef4444' : '#3b82f6',
+    color: error ? 'var(--template-palette-error-main)' : 'var(--template-palette-primary-main)',
     fontSize: '1.25rem',
+    '[data-mui-color-scheme="dark"] &': {
+      color: error ? '#e53e3e' : '#4299e1',
+    },
   },
+  
   '& .MuiFormHelperText-root': {
-    color: '#ef4444',
+    color: 'var(--template-palette-error-main)',
     fontWeight: 500,
     marginLeft: '8px',
     marginTop: '8px',
+    '[data-mui-color-scheme="dark"] &': {
+      color: '#e53e3e',
+    },
   },
 }));
 
@@ -253,26 +361,49 @@ const GenderButton = styled(Button, {
   fontWeight: 600,
   fontSize: '1rem',
   minHeight: '56px',
-  border: `2px solid ${selected ? '#3b82f6' : alpha('#3b82f6', 0.3)}`,
-  backgroundColor: selected ? alpha('#3b82f6', 0.2) : '#1a1a1a',
-  color: selected ? '#3b82f6' : '#e5e7eb',
+  border: `2px solid ${selected ? 'var(--template-palette-primary-main)' : 'var(--template-palette-grey-300)'}`,
+  backgroundColor: selected 
+    ? alpha(theme.palette.primary.main, 0.2)
+    : 'var(--template-palette-background-paper)',
+  color: selected ? 'var(--template-palette-primary-main)' : 'var(--template-palette-text-primary)',
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  
+  // Dark mode
+  '[data-mui-color-scheme="dark"] &': {
+    border: `2px solid ${selected ? '#4299e1' : '#4a5568'}`,
+    backgroundColor: selected ? alpha('#4299e1', 0.2) : '#2d3748',
+    color: selected ? '#4299e1' : '#ffffff',
+  },
+  
   '&:hover': {
-    border: `2px solid #3b82f6`,
-    backgroundColor: alpha('#3b82f6', 0.2),
-    color: '#3b82f6',
+    border: '2px solid var(--template-palette-primary-main)',
+    backgroundColor: alpha(theme.palette.primary.main, 0.2),
+    color: 'var(--template-palette-primary-main)',
     transform: 'translateY(-2px)',
-    boxShadow: `0 8px 25px ${alpha('#3b82f6', 0.15)}`,
+    boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.15)}`,
+    '[data-mui-color-scheme="dark"] &': {
+      border: '2px solid #4299e1',
+      backgroundColor: alpha('#4299e1', 0.2),
+      color: '#4299e1',
+    },
   },
 }));
 
-const StepCard = styled(Paper)(({ theme }) => ({
+const StepCard = styled(Box)(({ theme }) => ({
   borderRadius: '24px',
   padding: '40px',
-  background: '#1f1f1f',
-  border: `1px solid ${alpha('#3b82f6', 0.2)}`,
-  boxShadow: `0 20px 40px ${alpha('#000000', 0.3)}`,
+  background: 'var(--template-palette-background-paper)',
+  border: '1px solid var(--template-palette-divider)',
+  boxShadow: 'var(--template-shadows-1)',
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  
+  // Explicit dark mode styling
+  '[data-mui-color-scheme="dark"] &': {
+    background: '#1a202c',
+    backgroundColor: '#1a202c',
+    borderColor: 'rgba(45, 55, 72, 0.8)',
+    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.8)',
+  },
 }));
 
 const ProgressStepper = styled(Stepper)(({ theme }) => ({
@@ -280,14 +411,14 @@ const ProgressStepper = styled(Stepper)(({ theme }) => ({
   
   // Connector lines between steps
   '& .MuiStepConnector-root': {
-    top: '20px', // Adjusted for smaller icons (40px/2 = 20px)
+    top: '20px',
     left: 'calc(-50% + 20px)',
     right: 'calc(50% + 20px)',
     zIndex: 1,
     '& .MuiStepConnector-line': {
       height: '6px',
       border: 0,
-      backgroundColor: 'rgba(59, 130, 246, 0.2)',
+      backgroundColor: theme.palette.mode === 'dark' ? '#4a5568' : alpha(theme.palette.primary.main, 0.2),
       borderRadius: '3px',
       transition: 'all 0.4s ease-in-out',
       position: 'relative',
@@ -299,29 +430,29 @@ const ProgressStepper = styled(Stepper)(({ theme }) => ({
         left: 0,
         height: '100%',
         width: '0%',
-        backgroundColor: '#3b82f6',
+        backgroundColor: theme.palette.mode === 'dark' ? '#4299e1' : theme.palette.primary.main,
         borderRadius: '3px',
         transition: 'width 0.6s ease-in-out',
       },
     },
   },
   
-  // Active step connector - show 100% progress when moving to next step
+  // Active step connector
   '& .MuiStepConnector-root.Mui-active .MuiStepConnector-line': {
-    backgroundColor: '#10b981', // Changed to green to match completed state
-    boxShadow: '0 0 15px rgba(16, 185, 129, 0.5)', // Green glow like completed
+    backgroundColor: theme.palette.mode === 'dark' ? '#48bb78' : theme.palette.success.main,
+    boxShadow: `0 0 15px ${alpha(theme.palette.mode === 'dark' ? '#48bb78' : theme.palette.success.main, 0.5)}`,
     '&::before': {
       width: '100%',
-      backgroundColor: '#34d399', // Green progress fill
+      backgroundColor: theme.palette.mode === 'dark' ? '#68d391' : theme.palette.success.light,
     },
   },
   
   '& .MuiStepConnector-root.Mui-completed .MuiStepConnector-line': {
-    backgroundColor: '#10b981',
-    boxShadow: '0 0 15px rgba(16, 185, 129, 0.5)',
+    backgroundColor: theme.palette.mode === 'dark' ? '#48bb78' : theme.palette.success.main,
+    boxShadow: `0 0 15px ${alpha(theme.palette.mode === 'dark' ? '#48bb78' : theme.palette.success.main, 0.5)}`,
     '&::before': {
       width: '100%',
-      backgroundColor: '#34d399',
+      backgroundColor: theme.palette.mode === 'dark' ? '#68d391' : theme.palette.success.light,
     },
   },
   
@@ -334,30 +465,41 @@ const ProgressStepper = styled(Stepper)(({ theme }) => ({
     
     // Label text styling
     '& .MuiStepLabel-label': {
-      color: 'rgba(229, 231, 235, 0.9) !important', // Brighter - increased from 0.8 to 0.9
+      color: `${alpha(theme.palette.text.primary, 0.8)} !important`,
       fontWeight: '500 !important',
       fontSize: '0.95rem !important',
-      marginTop: '10px !important', // Reduced margin for smaller icons
+      marginTop: '10px !important',
       textAlign: 'center',
       transition: 'all 0.3s ease-in-out !important',
       textTransform: 'uppercase',
       letterSpacing: '0.4px',
+      '[data-mui-color-scheme="dark"] &': {
+        color: '#a0aec0 !important',
+      },
     },
     
     '&.Mui-active .MuiStepLabel-label': {
-      color: '#93c5fd !important', // Brighter blue - changed from #60a5fa to #93c5fd
+      color: `${theme.palette.primary.main} !important`,
       fontWeight: '700 !important',
       fontSize: '1rem !important',
-      textShadow: '0 0 10px rgba(147, 197, 253, 0.5)', // Brighter glow
+      textShadow: `0 0 10px ${alpha(theme.palette.primary.main, 0.5)}`,
       letterSpacing: '0.6px',
+      '[data-mui-color-scheme="dark"] &': {
+        color: '#90cdf4 !important',
+        textShadow: '0 0 10px rgba(144, 205, 244, 0.5)',
+      },
     },
     
     '&.Mui-completed .MuiStepLabel-label': {
-      color: '#6ee7b7 !important', // Brighter green - changed from #34d399 to #6ee7b7
+      color: `${theme.palette.success.main} !important`,
       fontWeight: '600 !important',
       fontSize: '0.98rem !important',
-      textShadow: '0 0 8px rgba(110, 231, 183, 0.5)', // Brighter glow
+      textShadow: `0 0 8px ${alpha(theme.palette.success.main, 0.5)}`,
       letterSpacing: '0.5px',
+      '[data-mui-color-scheme="dark"] &': {
+        color: '#9ae6b4 !important',
+        textShadow: '0 0 8px rgba(154, 230, 180, 0.5)',
+      },
     },
   },
   
@@ -368,9 +510,9 @@ const ProgressStepper = styled(Stepper)(({ theme }) => ({
   
   // Mobile responsiveness
   [theme.breakpoints.down('sm')]: {
-    padding: '18px 0', // Reduced padding for smaller icons
+    padding: '18px 0',
     '& .MuiStepConnector-root': {
-      top: '16px', // Adjusted for smaller mobile icons (32px/2 = 16px)
+      top: '16px',
       left: 'calc(-50% + 16px)',
       right: 'calc(50% + 16px)',
       '& .MuiStepConnector-line': {
@@ -379,88 +521,91 @@ const ProgressStepper = styled(Stepper)(({ theme }) => ({
     },
     '& .MuiStepLabel-label': {
       fontSize: '0.85rem !important',
-      marginTop: '8px !important', // Reduced margin
+      marginTop: '8px !important',
       letterSpacing: '0.3px !important',
-      color: 'rgba(229, 231, 235, 0.85) !important', // Brighter on mobile too
-    },
-    '&.Mui-active .MuiStepLabel-label': {
-      fontSize: '0.9rem !important',
-      letterSpacing: '0.4px !important',
-      color: '#93c5fd !important', // Brighter blue
-    },
-    '&.Mui-completed .MuiStepLabel-label': {
-      fontSize: '0.88rem !important',
-      letterSpacing: '0.35px !important',
-      color: '#6ee7b7 !important', // Brighter green
+      color: `${alpha(theme.palette.text.primary, 0.75)} !important`,
+      '[data-mui-color-scheme="dark"] &': {
+        color: '#a0aec0 !important',
+      },
     },
   },
 }));
 
-// Modern Calendar Picker Global Styles
-const calendarGlobalStyles = (
-  <GlobalStyles
-    styles={{
-      // WebKit Calendar Picker (Chrome, Safari, Edge)
-      'input[type="date"]::-webkit-calendar-picker-indicator': {
-        cursor: 'pointer',
-        filter: 'invert(0.8) brightness(1.1)',
-        borderRadius: '6px',
-        padding: '4px',
-        transition: 'all 0.3s ease',
-        marginLeft: 'auto',
-        '&:hover': {
-          filter: 'invert(0.4) sepia(1) saturate(3) hue-rotate(200deg) brightness(1.4)',
-          transform: 'scale(1.1)',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+// Calendar Global Styles - Theme Aware
+const CalendarGlobalStyles = () => {
+  const theme = useTheme();
+  
+  return (
+    <GlobalStyles
+      styles={{
+        'input[type="date"]::-webkit-calendar-picker-indicator': {
+          cursor: 'pointer',
+          filter: theme.palette.mode === 'dark' 
+            ? 'invert(0.8) brightness(1.1)' 
+            : 'invert(0.3) brightness(0.9)',
+          borderRadius: '6px',
+          padding: '4px',
+          transition: 'all 0.3s ease',
+          marginLeft: 'auto',
+          '&:hover': {
+            filter: theme.palette.mode === 'dark'
+              ? 'invert(0.4) sepia(1) saturate(3) hue-rotate(200deg) brightness(1.4)'
+              : 'invert(0.2) sepia(1) saturate(3) hue-rotate(200deg) brightness(1.2)',
+            transform: 'scale(1.1)',
+            backgroundColor: alpha(theme.palette.primary.main, 0.1),
+          },
         },
-      },
-      
-      // Native date input styling improvements
-      'input[type="date"]': {
-        colorScheme: 'dark',
-        position: 'relative',
-        cursor: 'pointer',
-        '&:focus': {
-          outline: 'none',
+        
+        'input[type="date"]': {
+          colorScheme: theme.palette.mode,
+          position: 'relative',
+          cursor: 'pointer',
+          color: theme.palette.text.primary,
+          '&:focus': {
+            outline: 'none',
+          },
+          '&::-webkit-inner-spin-button': {
+            display: 'none',
+          },
+          '&::-webkit-clear-button': {
+            display: 'none',
+          },
+          '&::-webkit-datetime-edit': {
+            color: theme.palette.text.primary,
+            fontWeight: '500',
+          },
+          '&::-webkit-datetime-edit-fields-wrapper': {
+            padding: '0',
+          },
+          '&::-webkit-datetime-edit-text': {
+            color: theme.palette.text.secondary,
+            padding: '0 2px',
+          },
+          '&::-webkit-datetime-edit-month-field': {
+            color: theme.palette.text.primary,
+          },
+          '&::-webkit-datetime-edit-day-field': {
+            color: theme.palette.text.primary,
+          },
+          '&::-webkit-datetime-edit-year-field': {
+            color: theme.palette.text.primary,
+          },
         },
-        '&::-webkit-inner-spin-button': {
-          display: 'none',
-        },
-        '&::-webkit-clear-button': {
-          display: 'none',
-        },
-        '&::-webkit-datetime-edit': {
-          color: '#ffffff',
-          fontWeight: '500',
-        },
-        '&::-webkit-datetime-edit-fields-wrapper': {
-          padding: '0',
-        },
-        '&::-webkit-datetime-edit-text': {
-          color: '#9ca3af',
-          padding: '0 2px',
-        },
-        '&::-webkit-datetime-edit-month-field': {
-          color: '#ffffff',
-        },
-        '&::-webkit-datetime-edit-day-field': {
-          color: '#ffffff',
-        },
-        '&::-webkit-datetime-edit-year-field': {
-          color: '#ffffff',
-        },
-      },
 
-      // Firefox date picker styling
-      'input[type="date"]::-moz-focus-inner': {
-        border: 0,
-        padding: 0,
-      },
-    }}
-  />
-);
+        // Firefox date picker styling
+        'input[type="date"]::-moz-focus-inner': {
+          border: 0,
+          padding: 0,
+        },
+      }}
+    />
+  );
+};
 
 export default function AddWorker() {
+  const theme = useTheme();
+  const { mode } = useColorScheme();
+  const isDark = mode === 'dark';
   const [activeStep, setActiveStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
@@ -475,20 +620,23 @@ export default function AddWorker() {
     dob: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState({
+    open: false,
+    message: '',
+    severity: 'success' as 'success' | 'error'
+  });
 
   const steps = ['Organization Info', 'Personal Details', 'Account Setup'];
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
-    // Clear field error when user starts typing
     if (fieldErrors[name]) {
       setFieldErrors((prev) => ({ ...prev, [name]: '' }));
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Prevent form submission when Enter is pressed in text fields
     if (e.key === 'Enter') {
       e.preventDefault();
     }
@@ -496,6 +644,18 @@ export default function AddWorker() {
 
   const handleGenderSelect = (gender: string) => {
     setForm((f) => ({ ...f, gender }));
+  };
+
+  const handleToastClose = () => {
+    setToast(prev => ({ ...prev, open: false }));
+  };
+
+  const showToast = (message: string, severity: 'success' | 'error') => {
+    setToast({
+      open: true,
+      message,
+      severity
+    });
   };
 
   const handleNext = () => {
@@ -568,10 +728,14 @@ export default function AddWorker() {
     setSubmitting(true);
     try {
       await registerWorker(form);
-      // Reset form except org_name
+      showToast('Worker created successfully! Registration completed.', 'success');
       setForm((f) => ({ ...f, username: '', password: '', email: '', full_name: '', phone_number: '', dob: '' }));
       setActiveStep(0);
     } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || 
+                          err?.message || 
+                          'Failed to register worker. Please check your information and try again.';
+      showToast(errorMessage, 'error');
       console.error('Failed to register worker:', err?.message || err);
     } finally {
       setSubmitting(false);
@@ -585,11 +749,11 @@ export default function AddWorker() {
         return (
           <Stack spacing={4}>
             <Box sx={{ textAlign: 'center', mb: 3 }}>
-              <BusinessIcon sx={{ fontSize: 48, color: '#3b82f6', mb: 2 }} />
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, color: '#ffffff' }}>
+              <BusinessIcon sx={{ fontSize: 48, color: isDark ? '#4299e1' : 'primary.main', mb: 2 }} />
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, color: isDark ? '#ffffff' : 'text.primary' }}>
                 Organization Information
               </Typography>
-              <Typography variant="body1" sx={{ color: '#9ca3af' }}>
+              <Typography variant="body1" sx={{ color: isDark ? '#a0aec0' : 'text.secondary' }}>
                 Let's start with your organization details
               </Typography>
             </Box>
@@ -622,11 +786,11 @@ export default function AddWorker() {
         return (
           <Stack spacing={4}>
             <Box sx={{ textAlign: 'center', mb: 3 }}>
-              <PersonIcon sx={{ fontSize: 48, color: '#3b82f6', mb: 2 }} />
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, color: '#ffffff' }}>
+              <PersonIcon sx={{ fontSize: 48, color: isDark ? '#4299e1' : 'primary.main', mb: 2 }} />
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, color: isDark ? '#ffffff' : 'text.primary' }}>
                 Personal Details
               </Typography>
-              <Typography variant="body1" sx={{ color: '#9ca3af' }}>
+              <Typography variant="body1" sx={{ color: isDark ? '#a0aec0' : 'text.secondary' }}>
                 Tell us about the worker's personal information
               </Typography>
             </Box>
@@ -701,28 +865,6 @@ export default function AddWorker() {
                   onChange={onChange}
                   onKeyDown={handleKeyDown}
                   placeholder="Select date of birth"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '& input[type="date"]': {
-                        fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-                        fontWeight: 500,
-                        cursor: 'pointer',
-                        '&::-webkit-calendar-picker-indicator': {
-                          marginLeft: 'auto',
-                          marginRight: '8px',
-                          cursor: 'pointer',
-                          filter: 'invert(0.7) brightness(1.2)',
-                          borderRadius: '4px',
-                          padding: '4px',
-                          transition: 'all 0.2s ease',
-                          '&:hover': {
-                            filter: 'invert(0.4) sepia(1) saturate(3) hue-rotate(200deg) brightness(1.3)',
-                            transform: 'scale(1.1)',
-                          },
-                        },
-                      },
-                    },
-                  }}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -733,7 +875,7 @@ export default function AddWorker() {
                 />
               </Grid>
               <Grid size={{ xs: 12 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: '#ffffff' }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: isDark ? '#ffffff' : 'text.primary' }}>
                   Gender
                 </Typography>
                 <Stack direction="row" spacing={2}>
@@ -768,11 +910,11 @@ export default function AddWorker() {
         return (
           <Stack spacing={4}>
             <Box sx={{ textAlign: 'center', mb: 3 }}>
-              <LockIcon sx={{ fontSize: 48, color: '#3b82f6', mb: 2 }} />
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, color: '#ffffff' }}>
+              <LockIcon sx={{ fontSize: 48, color: isDark ? '#4299e1' : 'primary.main', mb: 2 }} />
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, color: isDark ? '#ffffff' : 'text.primary' }}>
                 Account Setup
               </Typography>
-              <Typography variant="body1" sx={{ color: '#9ca3af' }}>
+              <Typography variant="body1" sx={{ color: isDark ? '#a0aec0' : 'text.secondary' }}>
                 Create login credentials for the worker
               </Typography>
             </Box>
@@ -817,35 +959,35 @@ export default function AddWorker() {
                     ),
                     endAdornment: (
                       <InputAdornment position="end">
-        <IconButton
-          onClick={() => setShowPassword(!showPassword)}
-          edge="end"
-          sx={{ 
-            color: '#9ca3af',
-            backgroundColor: 'transparent !important',
-            border: 'none !important',
-            boxShadow: 'none !important',
-            padding: '8px',
-            margin: 0,
-            '&:hover': { 
-              color: '#3b82f6',
-              backgroundColor: 'transparent !important',
-              boxShadow: 'none !important',
-            },
-            '&:focus': {
-              backgroundColor: 'transparent !important',
-              boxShadow: 'none !important',
-              outline: 'none',
-            },
-            '&:active': {
-              backgroundColor: 'transparent !important',
-              boxShadow: 'none !important',
-            },
-            '& .MuiTouchRipple-root': {
-              display: 'none', // Remove ripple effect
-            }
-          }}
-        >
+                        <IconButton
+                          onClick={() => setShowPassword(!showPassword)}
+                          edge="end"
+                          sx={{ 
+                            color: isDark ? '#a0aec0' : 'text.secondary',
+                            backgroundColor: 'transparent !important',
+                            border: 'none !important',
+                            boxShadow: 'none !important',
+                            padding: '8px',
+                            margin: 0,
+                            '&:hover': { 
+                              color: theme.palette.mode === 'dark' ? '#4299e1' : 'primary.main',
+                              backgroundColor: 'transparent !important',
+                              boxShadow: 'none !important',
+                            },
+                            '&:focus': {
+                              backgroundColor: 'transparent !important',
+                              boxShadow: 'none !important',
+                              outline: 'none',
+                            },
+                            '&:active': {
+                              backgroundColor: 'transparent !important',
+                              boxShadow: 'none !important',
+                            },
+                            '& .MuiTouchRipple-root': {
+                              display: 'none',
+                            }
+                          }}
+                        >
                           {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
                         </IconButton>
                       </InputAdornment>
@@ -859,30 +1001,98 @@ export default function AddWorker() {
             <Paper sx={{ 
               p: 3, 
               borderRadius: 3, 
-              bgcolor: '#0f1419', 
-              border: '1px solid #10b981',
-              boxShadow: `0 0 20px ${alpha('#10b981', 0.1)}`
+              bgcolor: '#f8fdf8',
+              border: `1px solid var(--template-palette-success-main)`,
+              boxShadow: `0 0 20px ${alpha(theme.palette.success.main, 0.1)}`,
+              '[data-mui-color-scheme="dark"] &': {
+                bgcolor: '#1a202c',
+                backgroundColor: '#1a202c',
+                border: '1px solid #48bb78',
+                boxShadow: '0 0 20px rgba(72, 187, 120, 0.2)',
+              }
             }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: '#10b981', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="h6" sx={{ 
+                fontWeight: 600, 
+                mb: 2, 
+                color: 'var(--template-palette-success-main)',
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1,
+                '[data-mui-color-scheme="dark"] &': {
+                  color: '#48bb78',
+                }
+              }}>
                 <CheckCircleIcon />
                 Registration Summary
               </Typography>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="body2" sx={{ color: '#9ca3af' }}>Organization</Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#ffffff' }}>{form.org_name || 'Not specified'}</Typography>
+                  <Typography variant="body2" sx={{ 
+                    color: 'var(--template-palette-text-secondary)',
+                    '[data-mui-color-scheme="dark"] &': {
+                      color: '#a0aec0',
+                    }
+                  }}>Organization</Typography>
+                  <Typography variant="body1" sx={{ 
+                    fontWeight: 600, 
+                    color: 'var(--template-palette-text-primary)',
+                    '[data-mui-color-scheme="dark"] &': {
+                      color: '#ffffff',
+                    }
+                  }}>
+                    {form.org_name || 'Not specified'}
+                  </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="body2" sx={{ color: '#9ca3af' }}>Full Name</Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#ffffff' }}>{form.full_name || 'Not specified'}</Typography>
+                  <Typography variant="body2" sx={{ 
+                    color: 'var(--template-palette-text-secondary)',
+                    '[data-mui-color-scheme="dark"] &': {
+                      color: '#a0aec0',
+                    }
+                  }}>Full Name</Typography>
+                  <Typography variant="body1" sx={{ 
+                    fontWeight: 600, 
+                    color: 'var(--template-palette-text-primary)',
+                    '[data-mui-color-scheme="dark"] &': {
+                      color: '#ffffff',
+                    }
+                  }}>
+                    {form.full_name || 'Not specified'}
+                  </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="body2" sx={{ color: '#9ca3af' }}>Email</Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#ffffff' }}>{form.email || 'Not specified'}</Typography>
+                  <Typography variant="body2" sx={{ 
+                    color: 'var(--template-palette-text-secondary)',
+                    '[data-mui-color-scheme="dark"] &': {
+                      color: '#a0aec0',
+                    }
+                  }}>Email</Typography>
+                  <Typography variant="body1" sx={{ 
+                    fontWeight: 600, 
+                    color: 'var(--template-palette-text-primary)',
+                    '[data-mui-color-scheme="dark"] &': {
+                      color: '#ffffff',
+                    }
+                  }}>
+                    {form.email || 'Not specified'}
+                  </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="body2" sx={{ color: '#9ca3af' }}>Username</Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#ffffff' }}>{form.username || 'Not specified'}</Typography>
+                  <Typography variant="body2" sx={{ 
+                    color: 'var(--template-palette-text-secondary)',
+                    '[data-mui-color-scheme="dark"] &': {
+                      color: '#a0aec0',
+                    }
+                  }}>Username</Typography>
+                  <Typography variant="body1" sx={{ 
+                    fontWeight: 600, 
+                    color: 'var(--template-palette-text-primary)',
+                    '[data-mui-color-scheme="dark"] &': {
+                      color: '#ffffff',
+                    }
+                  }}>
+                    {form.username || 'Not specified'}
+                  </Typography>
                 </Grid>
               </Grid>
             </Paper>
@@ -896,13 +1106,12 @@ export default function AddWorker() {
 
   return (
     <AppTheme>
-      <SidebarProvider>
-        {calendarGlobalStyles}
-        <CssBaseline enableColorScheme />
-        <Box sx={{ display: 'flex' }}>
-          <SideMenu />
-          <AppNavbar />
-          {/* Main content */}
+      <CalendarGlobalStyles />
+      <CssBaseline enableColorScheme />
+      <Box sx={{ display: 'flex' }}>
+        <SideMenu />
+        <AppNavbar />
+        {/* Main content */}
         <Box
           component="main"
           sx={(theme) => ({
@@ -931,10 +1140,10 @@ export default function AddWorker() {
                 {/* Page Header */}
                 <Box sx={{ textAlign: 'center', py: 2 }}>
                   <Box sx={{ mb: 2 }}>
-                    <Typography variant="h3" sx={{ fontWeight: 800, color: '#ffffff', mb: 1 }}>
+                    <Typography variant="h3" sx={{ fontWeight: 800, color: isDark ? '#ffffff' : 'text.primary', mb: 1 }}>
                       Add New Worker
                     </Typography>
-                    <Typography variant="h6" sx={{ color: '#9ca3af', fontWeight: 400 }}>
+                    <Typography variant="h6" sx={{ color: isDark ? '#a0aec0' : 'text.secondary', fontWeight: 400 }}>
                       Register a new team member in a few simple steps
                     </Typography>
                   </Box>
@@ -993,7 +1202,13 @@ export default function AddWorker() {
                     {renderStepContent(activeStep)}
 
                     {/* Navigation Buttons */}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4, pt: 3, borderTop: '1px solid #374151' }}>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      mt: 4, 
+                      pt: 3, 
+                      borderTop: `1px solid ${isDark ? '#4a5568' : theme.palette.divider}` 
+                    }}>
                       <Button
                         variant="outlined"
                         onClick={handleBack}
@@ -1005,81 +1220,112 @@ export default function AddWorker() {
                           py: 1.5,
                           textTransform: 'none',
                           fontWeight: 600,
-                          border: '2px solid #374151',
-                          color: '#9ca3af',
+                          border: `2px solid ${isDark ? '#4a5568' : theme.palette.divider}`,
+                          color: isDark ? '#a0aec0' : 'text.secondary',
                           '&:hover': {
-                            border: '2px solid #3b82f6',
-                          color: '#3b82f6',
-                          backgroundColor: alpha('#3b82f6', 0.1),
-                          transform: 'translateY(-2px)',
-                          boxShadow: `0 8px 25px ${alpha('#3b82f6', 0.15)}`,
-                        },
-                        '&.Mui-disabled': {
-                          border: '2px solid #1f2937',
-                          color: '#4b5563',
-                        }
-                      }}
-                    >
-                      Back
-                    </Button>
-                    
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                      {activeStep < steps.length - 1 ? (
-                        <Button
-                          variant="contained"
-                          onClick={handleNext}
-                          endIcon={<ArrowForwardIcon />}
-                          sx={{
-                            borderRadius: '12px',
-                            px: 4,
-                            py: 1.5,
-                            textTransform: 'none',
-                            fontWeight: 600,
-                            fontSize: '1rem',
-                            background: '#3b82f6',
-                            color: '#ffffff',
-                            boxShadow: `0 4px 12px ${alpha('#3b82f6', 0.25)}`,
-                            '&:hover': {
-                              background: '#60a5fa',
-                              transform: 'translateY(-1px)',
-                              boxShadow: `0 6px 20px ${alpha('#3b82f6', 0.3)}`,
-                            }
-                          }}
-                        >
-                          Continue
-                        </Button>
-                      ) : (
-                        <Button
-                          type="submit"
-                          variant="contained"
-                          disabled={submitting}
-                          endIcon={<CheckCircleIcon />}
-                          sx={{
-                            borderRadius: '12px',
-                            px: 4,
-                            py: 1.5,
-                            textTransform: 'none',
-                            fontWeight: 600,
-                            fontSize: '1rem',
-                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                            color: '#ffffff',
-                            boxShadow: `0 8px 25px ${alpha('#10b981', 0.25)}`,
-                            '&:hover': {
-                              background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                              transform: 'translateY(-2px)',
-                              boxShadow: `0 12px 30px ${alpha('#10b981', 0.35)}`,
-                            },
-                            '&.Mui-disabled': {
-                              background: '#374151',
-                              color: '#6b7280',
-                            }
-                          }}
-                        >
-                          {submitting ? 'Registering...' : 'Register Worker'}
-                        </Button>
-                      )}
+                            border: `2px solid ${isDark ? '#4299e1' : theme.palette.primary.main}`,
+                            color: isDark ? '#4299e1' : 'primary.main',
+                            backgroundColor: alpha(isDark ? '#4299e1' : theme.palette.primary.main, 0.1),
+                            transform: 'translateY(-2px)',
+                            boxShadow: `0 8px 25px ${alpha(isDark ? '#4299e1' : theme.palette.primary.main, 0.15)}`,
+                          },
+                          '&.Mui-disabled': {
+                            border: `2px solid ${isDark ? '#2d3748' : alpha(theme.palette.text.disabled, 0.3)}`,
+                            color: isDark ? '#4a5568' : 'text.disabled',
+                          }
+                        }}
+                      >
+                        Back
+                      </Button>
+                      
+                      <Box sx={{ display: 'flex', gap: 2 }}>
+                        {activeStep < steps.length - 1 ? (
+                          <Button
+                            variant="contained"
+                            onClick={handleNext}
+                            endIcon={<ArrowForwardIcon />}
+                            sx={{
+                              borderRadius: '12px',
+                              px: 4,
+                              py: 1.5,
+                              textTransform: 'none',
+                              fontWeight: 600,
+                              fontSize: '1rem',
+                              background: isDark ? '#ffffff' : theme.palette.primary.main,
+                              color: isDark ? '#1a202c' : '#ffffff',
+                              boxShadow: `0 4px 12px ${alpha(isDark ? '#ffffff' : theme.palette.primary.main, 0.25)}`,
+                              outline: 'none',
+                              border: 'none',
+                              '&:hover': {
+                                background: isDark ? '#90cdf4' : theme.palette.primary.dark,
+                                color: isDark ? '#1a202c' : '#ffffff',
+                                transform: 'translateY(-1px)',
+                                boxShadow: `0 6px 20px ${alpha(isDark ? '#90cdf4' : theme.palette.primary.main, 0.3)}`,
+                                outline: 'none',
+                                border: 'none',
+                              },
+                              '&:focus': {
+                                outline: 'none',
+                                border: 'none',
+                                boxShadow: `0 6px 20px ${alpha(isDark ? '#90cdf4' : theme.palette.primary.main, 0.3)}`,
+                              },
+                              '&:active': {
+                                outline: 'none',
+                                border: 'none',
+                              }
+                            }}
+                          >
+                            Continue
+                          </Button>
+                        ) : (
+                          <Button
+                            type="submit"
+                            variant="contained"
+                            disabled={submitting}
+                            endIcon={<CheckCircleIcon />}
+                            sx={{
+                              borderRadius: '12px',
+                              px: 4,
+                              py: 1.5,
+                              textTransform: 'none',
+                              fontWeight: 600,
+                              fontSize: '1rem',
+                              background: isDark 
+                                ? 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)'
+                                : `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
+                              color: '#ffffff',
+                              boxShadow: `0 8px 25px ${alpha(isDark ? '#48bb78' : theme.palette.success.main, 0.25)}`,
+                              outline: 'none',
+                              border: 'none',
+                              '&:hover': {
+                                background: isDark
+                                  ? 'linear-gradient(135deg, #38a169 0%, #2f855a 100%)'
+                                  : `linear-gradient(135deg, ${theme.palette.success.dark} 0%, ${theme.palette.success.dark} 100%)`,
+                                transform: 'translateY(-2px)',
+                                boxShadow: `0 12px 30px ${alpha(isDark ? '#48bb78' : theme.palette.success.main, 0.35)}`,
+                                outline: 'none',
+                                border: 'none',
+                              },
+                              '&:focus': {
+                                outline: 'none',
+                                border: 'none',
+                                boxShadow: `0 12px 30px ${alpha(isDark ? '#48bb78' : theme.palette.success.main, 0.35)}`,
+                              },
+                              '&:active': {
+                                outline: 'none',
+                                border: 'none',
+                              },
+                              '&.Mui-disabled': {
+                                background: isDark ? '#4a5568' : theme.palette.action.disabled,
+                                color: isDark ? '#718096' : theme.palette.action.disabled,
+                              }
+                            }}
+                          >
+                            {submitting ? 'Registering...' : 'Register Worker'}
+                          </Button>
+                        )}
+                      </Box>
                     </Box>
-                  </Box>
                   </form>
                 </StepCard>
               </Stack>
@@ -1087,7 +1333,29 @@ export default function AddWorker() {
           </Stack>
         </Box>
       </Box>
-      </SidebarProvider>
+
+      {/* Toast Notifications */}
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={6000}
+        onClose={handleToastClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={handleToastClose}
+          severity={toast.severity}
+          variant="filled"
+          sx={{
+            width: '100%',
+            borderRadius: '12px',
+            fontWeight: 600,
+            fontSize: '1rem',
+            boxShadow: '0 8px 25px rgba(0, 0, 0, 0.15)',
+          }}
+        >
+          {toast.message}
+        </Alert>
+      </Snackbar>
     </AppTheme>
   );
 }

@@ -13,6 +13,28 @@ interface LoginResponse {
   [key: string]: any;
 }
 
+interface UserProfileResponse {
+  success: boolean;
+  user?: {
+    id: number;
+    username: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    full_name: string;
+    is_active: boolean;
+    last_login: string | null;
+    date_joined: string;
+  };
+  organization?: {
+    id: string;
+    name: string;
+    role: string;
+    member_id: string;
+  };
+  error?: string;
+}
+
 export async function login(baseUrl: string, payload: { username: string; password: string; org_name: string }): Promise<LoginResponse> {
   const res = await fetch(`${baseUrl}/worker/api/login/`, {
     method: 'POST',
@@ -131,6 +153,49 @@ export async function refreshAccessToken(baseUrl?: string): Promise<string | nul
     return data?.access ?? null;
   } catch (error) {
     console.error('Token refresh failed:', error);
+    return null;
+  }
+}
+
+export async function getCurrentUser(): Promise<UserProfileResponse | null> {
+  const baseUrl = getApiBaseUrl();
+  const token = getAccessToken();
+  
+  if (!baseUrl || !token) return null;
+  
+  try {
+    const res = await fetch(`${baseUrl}/worker/api/me/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!res.ok) {
+      // Try to refresh token if 401
+      if (res.status === 401) {
+        const newToken = await refreshAccessToken(baseUrl);
+        if (newToken) {
+          // Retry with new token
+          const retryRes = await fetch(`${baseUrl}/worker/api/me/`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${newToken}`
+            }
+          });
+          if (retryRes.ok) {
+            return await retryRes.json();
+          }
+        }
+      }
+      return null;
+    }
+    
+    return await res.json();
+  } catch (error) {
+    console.error('Failed to fetch user profile:', error);
     return null;
   }
 }

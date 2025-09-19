@@ -1,17 +1,26 @@
-import * as React from 'react';
-import type {} from '@mui/x-date-pickers/themeAugmentation';
-import type {} from '@mui/x-charts/themeAugmentation';
-import type {} from '@mui/x-data-grid-pro/themeAugmentation';
-import type {} from '@mui/x-tree-view/themeAugmentation';
+// React namespace not required (automatic JSX runtime)
 import { alpha } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import Grid from '@mui/material/Grid';
+import Paper from '@mui/material/Paper';
+
+// MUI Dashboard template components
 import AppNavbar from '../../components/dash_comp/AppNavbar';
 import Header from '../../components/dash_comp/Header';
-import MainGrid from '../../components/dash_comp/MainGrid';
 import SideMenu from '../../components/dash_comp/SideMenu';
 import AppTheme from '../../theme/dash_theme/AppTheme';
+import Copyright from '../../internals/components/Copyright';
+
+// Worker-specific components
+import SystemStatus from '../../components/SystemStatus';
+import Statistics from '../../components/Statistics.tsx';
+import TestInterface from '../../components/TestInterface';
+import StorageLogs from '../../components/StorageLogs.tsx';
+import VerificationActions from '../../components/VerificationActions';
+
 import {
   chartsCustomizations,
   dataDisplayCustomizations,
@@ -26,6 +35,7 @@ const xThemeComponents = {
   ...treeViewCustomizations,
 };
 
+// Worker dashboard component that integrates the MUI template with worker-specific functionality
 export default function Dashboard(props: { disableCustomTheme?: boolean }) {
   return (
     <AppTheme {...props} themeComponents={xThemeComponents}>
@@ -54,7 +64,80 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
             }}
           >
             <Header />
-            <MainGrid />
+            
+            {/* System Status - positioned below header */}
+            <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' }, mb: 2 }}>
+              <SystemStatus />
+            </Box>
+            
+            <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
+              {/* Overview section with statistics */}
+              <Box sx={{ mx: 2 }}>
+                <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
+                  Worker VC Verification
+                </Typography>
+                {/* Verification Actions - Top Section */}
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid size={{ xs: 12, md: 12 }}>
+                    <Box 
+                      sx={{ 
+                        p: 3,
+                        borderRadius: 2,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        backgroundColor: 'background.paper',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                      }}
+                    >
+                      <VerificationActions 
+                        onScanComplete={(data) => console.log('Scan result:', data)}
+                        onUploadComplete={(file) => console.log('File uploaded:', file.name)}
+                      />
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Box>
+              
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid size={{ xs: 12 }}>
+                  <Paper
+                    elevation={2}
+                    sx={{ p: 2, height: '100%', overflow: 'auto' }}
+                  >
+                    <Typography variant="subtitle1" gutterBottom fontWeight="medium">
+                      Statistics
+                    </Typography>
+                    <Statistics />
+                    
+                    {/* Storage Logs moved below Statistics */}
+                    <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+                      <Typography variant="subtitle1" gutterBottom fontWeight="medium" sx={{ mb: 1.5 }}>
+                        Storage Logs
+                      </Typography>
+                      <Box sx={{ height: 300 }}>
+                        <StorageLogs />
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Grid>
+              </Grid>
+              
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid size={{ xs: 12 }}>
+                  <Paper 
+                    elevation={2}
+                    sx={{ p: 2, height: '100%' }}
+                  >
+                    <Typography variant="subtitle1" gutterBottom fontWeight="medium">
+                      Test Interface
+                    </Typography>
+                    <TestInterface />
+                  </Paper>
+                </Grid>
+              </Grid>
+              
+              <Copyright sx={{ my: 4 }} />
+            </Box>
           </Stack>
         </Box>
       </Box>

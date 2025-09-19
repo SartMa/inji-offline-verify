@@ -1,12 +1,10 @@
-import React from 'react';
+// Using automatic JSX runtime
+import type { ReactNode } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import VCStorageProvider from './context/VCStorageContext.jsx';
+import VCStorageProvider from './context/VCStorageContext';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
-import StatusBar from './components/StatusBar.jsx';
-import Statistics from './components/Statistics.jsx';
-import TestInterface from './components/TestInterface.jsx';
-import SyncControls from './components/SyncControls.jsx';
-import StorageLogs from './components/StorageLogs.jsx';
+import Dashboard from './pages/Dashboard/Dashboard';
+import Settings from './pages/Settings/Settings';
 import SignIn from './SignIn.tsx';
 import './App.css';
 
@@ -63,63 +61,26 @@ function WorkerSignInPage() {
   );
 }
 
-// Worker Dashboard component - only VC verification functionality
+// Dashboard wrapper component with VCStorageProvider
 function WorkerDashboard() {
-  const { signOut, user } = useAuth();
-  
-  const handleSignOut = () => {
-    signOut();
-    window.location.href = '/';
-  };
-  
   return (
-    <div className="App">
-      <VCStorageProvider>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          padding: '10px 20px', 
-          backgroundColor: '#f5f5f5',
-          borderBottom: '1px solid #ddd'
-        }}>
-          <h2 style={{ margin: 0 }}>Worker VC Verification Dashboard</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <span>Welcome, {user?.email || 'Worker'}</span>
-            <button 
-              onClick={handleSignOut}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#d32f2f',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
-        
-        <StatusBar />
-        <div className="main-content">
-          <div className="left-panel">
-            <Statistics />
-            <TestInterface />
-            <SyncControls />
-          </div>
-          <div className="right-panel">
-            <StorageLogs />
-          </div>
-        </div>
-      </VCStorageProvider>
-    </div>
+    <VCStorageProvider>
+      <Dashboard />
+    </VCStorageProvider>
+  );
+}
+
+// Settings wrapper component with VCStorageProvider
+function WorkerSettings() {
+  return (
+    <VCStorageProvider>
+      <Settings />
+    </VCStorageProvider>
   );
 }
 
 // Protected route wrapper
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   
   if (isLoading) {
@@ -157,6 +118,14 @@ function AppContent() {
         element={
           <ProtectedRoute>
             <WorkerDashboard />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/settings" 
+        element={
+          <ProtectedRoute>
+            <WorkerSettings />
           </ProtectedRoute>
         } 
       />

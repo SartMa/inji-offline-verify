@@ -1,17 +1,34 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { getAccessToken, clearTokens } from './authService';
+import { getAccessToken, clearTokens, getCurrentUser } from './authService';
 
 interface User {
+  id: number;
+  username: string;
   email: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  is_active: boolean;
+  last_login: string | null;
+  date_joined: string;
+}
+
+interface Organization {
+  id: string;
+  name: string;
+  role: string;
+  member_id: string;
 }
 
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
+  organization: Organization | null;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => void;
   isLoading: boolean;
+  refreshUserData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,17 +48,46 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [organization, setOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const refreshUserData = async () => {
+    const token = getAccessToken();
+    if (!token) {
+      setUser(null);
+      setOrganization(null);
+      setIsAuthenticated(false);
+      return;
+    }
+
+    try {
+      const profileData = await getCurrentUser();
+      if (profileData?.success && profileData.user) {
+        setUser(profileData.user);
+        setOrganization(profileData.organization || null);
+        setIsAuthenticated(true);
+      } else {
+        // If we can't get user data, clear everything
+        setUser(null);
+        setOrganization(null);
+        setIsAuthenticated(false);
+        clearTokens();
+      }
+    } catch (error) {
+      console.error('Failed to fetch user data:', error);
+      setUser(null);
+      setOrganization(null);
+      setIsAuthenticated(false);
+      clearTokens();
+    }
+  };
 
   // Check for existing authentication on component mount
   useEffect(() => {
-    const checkExistingAuth = () => {
+    const checkExistingAuth = async () => {
       const token = getAccessToken();
       if (token) {
-        // If we have a token, consider user authenticated
-        setIsAuthenticated(true);
-        // You could also decode the token to get user info if needed
-        setUser({ email: 'authenticated_user' }); // Placeholder user
+        await refreshUserData();
       }
       setIsLoading(false);
     };
@@ -50,9 +96,8 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
   }, []);
 
   const signIn = async (email: string, _password: string): Promise<void> => {
-    // This should be called after successful API login
-    setUser({ email });
-    setIsAuthenticated(true);
+    // After successful login, refresh user data
+    await refreshUserData();
     return Promise.resolve();
   };
 
@@ -60,15 +105,18 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
     // Clear tokens from localStorage
     clearTokens();
     setUser(null);
+    setOrganization(null);
     setIsAuthenticated(false);
   };
 
   const value: AuthContextType = {
     isAuthenticated,
     user,
+    organization,
     signIn,
     signOut,
-    isLoading
+    isLoading,
+    refreshUserData
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

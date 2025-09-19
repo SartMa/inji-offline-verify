@@ -15,6 +15,7 @@
     "@inji-offline-verify/shared-auth": "workspace:*",
     "@inji-offline-verify/shared-ui": "workspace:*",
     "@mui/icons-material": "^7.3.2",
+    "@mui/lab": "7.0.0-beta.17",
     "@mui/material": "^7.3.2",
     "@mui/x-charts": "latest",
     "@mui/x-data-grid": "latest",

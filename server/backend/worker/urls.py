@@ -23,4 +23,9 @@ urlpatterns = [
     path('api/organizations/<uuid:org_id>/users/<uuid:member_id>/', views.get_organization_user_detail, name='organization-user-detail'),
     path('api/organizations/<uuid:org_id>/users/<uuid:member_id>/update/', views.update_organization_user, name='organization-user-update'),
     path('api/organizations/<uuid:org_id>/users/<uuid:member_id>/delete/', views.delete_organization_user, name='organization-user-delete'),
+    
+    # Verification logs endpoints
+    path('api/organizations/<uuid:org_id>/logs/', views.get_organization_logs, name='organization-logs'),
+    path('api/organizations/<uuid:org_id>/logs/stats/', views.get_organization_logs_stats, name='organization-logs-stats'),
+    path('api/logs/<uuid:log_id>/', views.get_log_detail, name='log-detail'),
 ]

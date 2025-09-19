@@ -1,15 +1,11 @@
-import * as React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { useOrganizationUsers } from '../../hooks/useOrganizationUsers';
+import { useLogsStats } from '../../hooks/useVerificationLogs';
 import Copyright from '../../internals/components/Copyright';
-import ChartUserByCountry from './ChartUserByCountry';
-import CustomizedTreeView from './CustomizedTreeView';
 import HighlightedCard from './HighlightedCard';
-import PageViewsBarChart from './PageViewsBarChart';
-import SessionsChart from './SessionsChart';
 import StatCard, { StatCardProps } from './StatCard';
 import { OrganizationUsersTableSimple } from '../OrganizationUsersTableSimple';
 
@@ -24,23 +20,23 @@ const baseData: Omit<StatCardProps, 'value'>[] = [
     ],
   },
   {
-    title: 'Conversions',
-    interval: 'Last 30 days',
-    trend: 'down',
+    title: 'Total Verified VCs',
+    interval: 'All time',
+    trend: 'up',
     data: [
       1640, 1250, 970, 1130, 1050, 900, 720, 1080, 900, 450, 920, 820, 840, 600, 820,
       780, 800, 760, 380, 740, 660, 620, 840, 500, 520, 480, 400, 360, 300, 220,
     ],
   },
-  {
-    title: 'Event count',
-    interval: 'Last 30 days',
-    trend: 'neutral',
-    data: [
-      500, 400, 510, 530, 520, 600, 530, 520, 510, 730, 520, 510, 530, 620, 510, 530,
-      520, 410, 530, 520, 610, 530, 520, 610, 530, 420, 510, 430, 520, 510,
-    ],
-  },
+  // {
+  //   title: 'Event count',
+  //   interval: 'Last 30 days',
+  //   trend: 'neutral',
+  //   data: [
+  //     500, 400, 510, 530, 520, 600, 530, 520, 510, 730, 520, 510, 530, 620, 510, 530,
+  //     520, 410, 530, 520, 610, 530, 520, 610, 530, 420, 510, 430, 520, 510,
+  //   ],
+  // },
 ];
 
 interface MainGridProps {
@@ -48,6 +44,7 @@ interface MainGridProps {
 }
 
 export default function MainGrid({ orgId }: MainGridProps) {
+  const navigate = useNavigate();
   const { organizationId, organizationName, loading, error } = useCurrentUser();
   
   // Use provided orgId or get from current user context
@@ -60,7 +57,15 @@ export default function MainGrid({ orgId }: MainGridProps) {
     pageSize: 1, // We only need the stats, not the actual users
   });
 
-  // Create the data array with dynamic user count
+  // Fetch logs stats to get the total logs count
+  const { data: logsStatsData, loading: logsLoading } = useLogsStats(finalOrgId || '');
+
+  // Handle click on Total Verified VCs card
+  const handleLogsCardClick = () => {
+    navigate('/logs');
+  };
+
+  // Create the data array with dynamic user count and logs count
   const data: StatCardProps[] = baseData.map((item, index) => {
     if (index === 0) {
       // First card is the organization users count
@@ -68,11 +73,17 @@ export default function MainGrid({ orgId }: MainGridProps) {
         ...item,
         value: usersLoading ? '...' : (orgUsersData?.stats.total_members?.toString() || '0'),
       };
+    } else if (index === 1) {
+      // Second card is the "Total Verified VCs" count - shows all verification logs
+      return {
+        ...item,
+        value: logsLoading ? '...' : (logsStatsData?.stats.total_logs?.toString() || '0'),
+      };
     }
     // For other cards, use static values for now
     return {
       ...item,
-      value: index === 1 ? '325' : '200k',
+      value: '200k',
     };
   });
   return (
@@ -95,12 +106,28 @@ export default function MainGrid({ orgId }: MainGridProps) {
       >
         {data.map((card, index) => (
           <Box key={index}>
-            <StatCard {...card} />
+            {index === 1 ? (
+              // Make the Total Verified VCs card clickable - navigates to logs page
+              <Box
+                onClick={handleLogsCardClick}
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s ease-in-out',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                  },
+                }}
+              >
+                <StatCard {...card} />
+              </Box>
+            ) : (
+              <StatCard {...card} />
+            )}
           </Box>
         ))}
-        <Box>
+        {/* <Box>
           <HighlightedCard />
-        </Box>
+        </Box> */}
       </Box>
       <Box
         sx={{
@@ -164,7 +191,7 @@ export default function MainGrid({ orgId }: MainGridProps) {
           </Stack>
         </Box> */}
       </Box>
-      <Copyright sx={{ my: 4 }} />
+      {/* <Copyright sx={{ my: 4 }} /> */}
     </Box>
   );
 }

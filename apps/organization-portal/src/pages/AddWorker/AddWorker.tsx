@@ -20,6 +20,7 @@ import AppNavbar from '../../components/dash_comp/AppNavbar';
 import SideMenu from '../../components/dash_comp/SideMenu';
 import Header from '../../components/dash_comp/Header';
 import AppTheme from '../../theme/dash_theme/AppTheme';
+import { SidebarProvider } from '../../components/dash_comp/SidebarContext';
 import { registerWorker } from '../../services/workerService';
 import BusinessIcon from '@mui/icons-material/Business';
 import EmailIcon from '@mui/icons-material/Email';
@@ -895,12 +896,13 @@ export default function AddWorker() {
 
   return (
     <AppTheme>
-      {calendarGlobalStyles}
-      <CssBaseline enableColorScheme />
-      <Box sx={{ display: 'flex' }}>
-        <SideMenu />
-        <AppNavbar />
-        {/* Main content */}
+      <SidebarProvider>
+        {calendarGlobalStyles}
+        <CssBaseline enableColorScheme />
+        <Box sx={{ display: 'flex' }}>
+          <SideMenu />
+          <AppNavbar />
+          {/* Main content */}
         <Box
           component="main"
           sx={(theme) => ({
@@ -1085,6 +1087,7 @@ export default function AddWorker() {
           </Stack>
         </Box>
       </Box>
+      </SidebarProvider>
     </AppTheme>
   );
 }

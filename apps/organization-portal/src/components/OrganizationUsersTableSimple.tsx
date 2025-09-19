@@ -24,12 +24,15 @@ import {
   DialogActions,
   Chip,
   Alert,
+  Tooltip,
 } from '@mui/material';
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Refresh as RefreshIcon,
+  Assignment as LogsIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useOrganizationUsers, useOrganizationUserActions } from '../hooks/useOrganizationUsers';
 import type { OrganizationMember, UpdateMemberData } from '../services/organizationService';
 
@@ -38,6 +41,7 @@ export interface OrganizationUsersTableSimpleProps {
 }
 
 export const OrganizationUsersTableSimple: React.FC<OrganizationUsersTableSimpleProps> = ({ orgId }) => {
+  const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [role, setRole] = useState<'ADMIN' | 'USER' | ''>('');
@@ -97,6 +101,10 @@ export const OrganizationUsersTableSimple: React.FC<OrganizationUsersTableSimple
         console.error('Failed to delete user:', error);
       }
     }
+  };
+
+  const handleViewLogs = (member: OrganizationMember) => {
+    navigate(`/logs/${member.id}`);
   };
 
   const getRoleColor = (role: string) => {
@@ -186,7 +194,14 @@ export const OrganizationUsersTableSimple: React.FC<OrganizationUsersTableSimple
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Name</TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    Name
+                    <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                      (click to view logs)
+                    </Typography>
+                  </Box>
+                </TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>Role</TableCell>
                 <TableCell>Phone</TableCell>
@@ -199,14 +214,38 @@ export const OrganizationUsersTableSimple: React.FC<OrganizationUsersTableSimple
               {data.members.map((member) => (
                 <TableRow key={member.id}>
                   <TableCell>
-                    <Box>
-                      <Typography variant="body2" fontWeight="medium">
-                        {member.full_name || `${member.first_name} ${member.last_name}`.trim() || member.username}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        @{member.username}
-                      </Typography>
-                    </Box>
+                    <Tooltip title="Click to view verification logs" arrow>
+                      <Box
+                        onClick={() => handleViewLogs(member)}
+                        sx={{
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease-in-out',
+                          borderRadius: 1,
+                          p: 1,
+                          m: -1,
+                          '&:hover': {
+                            backgroundColor: 'action.hover',
+                            transform: 'translateX(4px)',
+                          },
+                        }}
+                      >
+                        <Typography 
+                          variant="body2" 
+                          fontWeight="medium"
+                          sx={{ 
+                            color: 'primary.main',
+                            '&:hover': {
+                              textDecoration: 'underline',
+                            },
+                          }}
+                        >
+                          {member.full_name || `${member.first_name} ${member.last_name}`.trim() || member.username}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          @{member.username}
+                        </Typography>
+                      </Box>
+                    </Tooltip>
                   </TableCell>
                   <TableCell>{member.email}</TableCell>
                   <TableCell>
@@ -228,6 +267,14 @@ export const OrganizationUsersTableSimple: React.FC<OrganizationUsersTableSimple
                     {new Date(member.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
+                    <IconButton 
+                      onClick={() => handleViewLogs(member)}
+                      size="small"
+                      color="primary"
+                      title="View Verification Logs"
+                    >
+                      <LogsIcon />
+                    </IconButton>
                     <IconButton 
                       onClick={() => handleEditClick(member)}
                       size="small"

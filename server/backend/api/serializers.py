@@ -33,19 +33,23 @@ class VerificationLogSerializer(serializers.ModelSerializer):
             'credential_subject',
             'error_message',
             'organization',
+            'verified_by',
         ]
 
-    read_only_fields = ['organization']
+    read_only_fields = ['organization', 'verified_by']
 
     def create(self, validated_data):
         request = self.context.get('request')
         org = None
+        user = None
         if request and request.user and request.user.is_authenticated:
+            user = request.user
             # Pick the first organization membership; later we can support header-based org selection
             membership = OrganizationMember.objects.filter(user=request.user).first()
             if membership:
                 org = membership.organization
         validated_data['organization'] = org
+        validated_data['verified_by'] = user
         return super().create(validated_data)
 
 

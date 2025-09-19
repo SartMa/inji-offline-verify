@@ -11,7 +11,23 @@ export default defineConfig({
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'vite.svg'],
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,tsx,jsx,ts}'],
+        // Enable navigation fallback for SPA routing
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/_/, /\/[^/?]+\.[^/]+$/],
         runtimeCaching: [
+          // Cache API calls with network first strategy
+          {
+            urlPattern: /^http:\/\/127\.0\.0\.1:8000\/.*\/api\/.*/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              networkTimeoutSeconds: 3,
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 // 1 day
+              }
+            }
+          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',
@@ -40,11 +56,12 @@ export default defineConfig({
         name: 'Inji Offline Verify',
         short_name: 'Inji Verify',
         description: 'Offline Verifiable Credentials Verification',
-        theme_color: '#ffffff',
+        theme_color: '#ed6c02',
         background_color: '#ffffff',
         display: 'standalone',
         scope: '/',
         start_url: '/',
+        orientation: 'portrait-primary',
         icons: [
           {
             src: 'pwa-192x192.png',

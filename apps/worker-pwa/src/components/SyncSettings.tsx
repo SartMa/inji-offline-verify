@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -28,7 +29,7 @@ type ConfirmDialogState = { open: boolean; action: 'clearPending' | 'clearAll' |
 const SyncSettings: React.FC = () => {
   // Mock data and functions for now
   const stats = { pendingSyncCount: 2, totalStored: 12, syncedCount: 9 };
-  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  const isOnline = useOnlineStatus();
 
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({ open: false, action: null, title: '', message: '' });
@@ -98,7 +99,7 @@ const SyncSettings: React.FC = () => {
       description: 'Immediately sync all pending data to server',
       icon: <SyncIcon />,
       action: handleForceSyncNow,
-      variant: 'contained' as const,
+  variant: 'outlined' as const,
       color: 'primary' as const,
       disabled: !isOnline || stats.pendingSyncCount === 0,
       tooltip: !isOnline ? 'Cannot sync while offline' : stats.pendingSyncCount === 0 ? 'No items to sync' : '',
@@ -180,7 +181,15 @@ const SyncSettings: React.FC = () => {
                 loading={isLoading[action.id]}
                 disabled={action.disabled}
                 onClick={action.action}
-                sx={{ flex: 1, py: 1.5 }}
+                sx={{
+                  flex: 1,
+                  py: 1.5,
+                  '&.Mui-disabled': {
+                    color: 'text.disabled',
+                    borderColor: 'divider',
+                    backgroundColor: 'transparent',
+                  },
+                }}
                 title={action.tooltip}
               >
                 {action.title}
@@ -209,7 +218,15 @@ const SyncSettings: React.FC = () => {
                 loading={isLoading[action.id]}
                 disabled={action.disabled}
                 onClick={action.action}
-                sx={{ flex: 1, py: 1.5 }}
+                sx={{
+                  flex: 1,
+                  py: 1.5,
+                  '&.Mui-disabled': {
+                    color: 'text.disabled',
+                    borderColor: 'divider',
+                    backgroundColor: 'transparent',
+                  },
+                }}
                 title={action.tooltip}
               >
                 {action.title}

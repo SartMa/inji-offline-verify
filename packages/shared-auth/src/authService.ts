@@ -103,6 +103,7 @@ const ACCESS_KEY = 'auth.accessToken';
 const REFRESH_KEY = 'auth.refreshToken';
 const LEGACY_KEY = 'auth.legacyToken';
 const BASE_URL_KEY = 'api.baseUrl';
+const USER_CACHE_KEY = 'auth.userCache'; // Cache user data for offline use
 
 export function setApiBaseUrl(baseUrl: string) {
   try { localStorage.setItem(BASE_URL_KEY, baseUrl.replace(/\/$/, '')); } catch {}
@@ -133,7 +134,41 @@ export function clearTokens() {
     localStorage.removeItem(ACCESS_KEY);
     localStorage.removeItem(REFRESH_KEY);
     localStorage.removeItem(LEGACY_KEY);
+    localStorage.removeItem(USER_CACHE_KEY);
   } catch {}
+}
+
+// Cache user data for offline use
+export function cacheUserData(userData: UserProfileResponse) {
+  try {
+    localStorage.setItem(USER_CACHE_KEY, JSON.stringify({
+      ...userData,
+      cachedAt: Date.now()
+    }));
+  } catch {}
+}
+
+// Get cached user data (with expiry check)
+export function getCachedUserData(): UserProfileResponse | null {
+  try {
+    const cached = localStorage.getItem(USER_CACHE_KEY);
+    if (!cached) return null;
+    
+    const data = JSON.parse(cached);
+    const cacheAge = Date.now() - (data.cachedAt || 0);
+    const maxAge = 2 * 24 * 60 * 60 * 1000; // 2 days in milliseconds
+    
+    // Return cached data if it's less than 2 days old
+    if (cacheAge < maxAge) {
+      return data;
+    }
+    
+    // Remove expired cache
+    localStorage.removeItem(USER_CACHE_KEY);
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export async function refreshAccessToken(baseUrl?: string): Promise<string | null> {
@@ -161,7 +196,21 @@ export async function getCurrentUser(): Promise<UserProfileResponse | null> {
   const baseUrl = getApiBaseUrl();
   const token = getAccessToken();
   
-  if (!baseUrl || !token) return null;
+  if (!baseUrl || !token) {
+    // If we don't have tokens but we're offline, try to return cached data
+    if (!navigator.onLine) {
+      return getCachedUserData();
+    }
+    return null;
+  }
+  
+  // If we're offline, return cached data immediately
+  if (!navigator.onLine) {
+    const cached = getCachedUserData();
+    if (cached) {
+      return cached;
+    }
+  }
   
   try {
     const res = await fetch(`${baseUrl}/worker/api/me/`, {
@@ -186,16 +235,41 @@ export async function getCurrentUser(): Promise<UserProfileResponse | null> {
             }
           });
           if (retryRes.ok) {
-            return await retryRes.json();
+            const userData = await retryRes.json();
+            // Cache the fresh data
+            cacheUserData(userData);
+            return userData;
           }
         }
       }
+      
+      // If we can't get fresh data but we're offline or have cached data, return it
+      if (!navigator.onLine) {
+        const cached = getCachedUserData();
+        if (cached) {
+          return cached;
+        }
+      }
+      
       return null;
     }
     
-    return await res.json();
+    const userData = await res.json();
+    // Cache the fresh data
+    cacheUserData(userData);
+    return userData;
   } catch (error) {
     console.error('Failed to fetch user profile:', error);
+    
+    // If we're offline or there's a network error, use cached data
+    if (!navigator.onLine || (error instanceof Error && error.name === 'TypeError')) {
+      const cached = getCachedUserData();
+      if (cached) {
+        console.log('Using cached user data due to network error');
+        return cached;
+      }
+    }
+    
     return null;
   }
 }

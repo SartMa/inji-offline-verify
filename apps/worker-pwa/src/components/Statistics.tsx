@@ -7,8 +7,7 @@ import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import LinearProgress from '@mui/material/LinearProgress';
-import { SparkLineChart } from '@mui/x-charts/SparkLineChart';
-import { areaElementClasses } from '@mui/x-charts/LineChart';
+import { SparkLineChart } from '@mui/x-charts';
 import { useVCStorage } from '../context/VCStorageContext';
 
 type AreaGradientProps = {
@@ -90,7 +89,7 @@ function StatCard({ title, value, trend, description, data }: StatCardProps) {
                                     data: Array.from({ length: data.length }, (_, i) => `${i + 1}`),
                                 }}
                                 sx={{
-                                    [`& .${areaElementClasses.root}`]: {
+                                    ['& .MuiAreaElement-root']: {
                                         fill: `url(#area-gradient-${title.replace(/\s/g, '')})`,
                                     },
                                 }}

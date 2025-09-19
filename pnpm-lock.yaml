@@ -18,6 +18,9 @@ importers:
       dayjs:
         specifier: ^1.11.18
         version: 1.11.18
+      multiformats:
+        specifier: ^13.4.0
+        version: 13.4.0
       react:
         specifier: 19.0.0
         version: 19.0.0
@@ -221,6 +224,9 @@ importers:
       '@inji-offline-verify/shared-ui':
         specifier: workspace:*
         version: link:../../packages/shared-ui
+      '@mosip/react-inji-verify-sdk':
+        specifier: workspace:*
+        version: link:../../packages/inji-verify-sdk
       '@mui/icons-material':
         specifier: ^7.3.2
         version: 7.3.2(@mui/material@7.3.2(@emotion/react@11.14.0(@types/react@18.3.24)(react@19.1.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.24)(react@19.1.1))(@types/react@18.3.24)(react@19.1.1))(@types/react@18.3.24)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(@types/react@18.3.24)(react@19.1.1)

@@ -164,3 +164,32 @@ export function getPublicKeyFromMultibaseEd25519(multibaseKey: string, keyType: 
     bytes: spki,
   };
 }
+
+/**
+ * A simple, lightweight, unauthenticated fetcher for retrieving public documents like
+ * DID Documents or JSON-LD Contexts. This has no dependencies on the PWA's NetworkManager.
+ * @param url The URL of the public document to fetch.
+ * @returns A promise that resolves to the parsed JSON object.
+ */
+export async function fetchPublicDocument(url: string): Promise<any> {
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        // We specifically request 'application/did+json' and fall back to 'application/json'
+        'Accept': 'application/did+json, application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch document: HTTP ${response.status} ${response.statusText}. Response: ${errorText}`);
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    console.error(`[SDK-didFetcher] Error fetching public document from ${url}:`, error);
+    // Re-throw the error so the calling function can handle it.
+    throw new Error(`Could not retrieve document from ${url}. Reason: ${error.message}`);
+  }
+}

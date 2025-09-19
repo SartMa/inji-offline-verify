@@ -44,6 +44,7 @@
   "dependencies": {
     "@mui/x-date-pickers": "^8.11.3",
     "dayjs": "^1.11.18",
+    "multiformats": "^13.4.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-router-dom": "6.29.0"

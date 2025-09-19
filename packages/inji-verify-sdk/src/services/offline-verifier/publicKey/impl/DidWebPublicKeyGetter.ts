@@ -1,6 +1,6 @@
 import type { PublicKeyGetter } from '../PublicKeyGetter.js';
 import type { PublicKeyData } from '../Types.js';
-import { NetworkManager } from '../../../../../../../apps/worker-pwa/src/network/NetworkManager.js';
+import { fetchPublicDocument } from '../Utils.js';
 import { getPublicKeyFromPem, getPublicKeyFromJwk, getPublicKeyFromHex, getPublicKeyFromMultibaseEd25519 } from '../Utils.js';
 
 const didWebRegex = /^did:web:([a-zA-Z0-9.-]+)(?::(.+))?$/;
@@ -13,8 +13,8 @@ export class DidWebPublicKeyGetter implements PublicKeyGetter {
     if (!m) throw new Error('Invalid did:web');
     const [, domain, path] = m;
     const url = path ? `https://${domain}/${path.replace(/:/g, '/')}/did.json` : `https://${domain}/.well-known/did.json`;
-    const res = await NetworkManager.fetch(url, { auth: false });
-    const doc = await res.json();
+    
+    const doc = await fetchPublicDocument(url);
 
     const vms: any[] = doc.verificationMethod || [];
     const vm = vms.find((x: any) => x && x.id === verificationMethod);

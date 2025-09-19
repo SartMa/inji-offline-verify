@@ -1,21 +1,49 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { syncToServer as syncToServerService } from '../services/syncService';
 
-const VCStorageContext = createContext(null);
+type Stats = { totalStored: number; pendingSyncCount: number; syncedCount: number; failedCount: number };
+type LogItem = any;
 
-export const useVCStorage = () => useContext(VCStorageContext);
-export { VCStorageContext };
+type VCStorageContextValue = {
+    isOnline: boolean;
+    serviceWorkerActive: boolean;
+    stats: Stats;
+    logs: LogItem[];
+    storeVerificationResult: (jsonData: any) => Promise<number | undefined>;
+    getAllVerifications: () => Promise<any[]>;
+    getUnsyncedVerifications: () => Promise<any[]>;
+    syncToServer: () => Promise<any>;
+    clearAllData: () => Promise<void>;
+    exportData: () => Promise<void>;
+    clearPendingSync: () => Promise<void>;
+};
 
-export const VCStorageProvider = ({ children }) => {
-    const [db, setDb] = useState(null);
+const defaultContextValue: VCStorageContextValue = {
+  isOnline: false,
+  serviceWorkerActive: false,
+  stats: { totalStored: 0, pendingSyncCount: 0, syncedCount: 0, failedCount: 0 },
+  logs: [],
+    storeVerificationResult: async (_json: any) => undefined,
+    getAllVerifications: async () => [],
+    getUnsyncedVerifications: async () => [],
+    syncToServer: async () => ({}),
+    clearAllData: async () => {},
+    exportData: async () => {},
+    clearPendingSync: async () => {}
+};
+const VCStorageContext = createContext<VCStorageContextValue>(defaultContextValue);
+
+export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
+    const { children = null } = props || {};
+    const [db, setDb] = useState<IDBDatabase | null>(null);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
-    const [stats, setStats] = useState({
+    const [stats, setStats] = useState<Stats>({
         totalStored: 0,
         pendingSyncCount: 0,
         syncedCount: 0,
         failedCount: 0
     });
-    const [logs, setLogs] = useState([]);
+    const [logs, setLogs] = useState<LogItem[]>([]);
     const [serviceWorkerActive, setServiceWorkerActive] = useState(false);
 
     // Constants
@@ -36,14 +64,14 @@ export const VCStorageProvider = ({ children }) => {
                 };
 
                 request.onsuccess = (event) => {
-                    const database = event.target.result;
+                    const database = (event.target as IDBOpenDBRequest).result as IDBDatabase;
                     setDb(database);
                     console.log('IndexedDB initialized successfully');
                     resolve(database);
                 };
 
                 request.onupgradeneeded = (event) => {
-                    const database = event.target.result;
+                    const database = (event.target as IDBOpenDBRequest).result as IDBDatabase;
                     
                     // Create object store if it doesn't exist
                     if (!database.objectStoreNames.contains(STORE_NAME)) {
@@ -134,11 +162,11 @@ export const VCStorageProvider = ({ children }) => {
     }, [db]);
 
     // Core storage functions
-    const storeVerificationResult = async (jsonData) => {
+    const storeVerificationResult = async (jsonData: any): Promise<number | undefined> => {
         if (!db) return;
 
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([STORE_NAME], 'readwrite');
+        return new Promise<number>((resolve, reject) => {
+            const transaction = db!.transaction([STORE_NAME], 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
             
             // Prepare data for storage
@@ -154,60 +182,59 @@ export const VCStorageProvider = ({ children }) => {
             const request = store.add(dataToStore);
             
             request.onsuccess = () => {
-                console.log('Data stored successfully with ID:', request.result);
+                console.log('Data stored successfully with ID:', (request as any).result);
                 
                 // Trigger background sync if online
                 if (navigator.onLine) {
                     registerBackgroundSync();
                 }
-                
-                resolve(request.result);
+                resolve((request as any).result as number);
             };
             
             request.onerror = () => {
-                console.error('Failed to store data:', request.error);
-                reject(request.error);
+                console.error('Failed to store data:', (request as any).error);
+                reject((request as any).error);
             };
         });
     };
 
     // Get all stored verifications
-    const getAllVerifications = async () => {
+    const getAllVerifications = async (): Promise<any[]> => {
         if (!db) return [];
         
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([STORE_NAME], 'readonly');
+        return new Promise<any[]>((resolve, reject) => {
+            const transaction = db!.transaction([STORE_NAME], 'readonly');
             const store = transaction.objectStore(STORE_NAME);
             const request = store.getAll();
             
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve((request as any).result);
+            request.onerror = () => reject((request as any).error);
         });
     };
 
     // Get only unsynced verifications
-    const getUnsyncedVerifications = async () => {
+    const getUnsyncedVerifications = async (): Promise<any[]> => {
         if (!db) return [];
         
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([STORE_NAME], 'readonly');
+        return new Promise<any[]>((resolve, reject) => {
+            const transaction = db!.transaction([STORE_NAME], 'readonly');
             const store = transaction.objectStore(STORE_NAME);
             const request = store.getAll();
             
             request.onsuccess = () => {
-                const allItems = request.result;
-                const unsyncedItems = allItems.filter(item => !item.synced);
+                const allItems = (request as any).result as any[];
+                const unsyncedItems = allItems.filter((item: any) => !item.synced);
                 resolve(unsyncedItems);
             };
-            request.onerror = () => reject(request.error);
+            request.onerror = () => reject((request as any).error);
         });
     };
 
     // Mark items as synced
-    const markAsSynced = async (ids) => {
+    const markAsSynced = async (ids: number[]) => {
         if (!db) return;
         
-        const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const transaction = db!.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
         
         for (const id of ids) {
@@ -223,7 +250,7 @@ export const VCStorageProvider = ({ children }) => {
             };
         }
         
-        return new Promise((resolve) => {
+    return new Promise<void>((resolve) => {
             transaction.oncomplete = () => {
                 console.log('Marked as synced:', ids);
                 resolve();
@@ -240,10 +267,10 @@ export const VCStorageProvider = ({ children }) => {
 
     // Register background sync
     const registerBackgroundSync = async () => {
-        if ('serviceWorker' in navigator && 'SyncManager' in window) {
+    if ('serviceWorker' in navigator && 'SyncManager' in window) {
             try {
-                const registration = await navigator.serviceWorker.ready;
-                await registration.sync.register('sync-verifications');
+        const registration = await navigator.serviceWorker.ready;
+        await (registration as any).sync.register('sync-verifications');
                 console.log('Background sync registered');
             } catch (error) {
                 console.error('Background sync registration failed:', error);
@@ -255,8 +282,8 @@ export const VCStorageProvider = ({ children }) => {
     const clearAllData = async () => {
         if (!db) return;
         
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([STORE_NAME], 'readwrite');
+        return new Promise<void>((resolve, reject) => {
+            const transaction = db!.transaction([STORE_NAME], 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
             const request = store.clear();
             
@@ -265,7 +292,7 @@ export const VCStorageProvider = ({ children }) => {
                 resolve();
             };
             
-            request.onerror = () => reject(request.error);
+            request.onerror = () => reject((request as any).error);
         });
     };
 
@@ -290,7 +317,7 @@ export const VCStorageProvider = ({ children }) => {
     };
 
     // Utility function for generating hash
-    const generateHash = (data) => {
+    const generateHash = (data: string) => {
         // Simple hash function for demo (replace with crypto.subtle.digest in production)
         let hash = 0;
         for (let i = 0; i < data.length; i++) {
@@ -326,6 +353,15 @@ export const VCStorageProvider = ({ children }) => {
         clearPendingSync
     };
 
+    // Guard: if no children passed, avoid runtime crash and still mount provider
+    if (!children) {
+        return (
+            <VCStorageContext.Provider value={contextValue}>
+                {null}
+            </VCStorageContext.Provider>
+        );
+    }
+
     return (
         <VCStorageContext.Provider value={contextValue}>
             {children}
@@ -333,4 +369,6 @@ export const VCStorageProvider = ({ children }) => {
     );
 };
 
+export const useVCStorage = () => useContext(VCStorageContext);
+export { VCStorageContext };
 export default VCStorageProvider;

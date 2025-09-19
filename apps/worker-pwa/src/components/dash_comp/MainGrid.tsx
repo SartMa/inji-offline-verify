@@ -1,4 +1,4 @@
-import * as React from 'react';
+// React namespace not needed (automatic JSX runtime)
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -10,7 +10,8 @@ import CustomizedDataGrid from './CustomizedDataGrid';
 import HighlightedCard from './HighlightedCard';
 import PageViewsBarChart from './PageViewsBarChart';
 import SessionsChart from './SessionsChart';
-import StatCard, { StatCardProps } from './StatCard';
+import StatCard from './StatCard';
+import type { StatCardProps } from './StatCard';
 
 const data: StatCardProps[] = [
   {

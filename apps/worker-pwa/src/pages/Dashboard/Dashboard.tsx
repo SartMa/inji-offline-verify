@@ -77,24 +77,31 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
             
             <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
               {/* Overview section with statistics */}
-              <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
-                Worker VC Verification
-              </Typography>
-              
-              {/* Verification Actions - Top Section */}
-              <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid size={{ xs: 12, md: 12 }}>
-                  <Paper elevation={2} sx={{ p: 2.5, minHeight: '200px' }}>
-                    <Typography variant="h6" gutterBottom fontWeight="medium" sx={{ mb: 2 }}>
-                      Verification Actions
-                    </Typography>
-                    <VerificationActions 
-                      onScanComplete={(data) => console.log('Scan result:', data)}
-                      onUploadComplete={(file) => console.log('File uploaded:', file.name)}
-                    />
-                  </Paper>
+              <Box sx={{ mx: 2 }}>
+                <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
+                  Worker VC Verification
+                </Typography>
+                {/* Verification Actions - Top Section */}
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid size={{ xs: 12, md: 12 }}>
+                    <Box 
+                      sx={{ 
+                        p: 3,
+                        borderRadius: 2,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        backgroundColor: 'background.paper',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                      }}
+                    >
+                      <VerificationActions 
+                        onScanComplete={(data) => console.log('Scan result:', data)}
+                        onUploadComplete={(file) => console.log('File uploaded:', file.name)}
+                      />
+                    </Box>
+                  </Grid>
                 </Grid>
-              </Grid>
+              </Box>
               
               <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid size={{ xs: 12, md: 8 }}>

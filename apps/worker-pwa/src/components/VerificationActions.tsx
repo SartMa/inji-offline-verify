@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Box,
   Button,
@@ -62,6 +62,10 @@ export default function VerificationActions({
 }: VerificationActionsProps) {
   const [scanDialogOpen, setScanDialogOpen] = useState(false);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Placeholder read to avoid TS6133 until scan integration is added
+  void onScanComplete;
 
   const handleScanClick = () => {
     setScanDialogOpen(true);
@@ -215,8 +219,9 @@ export default function VerificationActions({
         </DialogTitle>
         
         <DialogContent>
-          <UploadPaper component="label">
+          <UploadPaper onClick={() => fileInputRef.current?.click()} role="button" aria-label="Choose file to upload">
             <input
+              ref={fileInputRef}
               type="file"
               hidden
               onChange={handleFileSelect}

@@ -11,27 +11,37 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 import HelpRoundedIcon from '@mui/icons-material/HelpRounded';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const mainListItems = [
-  { text: 'Dashboard', icon: <HomeRoundedIcon /> },
-  { text: 'VC Verification', icon: <VerifiedUserIcon /> },
-  { text: 'Sync Status', icon: <SyncIcon /> },
-  { text: 'Statistics', icon: <AssessmentIcon /> },
+  { text: 'Dashboard', icon: <HomeRoundedIcon />, path: '/dashboard' },
+  { text: 'VC Verification', icon: <VerifiedUserIcon />, path: '/dashboard' },
+  { text: 'Sync Status', icon: <SyncIcon />, path: '/dashboard' },
+  { text: 'Statistics', icon: <AssessmentIcon />, path: '/dashboard' },
 ];
 
 const secondaryListItems = [
-  { text: 'Settings', icon: <SettingsRoundedIcon /> },
-  { text: 'Help', icon: <HelpRoundedIcon /> },
-  { text: 'About', icon: <InfoRoundedIcon /> },
+  { text: 'Settings', icon: <SettingsRoundedIcon />, path: '/settings' },
+  { text: 'Help', icon: <HelpRoundedIcon />, path: '/help' },
+  { text: 'About', icon: <InfoRoundedIcon />, path: '/about' },
 ];
 
 export default function MenuContent() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+  };
   return (
     <Stack sx={{ flexGrow: 1, p: 1, justifyContent: 'space-between' }}>
       <List dense>
         {mainListItems.map((item, index) => (
           <ListItem key={index} disablePadding sx={{ display: 'block' }}>
-            <ListItemButton selected={index === 0}>
+            <ListItemButton 
+              selected={location.pathname === item.path}
+              onClick={() => handleNavigation(item.path)}
+            >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.text} />
             </ListItemButton>
@@ -41,7 +51,10 @@ export default function MenuContent() {
       <List dense>
         {secondaryListItems.map((item, index) => (
           <ListItem key={index} disablePadding sx={{ display: 'block' }}>
-            <ListItemButton>
+            <ListItemButton 
+              selected={location.pathname === item.path}
+              onClick={() => handleNavigation(item.path)}
+            >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.text} />
             </ListItemButton>

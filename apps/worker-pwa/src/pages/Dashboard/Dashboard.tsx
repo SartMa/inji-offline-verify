@@ -18,7 +18,6 @@ import Copyright from '../../internals/components/Copyright';
 import SystemStatus from '../../components/SystemStatus';
 import Statistics from '../../components/Statistics.tsx';
 import TestInterface from '../../components/TestInterface';
-import SyncControls from '../../components/SyncControls';
 import StorageLogs from '../../components/StorageLogs.tsx';
 import VerificationActions from '../../components/VerificationActions';
 
@@ -100,7 +99,7 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
               </Box>
               
               <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid size={{ xs: 12, md: 8 }}>
+                <Grid size={{ xs: 12 }}>
                   <Paper
                     elevation={2}
                     sx={{ p: 2, height: '100%', overflow: 'auto' }}
@@ -119,18 +118,6 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
                         <StorageLogs />
                       </Box>
                     </Box>
-                  </Paper>
-                </Grid>
-
-                <Grid size={{xs: 12, md: 4}}>
-                  <Paper
-                    elevation={2}
-                    sx={{ p: 2, height: '100%', overflow: 'auto' }}
-                  >
-                    <Typography variant="subtitle1" gutterBottom fontWeight="medium">
-                      Sync Controls
-                    </Typography>
-                    <SyncControls />
                   </Paper>
                 </Grid>
               </Grid>

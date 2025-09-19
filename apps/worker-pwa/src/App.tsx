@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'r
 import VCStorageProvider from './context/VCStorageContext';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
 import Dashboard from './pages/Dashboard/Dashboard';
+import Settings from './pages/Settings/Settings';
 import SignIn from './SignIn.tsx';
 import './App.css';
 
@@ -69,6 +70,15 @@ function WorkerDashboard() {
   );
 }
 
+// Settings wrapper component with VCStorageProvider
+function WorkerSettings() {
+  return (
+    <VCStorageProvider>
+      <Settings />
+    </VCStorageProvider>
+  );
+}
+
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -108,6 +118,14 @@ function AppContent() {
         element={
           <ProtectedRoute>
             <WorkerDashboard />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/settings" 
+        element={
+          <ProtectedRoute>
+            <WorkerSettings />
           </ProtectedRoute>
         } 
       />

@@ -7,13 +7,8 @@ import InputAdornment from '@mui/material/InputAdornment';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
 import Chip from '@mui/material/Chip';
-import IconButton from '@mui/material/IconButton';
-import Button from '@mui/material/Button';
 import SearchIcon from '@mui/icons-material/Search';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import { useVCStorage } from '../context/VCStorageContext';
@@ -107,16 +102,15 @@ const StorageLogs = () => {
     const logs = ctx?.logs || [];
     const [filter, setFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
-    const [isExpanded, setIsExpanded] = useState(false);
 
-    // Define columns for DataGrid
+    // Define compact columns for horizontal layout
     const columns: GridColDef[] = [
         {
             field: 'id',
             headerName: 'ID',
-            width: 80,
+            width: 60,
             renderCell: (params: GridRenderCellParams<any, number | undefined>) => (
-                <Typography variant="body2" fontWeight="medium">
+                <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
                     #{params.value ?? '-'}
                 </Typography>
             ),
@@ -124,21 +118,21 @@ const StorageLogs = () => {
         {
             field: 'status',
             headerName: 'Status',
-            width: 100,
+            width: 90,
             renderCell: (params: GridRenderCellParams<any, Status | undefined>) => renderStatus(params.value, (params.row as Log).synced),
         },
         {
             field: 'synced',
-            headerName: 'Sync Status',
-            width: 120,
+            headerName: 'Sync',
+            width: 90,
             renderCell: (params: GridRenderCellParams<any, boolean | undefined>) => renderSyncStatus(params.value),
         },
         {
             field: 'timestamp',
             headerName: 'Time',
-            width: 120,
+            width: 100,
             renderCell: (params: GridRenderCellParams<any, number | undefined>) => (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
                     {formatTimestamp(params.value)}
                 </Typography>
             ),
@@ -147,92 +141,89 @@ const StorageLogs = () => {
             field: 'hash',
             headerName: 'Hash',
             flex: 1,
-            minWidth: 150,
+            minWidth: 120,
             renderCell: (params: GridRenderCellParams<any, string | undefined>) => renderHash(params.value),
         },
     ];
 
     // Filter and search logs
     const filteredLogs = useMemo(() => {
-        let filtered: Log[] = logs;
-        
-        // Apply status filter
-        if (filter !== 'all') {
-            filtered = filtered.filter((log: Log) => {
-                if (filter === 'synced') return log.synced;
-                if (filter === 'pending') return !log.synced;
-                if (filter === 'success') return log.status === 'success';
-                if (filter === 'failure') return log.status === 'failure';
-                return true;
-            });
-        }
-        
-        // Apply search filter
-        if (searchTerm) {
-            filtered = filtered.filter((log: Log) => 
-                log.id?.toString().includes(searchTerm) ||
-                log.status?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                log.hash?.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-        }
-        
-        return filtered;
+        return logs.filter(log => {
+            const matchesFilter = filter === 'all' || 
+                (filter === 'success' && log.status === 'success' && log.synced) ||
+                (filter === 'pending' && !log.synced) ||
+                (filter === 'failed' && log.status === 'failure');
+            
+            const matchesSearch = searchTerm === '' || 
+                log.hash?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                log.id.toString().includes(searchTerm);
+            
+            return matchesFilter && matchesSearch;
+        });
     }, [logs, filter, searchTerm]);
 
     // Calculate statistics
-    const statsCount = {
-        total: logs.length,
-        synced: logs.filter((log: Log) => log.synced).length,
-        pending: logs.filter((log: Log) => !log.synced).length,
-        success: logs.filter((log: Log) => log.status === 'success').length,
-        failure: logs.filter((log: Log) => log.status === 'failure').length
-    };
-
-    const clearFilters = () => {
-        setSearchTerm('');
-        setFilter('all');
-    };
+    const statsCount = useMemo(() => {
+        const total = logs.length;
+        const success = logs.filter(log => log.status === 'success' && log.synced).length;
+        const pending = logs.filter(log => !log.synced).length;
+        const failure = logs.filter(log => log.status === 'failure').length;
+        return { total, success, pending, failure };
+    }, [logs]);
 
     return (
-        <Box sx={{ width: '100%', height: '100%' }}>
-            {/* Header with stats and controls */}
-            <Stack spacing={2} sx={{ mb: 2 }}>
-                {/* Statistics chips */}
-                <Stack direction="row" spacing={1} flexWrap="wrap">
+        <Stack spacing={1.5} sx={{ height: '100%' }}>
+            {/* Compact header with stats and controls */}
+            <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 1
+            }}>
+                {/* Statistics chips - more compact */}
+                <Stack direction="row" spacing={0.5} flexWrap="wrap">
                     <Chip 
                         label={`${statsCount.total} Total`} 
                         color="default" 
                         size="small" 
+                        sx={{ height: 24, fontSize: '0.7rem' }}
                     />
                     <Chip 
                         label={`${statsCount.success} Success`} 
                         color="success" 
                         size="small" 
+                        sx={{ height: 24, fontSize: '0.7rem' }}
                     />
-                    <Chip 
-                        label={`${statsCount.pending} Pending`} 
-                        color="warning" 
-                        size="small" 
-                    />
+                    {statsCount.pending > 0 && (
+                        <Chip 
+                            label={`${statsCount.pending} Pending`} 
+                            color="warning" 
+                            size="small" 
+                            sx={{ height: 24, fontSize: '0.7rem' }}
+                        />
+                    )}
                     {statsCount.failure > 0 && (
                         <Chip 
                             label={`${statsCount.failure} Failed`} 
                             color="error" 
                             size="small" 
+                            sx={{ height: 24, fontSize: '0.7rem' }}
                         />
                     )}
                     <Chip 
                         label={`${filteredLogs.length} Showing`} 
                         variant="outlined" 
                         size="small" 
+                        sx={{ height: 24, fontSize: '0.7rem' }}
                     />
                 </Stack>
                 
-                {/* Search and filter controls */}
-                <Stack direction="row" spacing={2} alignItems="center">
+                {/* Compact search and filter */}
+                <Stack direction="row" spacing={1} alignItems="center">
                     <TextField
                         size="small"
-                        placeholder="Search logs..."
+                        placeholder="Search..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         InputProps={{
@@ -242,126 +233,90 @@ const StorageLogs = () => {
                                 </InputAdornment>
                             ),
                         }}
-                        sx={{ minWidth: 200 }}
+                        sx={{ 
+                            minWidth: 150,
+                            '& .MuiOutlinedInput-root': {
+                                height: 32,
+                            }
+                        }}
                     />
                     
-                    <FormControl size="small" sx={{ minWidth: 120 }}>
-                        <InputLabel>Filter</InputLabel>
+                    <FormControl size="small" sx={{ minWidth: 100 }}>
                         <Select
                             value={filter}
-                            label="Filter"
                             onChange={(e) => setFilter(e.target.value)}
+                            displayEmpty
+                            sx={{ height: 32 }}
                         >
                             <MenuItem value="all">All Logs</MenuItem>
-                            <MenuItem value="synced">Synced</MenuItem>
-                            <MenuItem value="pending">Pending</MenuItem>
                             <MenuItem value="success">Success</MenuItem>
-                            <MenuItem value="failure">Failed</MenuItem>
+                            <MenuItem value="pending">Pending</MenuItem>
+                            <MenuItem value="failed">Failed</MenuItem>
                         </Select>
                     </FormControl>
-                    
-                    <IconButton
-                        onClick={() => setIsExpanded(!isExpanded)}
-                        size="small"
-                        title={isExpanded ? "Collapse view" : "Expand view"}
-                    >
-                        {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                    </IconButton>
                 </Stack>
-            </Stack>
-
-            {/* Data Grid */}
-            <Box sx={{ height: isExpanded ? 500 : 300, width: '100%' }}>
-                {filteredLogs.length > 0 ? (
-                    <DataGrid
-                        rows={filteredLogs}
-                        columns={columns}
-                        getRowClassName={(params) =>
-                            params.indexRelativeToCurrentPage % 2 === 0 ? 'even' : 'odd'
-                        }
-                        initialState={{
-                            pagination: { paginationModel: { pageSize: isExpanded ? 10 : 5 } },
-                        }}
-                        pageSizeOptions={[5, 10, 20]}
-                        disableColumnResize
-                        density="compact"
-                        slotProps={{
-                            filterPanel: {
-                                filterFormProps: {
-                                    logicOperatorInputProps: {
-                                        variant: 'outlined',
-                                        size: 'small',
-                                    },
-                                    columnInputProps: {
-                                        variant: 'outlined',
-                                        size: 'small',
-                                        sx: { mt: 'auto' },
-                                    },
-                                    operatorInputProps: {
-                                        variant: 'outlined',
-                                        size: 'small',
-                                        sx: { mt: 'auto' },
-                                    },
-                                    valueInputProps: {
-                                        InputComponentProps: {
-                                            variant: 'outlined',
-                                            size: 'small',
-                                        },
-                                    },
-                                },
-                            },
-                        }}
-                    />
-                ) : (
-                    /* Empty State */
-                    <Box 
-                        sx={{ 
-                            height: '100%',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            textAlign: 'center',
-                            color: 'text.secondary',
-                            py: 4
-                        }}
-                    >
-                        {logs.length === 0 ? (
-                            <>
-                                <Typography variant="h3" sx={{ fontSize: '3rem', mb: 1 }}>
-                                    📭
-                                </Typography>
-                                <Typography variant="h6" gutterBottom>
-                                    No logs yet
-                                </Typography>
-                                <Typography variant="body2">
-                                    Start by testing the verification interface to generate logs
-                                </Typography>
-                            </>
-                        ) : (
-                            <>
-                                <Typography variant="h3" sx={{ fontSize: '3rem', mb: 1 }}>
-                                    🔍
-                                </Typography>
-                                <Typography variant="h6" gutterBottom>
-                                    No matching logs
-                                </Typography>
-                                <Typography variant="body2" sx={{ mb: 2 }}>
-                                    Try adjusting your search or filter criteria
-                                </Typography>
-                                <Button 
-                                    onClick={clearFilters}
-                                    variant="outlined"
-                                    size="small"
-                                >
-                                    Clear Filters
-                                </Button>
-                            </>
-                        )}
-                    </Box>
-                )}
             </Box>
-        </Box>
+
+            {/* Compact DataGrid */}
+            <Box sx={{ flexGrow: 1, minHeight: 200 }}>
+                <DataGrid
+                    rows={filteredLogs}
+                    columns={columns}
+                    initialState={{
+                        pagination: {
+                            paginationModel: {
+                                page: 0,
+                                pageSize: 5,
+                            },
+                        },
+                    }}
+                    pageSizeOptions={[5, 10]}
+                    disableRowSelectionOnClick
+                    density="compact"
+                    sx={{
+                        border: 'none',
+                        '& .MuiDataGrid-main': {
+                            border: `1px solid`,
+                            borderColor: 'divider',
+                            borderRadius: 1,
+                        },
+                        '& .MuiDataGrid-columnHeaders': {
+                            backgroundColor: 'action.hover',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            minHeight: '32px !important',
+                            maxHeight: '32px !important',
+                        },
+                        '& .MuiDataGrid-row': {
+                            minHeight: '32px !important',
+                            maxHeight: '32px !important',
+                        },
+                        '& .MuiDataGrid-cell': {
+                            fontSize: '0.75rem',
+                            padding: '4px 8px',
+                        },
+                        '& .MuiDataGrid-footerContainer': {
+                            minHeight: '36px',
+                            backgroundColor: 'action.hover',
+                        },
+                        '& .MuiDataGrid-selectedRowCount': {
+                            fontSize: '0.75rem',
+                        },
+                        '[data-mui-color-scheme="dark"] &': {
+                            '& .MuiDataGrid-main': {
+                                borderColor: 'rgba(255, 255, 255, 0.12)',
+                            },
+                            '& .MuiDataGrid-columnHeaders': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            },
+                            '& .MuiDataGrid-footerContainer': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            },
+                        },
+                    }}
+                />
+            </Box>
+        </Stack>
     );
 };
 

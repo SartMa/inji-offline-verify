@@ -90,6 +90,16 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
                       Statistics
                     </Typography>
                     <Statistics />
+                    
+                    {/* Storage Logs moved below Statistics */}
+                    <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+                      <Typography variant="subtitle1" gutterBottom fontWeight="medium" sx={{ mb: 1.5 }}>
+                        Storage Logs
+                      </Typography>
+                      <Box sx={{ height: 300 }}>
+                        <StorageLogs />
+                      </Box>
+                    </Box>
                   </Paper>
                 </Grid>
 
@@ -107,7 +117,7 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
               </Grid>
               
               <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid size={{xs: 12, md: 8}}>
+                <Grid size={{ xs: 12 }}>
                   <Paper 
                     elevation={2}
                     sx={{ p: 2, height: '100%' }}
@@ -116,18 +126,6 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
                       Test Interface
                     </Typography>
                     <TestInterface />
-                  </Paper>
-                </Grid>
-                
-                <Grid size={{xs: 12, md: 4}}>
-                  <Paper 
-                    elevation={2}
-                    sx={{ p: 2, height: '100%', overflow: 'auto', maxHeight: '600px' }}
-                  >
-                    <Typography variant="subtitle1" gutterBottom fontWeight="medium">
-                      Storage Logs
-                    </Typography>
-                    <StorageLogs />
                   </Paper>
                 </Grid>
               </Grid>

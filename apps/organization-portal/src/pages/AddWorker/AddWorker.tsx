@@ -1106,6 +1106,7 @@ export default function AddWorker() {
 
   return (
     <AppTheme>
+      <SidebarProvider>
       <CalendarGlobalStyles />
       <CssBaseline enableColorScheme />
       <Box sx={{ display: 'flex' }}>
@@ -1356,6 +1357,7 @@ export default function AddWorker() {
           {toast.message}
         </Alert>
       </Snackbar>
+      </SidebarProvider>
     </AppTheme>
   );
 }

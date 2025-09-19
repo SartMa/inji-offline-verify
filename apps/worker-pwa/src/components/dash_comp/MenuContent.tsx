@@ -14,33 +14,49 @@ import HelpRoundedIcon from '@mui/icons-material/HelpRounded';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const mainListItems = [
-  { text: 'Dashboard', icon: <HomeRoundedIcon />, path: '/dashboard' },
-  { text: 'VC Verification', icon: <VerifiedUserIcon />, path: '/dashboard' },
-  { text: 'Sync Status', icon: <SyncIcon />, path: '/dashboard' },
-  { text: 'Statistics', icon: <AssessmentIcon />, path: '/dashboard' },
+  { text: 'Dashboard', icon: <HomeRoundedIcon />, path: '/dashboard', clickable: true },
+  { text: 'VC Verification', icon: <VerifiedUserIcon />, path: null, clickable: false },
+  { text: 'Sync Status', icon: <SyncIcon />, path: null, clickable: false },
+  { text: 'Statistics', icon: <AssessmentIcon />, path: null, clickable: false },
 ];
 
 const secondaryListItems = [
-  { text: 'Settings', icon: <SettingsRoundedIcon />, path: '/settings' },
-  { text: 'Help', icon: <HelpRoundedIcon />, path: '/help' },
-  { text: 'About', icon: <InfoRoundedIcon />, path: '/about' },
+  { text: 'Settings', icon: <SettingsRoundedIcon />, path: '/settings', clickable: true },
+  { text: 'Help', icon: <HelpRoundedIcon />, path: '/help', clickable: true },
+  { text: 'About', icon: <InfoRoundedIcon />, path: '/about', clickable: true },
 ];
 
 export default function MenuContent() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleNavigation = (path: string) => {
-    navigate(path);
+  const handleNavigation = (path: string | null) => {
+    if (path) {
+      navigate(path);
+    }
   };
+  
   return (
     <Stack sx={{ flexGrow: 1, p: 1, justifyContent: 'space-between' }}>
       <List dense>
         {mainListItems.map((item, index) => (
           <ListItem key={index} disablePadding sx={{ display: 'block' }}>
             <ListItemButton 
-              selected={location.pathname === item.path}
-              onClick={() => handleNavigation(item.path)}
+              selected={item.clickable && item.path === location.pathname}
+              onClick={() => item.clickable && handleNavigation(item.path)}
+              disabled={!item.clickable}
+              sx={{
+                cursor: item.clickable ? 'pointer' : 'default',
+                '&.Mui-disabled': {
+                  opacity: 0.6,
+                  '& .MuiListItemIcon-root': {
+                    color: 'text.secondary',
+                  },
+                  '& .MuiListItemText-primary': {
+                    color: 'text.secondary',
+                  },
+                },
+              }}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.text} />
@@ -52,8 +68,9 @@ export default function MenuContent() {
         {secondaryListItems.map((item, index) => (
           <ListItem key={index} disablePadding sx={{ display: 'block' }}>
             <ListItemButton 
-              selected={location.pathname === item.path}
-              onClick={() => handleNavigation(item.path)}
+              selected={item.clickable && item.path === location.pathname}
+              onClick={() => item.clickable && handleNavigation(item.path)}
+              disabled={!item.clickable}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.text} />

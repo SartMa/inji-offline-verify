@@ -9,6 +9,7 @@ import SelectContent from './SelectContent';
 import MenuContent from './MenuContent';
 import CardAlert from './CardAlert';
 import OptionsMenu from './OptionsMenu';
+import { useAuth } from '../../context/AuthContext';
 
 const drawerWidth = 240;
 
@@ -24,6 +25,33 @@ const Drawer = styled(MuiDrawer)({
 });
 
 export default function SideMenu() {
+  const { user, organization } = useAuth();
+  
+  const getDisplayName = () => {
+    if (user?.full_name) return user.full_name;
+    if (user?.first_name || user?.last_name) {
+      return `${user.first_name || ''} ${user.last_name || ''}`.trim();
+    }
+    if (user?.username) return user.username;
+    return 'Worker';
+  };
+
+  const getInitials = () => {
+    if (user?.first_name && user?.last_name) {
+      return `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`;
+    }
+    if (user?.full_name) {
+      const names = user.full_name.split(' ');
+      return names.length > 1 
+        ? `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`
+        : names[0].charAt(0);
+    }
+    if (user?.username) {
+      return user.username.charAt(0).toUpperCase();
+    }
+    return 'W';
+  };
+
   return (
     <Drawer
       variant="permanent"
@@ -67,15 +95,35 @@ export default function SideMenu() {
       >
         <Avatar
           sizes="small"
-          alt="Worker"
+          alt={getDisplayName()}
           sx={{ width: 36, height: 36, bgcolor: 'warning.main' }}
-        />
-        <Box sx={{ mr: 'auto' }}>
-          <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: '16px' }}>
-            Worker
+        >
+          {getInitials()}
+        </Avatar>
+        <Box sx={{ mr: 'auto', minWidth: 0 }}>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontWeight: 500, 
+              lineHeight: '16px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {getDisplayName()}
           </Typography>
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            Verified User
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              color: 'text.secondary',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              display: 'block'
+            }}
+          >
+            {organization?.name || 'Verified User'}
           </Typography>
         </Box>
         <OptionsMenu />

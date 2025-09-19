@@ -9,7 +9,16 @@ import ColorModeIconDropdown from '../../theme/dash_theme/ColorModeIconDropdown'
 import { useAuth } from '../../context/AuthContext';
 
 export default function Header() {
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
+  
+  const getDisplayName = () => {
+    if (user?.full_name) return user.full_name;
+    if (user?.first_name || user?.last_name) {
+      return `${user.first_name || ''} ${user.last_name || ''}`.trim();
+    }
+    if (user?.username) return user.username;
+    return 'Worker';
+  };
   
   return (
     <Stack
@@ -40,9 +49,16 @@ export default function Header() {
       </Breadcrumbs>
       
       <Stack direction="row" sx={{ gap: 1 }}>
-        <Typography variant="body2" sx={{ alignSelf: 'center', mr: 2 }}>
-          {user?.email ? `Welcome, ${user.email}` : 'Welcome'}
-        </Typography>
+        <Stack direction="column" sx={{ alignSelf: 'center', mr: 2, textAlign: 'right' }}>
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            Welcome, {getDisplayName()}
+          </Typography>
+          {organization && (
+            <Typography variant="caption" color="text.secondary">
+              {organization.name} ({organization.role})
+            </Typography>
+          )}
+        </Stack>
         <MenuButton showBadge aria-label="Open notifications">
           <NotificationsRoundedIcon />
         </MenuButton>

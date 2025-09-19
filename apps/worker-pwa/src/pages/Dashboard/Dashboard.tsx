@@ -69,9 +69,9 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
           >
             <Header />
             
-            {/* System Status - Compact, positioned below header */}
+            {/* System Status - positioned below header */}
             <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' }, mb: 2 }}>
-              <SystemStatus compact />
+              <SystemStatus />
             </Box>
             
             <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>

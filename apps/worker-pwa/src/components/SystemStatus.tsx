@@ -20,7 +20,7 @@ import {
 import { useVCStorage } from '../context/VCStorageContext';
 
 interface SystemStatusProps {
-  // No props needed for now
+  compact?: boolean; // Optional for backward compatibility, not used in current implementation
 }
 
 const SystemStatus: React.FC<SystemStatusProps> = () => {

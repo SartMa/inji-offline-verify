@@ -15,8 +15,8 @@ import { CredentialFormat } from '../../../packages/inji-verify-sdk/src/services
 import { PublicKeyGetterFactory } from '../../../packages/inji-verify-sdk/src/services/offline-verifier/publicKey/PublicKeyGetterFactory';
 // import { MultibaseUtils } from '../../../packages/inji-verify-sdk/src/services/offline-verifier/utils/MultibaseUtils';
 import { getAccessToken, getApiBaseUrl, refreshAccessToken } from '@inji-offline-verify/shared-auth';
-import { KeyCacheManager } from './cache/KeyCacheManager';
-import { base58btc } from 'multiformats/bases/base58';
+import { OrgResolver } from '../../../packages/inji-verify-sdk/src/services/offline-verifier/cache/utils/OrgResolver';
+import { SDKCacheManager } from '../../../packages/inji-verify-sdk/src/services/offline-verifier/cache/SDKCacheManager';
 
 import './App.css';
 
@@ -111,6 +111,18 @@ function QRTestSection() {
   );
 }
 
+// Helper to convert hex string to byte array (for Django API public_key_bytes)
+function hexToBytes(hex?: string): number[] | undefined {
+  if (!hex) return undefined;
+  const clean = hex.startsWith('0x') ? hex.slice(2) : hex;
+  if (clean.length % 2 !== 0) return undefined;
+  const out: number[] = [];
+  for (let i = 0; i < clean.length; i += 2) {
+    out.push(parseInt(clean.slice(i, i + 2), 16));
+  }
+  return out;
+}
+
 // VC Upload component for caching public keys
 function VCUploadSection() {
   const [vcData, setVcData] = useState('');
@@ -124,166 +136,68 @@ function VCUploadSection() {
     }
 
     setIsLoading(true);
-    setMessage('Processing VC and fetching public keys...');
+    setMessage('Processing VC, storing to server, and priming offline cache...');
 
     try {
-      const parsedData = JSON.parse(vcData);
-      const credential = parsedData.credential;
-      
-      if (!credential || !credential.issuer) {
-        throw new Error('Invalid VC format: missing credential or issuer');
+      const parsed = JSON.parse(vcData);
+
+      // Build a CacheBundle using SDK OrgResolver
+      const bundle = await OrgResolver.buildBundleFromVC(parsed, true);
+      const base = getApiBaseUrl();
+      const token = getAccessToken();
+      if (!base || !token) throw new Error('Not authenticated. Please sign in first.');
+
+      // 1) Store contexts in Django (admin-only endpoint)
+      for (const c of bundle.contexts || []) {
+        await fetch(`${base}/api/contexts/upsert/`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: c.url, document: c.document })
+        });
       }
 
-      // Extract DID from issuer
-      const issuerDid = credential.issuer;
-      console.log('Processing VC with issuer DID:', issuerDid);
-
-      // Extract verification method from proof if available
-      const verificationMethod = credential.proof?.verificationMethod;
-      const didToResolve = verificationMethod || issuerDid;
-      
-      console.log('Resolving DID:', didToResolve);
-
-      // Use PublicKeyGetterFactory to fetch the public key
-      const publicKeyGetterFactory = new PublicKeyGetterFactory();
-      
-      try {
-        const publicKeyData = await publicKeyGetterFactory.get(didToResolve);
-        console.log('Retrieved public key data:', publicKeyData);
-
-        // Send to Django backend for persistent storage
-        try {
-          let accessToken = getAccessToken();
-          const legacyToken = localStorage.getItem('auth.legacyToken'); // Try legacy token too
-          const apiBaseUrl = getApiBaseUrl();
-          
-          console.log('Debug: initial accessToken exists:', !!accessToken);
-          console.log('Debug: legacyToken exists:', !!legacyToken);
-          console.log('Debug: apiBaseUrl:', apiBaseUrl);
-          
-          // Helper function to make the API call
-          const makeApiCall = async (token: string, isJWT: boolean) => {
-            const authHeader = isJWT ? `Bearer ${token}` : `Token ${token}`;
-            const apiUrl = apiBaseUrl ? `${apiBaseUrl}/api/org/public-keys/` : '/api/org/public-keys/';
-            
-            console.log('Debug: Making request to:', apiUrl);
-            console.log('Debug: Auth header type:', isJWT ? 'JWT Bearer' : 'Legacy Token');
-            
-            return fetch(apiUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': authHeader,
-              },
-              body: JSON.stringify({
-                did: didToResolve,
-                verification_method: publicKeyData.verificationMethod,
-                key_type: publicKeyData.keyType,
-                algorithm: publicKeyData.algorithm,
-                public_key_jwk: publicKeyData.jwk,
-                public_key_pem: publicKeyData.pem,
-                public_key_bytes: publicKeyData.bytes ? Array.from(publicKeyData.bytes) : null,
-                issuer_did: issuerDid,
-                credential_id: credential.id || null
-              })
-            });
-          };
-          
-          let response: Response | null = null;
-          
-          // Try with access token first
-          if (accessToken) {
-            response = await makeApiCall(accessToken, true);
-            
-            // If token is expired, try to refresh it
-            if (response.status === 401) {
-              console.log('Access token expired, attempting refresh...');
-              const newAccessToken = await refreshAccessToken();
-              if (newAccessToken) {
-                console.log('Token refreshed successfully');
-                accessToken = newAccessToken;
-                response = await makeApiCall(accessToken, true);
-              } else {
-                console.log('Token refresh failed, trying legacy token...');
-                if (legacyToken) {
-                  response = await makeApiCall(legacyToken, false);
-                }
-              }
-            }
-          } else if (legacyToken) {
-            // No access token, try legacy token
-            response = await makeApiCall(legacyToken, false);
-          }
-          
-          if (!response) {
-            throw new Error('No valid authentication token available');
-          }
-
-          if (response.ok) {
-            const result = await response.json();
-            console.log('Stored in Django database:', result);
-            
-            // Also cache locally in IndexedDB for offline use
-            try {
-              // Generate proper multibase format for Ed25519 keys
-            let publicKeyMultibase: string | undefined;
-            if (publicKeyData.bytes && publicKeyData.algorithm === 'Ed25519') {
-              const raw = spkiToRawEd25519(publicKeyData.bytes);
-              publicKeyMultibase = ed25519RawToMultibase(raw); // will look like z6M...
-            }
-            // ...
-            await KeyCacheManager.putKeys([{
-              key_id: didToResolve,
-              key_type: publicKeyData.keyType,
-              public_key_multibase: publicKeyMultibase,
-              public_key_hex: publicKeyData.bytes
-                ? Array.from(publicKeyData.bytes).map(b => b.toString(16).padStart(2, '0')).join('')
-                : undefined,
-              public_key_jwk: publicKeyData.jwk,
-              controller: didToResolve.split('#')[0], // remove fragment
-              purpose: 'assertion',
-              is_active: true,
-              organization_id: null,
-            }]);
-              console.log('Cached public key in IndexedDB with proper multibase encoding');
-              
-              setMessage(`✅ Success! Public key fetched, stored in database, and cached locally.\n\nDID: ${didToResolve}\nKey Type: ${publicKeyData.keyType}\nAlgorithm: ${publicKeyData.algorithm}\n\nCache: ✅ IndexedDB\nDatabase: ✅ Django`);
-            } catch (cacheError) {
-              console.warn('Failed to cache locally:', cacheError);
-              setMessage(`✅ Success! Public key fetched and stored in database.\n⚠️ Local caching failed but database storage succeeded.\n\nDID: ${didToResolve}\nKey Type: ${publicKeyData.keyType}\nAlgorithm: ${publicKeyData.algorithm}`);
-            }
-          } else {
-            // Log the full response for debugging
-            const responseText = await response.text();
-            console.error('Django storage failed:', {
-              status: response.status,
-              statusText: response.statusText,
-              headers: Object.fromEntries(response.headers.entries()),
-              body: responseText
-            });
-            
-            let errorMessage = 'Unknown error';
-            try {
-              const errorData = JSON.parse(responseText);
-              errorMessage = errorData.error || errorData.detail || 'Unknown error';
-            } catch {
-              errorMessage = responseText || `HTTP ${response.status}`;
-            }
-            
-            setMessage(`⚠️ Public key fetched but failed to store in database (${response.status}): ${errorMessage}\n\nDID: ${didToResolve}\nKey Type: ${publicKeyData.keyType}`);
-          }
-        } catch (apiError) {
-          console.error('API call failed:', apiError);
-          setMessage(`⚠️ Public key fetched but network error prevented database storage.\n\nDID: ${didToResolve}\nKey Type: ${publicKeyData.keyType}\nError: ${apiError instanceof Error ? apiError.message : 'Network error'}`);
+      // 2) Store public keys in Django (map to expected fields)
+      for (const k of bundle.publicKeys || []) {
+        const payload = {
+          did: k.controller,                                // required
+          verification_method: k.key_id,                    // used as key_id server-side
+          key_type: k.key_type || 'Ed25519VerificationKey2020',
+          algorithm: (k.key_type || '').includes('Ed25519') ? 'Ed25519' : undefined,
+          public_key_jwk: k.public_key_jwk || undefined,    // optional
+          public_key_bytes: hexToBytes(k.public_key_hex),    // optional; server converts to hex
+          issuer_did: k.controller,                          // optional metadata
+          credential_id: undefined                           // add if you have one
+        };
+        const res = await fetch(`${base}/api/org/public-keys/`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(j?.error || j?.detail || 'Failed to store public key on server');
         }
-
-      } catch (keyError) {
-        console.error('Failed to fetch public key:', keyError);
-        setMessage(`❌ Failed to fetch public key for DID: ${didToResolve}\nError: ${keyError instanceof Error ? keyError.message : 'Unknown error'}`);
       }
 
+      // 3) Immediately prime the SDK offline cache locally (no app-side cache logic)
+      await SDKCacheManager.primeFromServer({
+        publicKeys: (bundle.publicKeys || []).map(k => ({
+          key_id: k.key_id,
+          key_type: k.key_type,
+          public_key_multibase: k.public_key_multibase,
+          public_key_hex: k.public_key_hex,
+          public_key_jwk: k.public_key_jwk,
+          controller: k.controller,
+          purpose: k.purpose,
+          is_active: k.is_active,
+          organization_id: k.organization_id
+        })),
+        contexts: bundle.contexts || [],
+        contextUrls: bundle.contextUrls || []
+      });
+
+      setMessage(`✅ Stored on server and cached locally for offline verification.\nKeys: ${(bundle.publicKeys || []).length}\nContexts: ${(bundle.contexts || []).length}`);
       setVcData('');
-      
     } catch (error) {
       console.error('Error processing VC:', error);
       setMessage(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -344,50 +258,48 @@ function VCUploadSection() {
         "tag3"
     ]
   };
+
+
 //   const sampleVC = {
-//     "id": "did:rcw:ab01ec3f-9f67-4ce8-ade1-8fce82a9bee1",
+//     "id": "did:cbse:327b6c3f-ce17-4c00-ae4f-7fb2313b0626",
 //     "type": [
 //         "VerifiableCredential",
-//         "LifeInsuranceCredential",
-//         "InsuranceCredential"
+//         "UniversityDegreeCredential"
 //     ],
 //     "proof": {
 //         "type": "Ed25519Signature2020",
-//         "created": "2024-05-03T12:53:39Z",
-//         "proofValue": "z4GVSorSVms65uTSLHRdqJB7Km7UuyzGzYbu9uKuwBPRLgHLmBMa8YnBczVh4id2PMsrB31kjCbe6NVLdA9jThURs",
+//         "created": "2024-05-16T07:27:43Z",
+//         "proofValue": "z56crqnnjmvDa46FqmAnVhEttqKtFMTQ1et1mM5dA3WSHtb5ncQ36sS8fG3fxw6dpvtqbqvaE5FzaqwJTBX6dGH3P",
 //         "proofPurpose": "assertionMethod",
-//         "verificationMethod": "did:web:challabeehyv.github.io:DID-Resolve:3313e611-d08a-49c8-b478-7f55eafe62f2#key-0"
+//         "verificationMethod": "did:web:Sreejit-K.github.io:VCTest:d40bdb68-6a8d-4b71-9c2a-f3002513ae0e#key-0"
 //     },
-//     "issuer": "did:web:challabeehyv.github.io:DID-Resolve:3313e611-d08a-49c8-b478-7f55eafe62f2",
+//     "issuer": "did:web:Sreejit-K.github.io:VCTest:d40bdb68-6a8d-4b71-9c2a-f3002513ae0e",
 //     "@context": [
 //         "https://www.w3.org/2018/credentials/v1",
-//         "https://holashchand.github.io/test_project/insurance-context.json",
-//         {
-//             "LifeInsuranceCredential": {
-//                 "@id": "InsuranceCredential"
-//             }
-//         },
+//         "https://sreejit-k.github.io/VCTest/udc-context2.json",
 //         "https://w3id.org/security/suites/ed25519-2020/v1"
 //     ],
-//     "issuanceDate": "2024-05-03T12:53:39.113Z",
-//     "expirationDate": "2024-06-02T12:53:39.110Z",
+//     "issuanceDate": "2023-02-06T11:56:27.259Z",
+//     "expirationDate": "2025-02-08T11:56:27.259Z",
 //     "credentialSubject": {
-//         "id": "did:jwk:eyJrdHkiOiJFQyIsInVzZSI6InNpZyIsImNydiI6IlAtMjU2Iiwia2lkIjoic3pGa2cyOVFFalpiQ1VheFRfbFdiZElEU1ZQNWhlREhTeGR6UlhTOW1WZyIsIngiOiJzeV2Y2pEX1k0Y0xFS2NUTGR3a1dEWnR1RGpGWGxwcUtLZ2l5TDB2ZUY0IiwieSI6Ii13eGZIMDZRclRCZGljOG1yRDRBM2E0alhGREx1RnlBa0NPMm56Z3BNUGMiLCJhbGciOiJFUzI1NiJ9",
-//         "dob": "1991-08-13",
-//         "email": "challarao@beehyv.com",
-//         "gender": "Male",
-//         "mobile": "0123456789",
-//         "benefits": [
-//             "Critical Surgery",
-//             "Full body checkup"
-//         ],
-//         "fullName": "Challarao V",
-//         "policyName": "Start Insurance Gold Premium",
-//         "policyNumber": "1234567",
-//         "policyIssuedOn": "2023-04-20T20:48:17.684Z",
-//         "policyExpiresOn": "2033-04-20T20:48:17.684Z"
+//         "id": "did:example:2002-AR-015678",
+//         "type": "UniversityDegreeCredential",
+//         "ChildFullName": "Alex Jameson Taylor",
+//         "ChildDob": "January 15, 2003",
+//         "ChildGender": "Male",
+//         "ChildNationality": "Arandian",
+//         "ChildPlaceOfBirth": "Central Hospital, New Valera, Arandia",
+//         "FatherFullName": "Michael David Taylor",
+//         "FatherDob": "April 22, 1988",
+//         "FatherNationality": "Arandian",
+//         "MotherFullName": "Emma Louise Taylor",
+//         "MotherDob": "June 5, 1990",
+//         "MotherNationality": "Arandian",
+//         "RegistrationNumber": "2002-AR-015678",
+//         "DateOfRegistration": "January 20, 2002",
+//         "DateOfIssuance": "January 22, 2002"
 //     }
-// };
+// }
   return (
     <div style={{ 
       border: '2px dashed #ccc', 
@@ -613,44 +525,3 @@ function App() {
 }
 
 export default App;
-
-export function spkiToRawEd25519(spki: Uint8Array): Uint8Array {
-  // If already 32-byte raw key, return as-is
-  if (spki.length === 32) return new Uint8Array(spki);
-
-  // Read DER length (short/long form)
-  const readLen = (buf: Uint8Array, at: number) => {
-    let len = buf[at];
-    let lenBytes = 1;
-    if (len & 0x80) {
-      const n = len & 0x7f;
-      len = 0;
-      for (let j = 1; j <= n; j++) len = (len << 8) | buf[at + j];
-      lenBytes = 1 + n;
-    }
-    return { len, lenBytes };
-  };
-
-  // Scan for the real BIT STRING tag (0x03) with 0x00 pad and 32 bytes
-  for (let i = 0; i < spki.length; i++) {
-    if (spki[i] !== 0x03) continue; // BIT STRING tag
-    const { len, lenBytes } = readLen(spki, i + 1);
-    const pad = spki[i + 1 + lenBytes];
-    const contentStart = i + 1 + lenBytes + 1; // skip pad
-    const contentLen = len - 1; // exclude pad byte
-    if (pad === 0x00 && contentLen >= 32 && contentStart + 32 <= spki.length) {
-      // For Ed25519 SPKI, the public key is exactly 32 bytes
-      return new Uint8Array(spki.subarray(contentStart, contentStart + 32));
-    }
-  }
-
-  throw new Error('SPKI parse error: BIT STRING with 32-byte Ed25519 key not found');
-}
-
-export function ed25519RawToMultibase(raw32: Uint8Array): string {
-  const header = new Uint8Array([0xed, 0x01]); // ed25519-pub multicodec
-  const out = new Uint8Array(header.length + raw32.length);
-  out.set(header, 0);
-  out.set(raw32, header.length);
-  return base58btc.encode(out);
-}

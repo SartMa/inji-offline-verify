@@ -374,15 +374,25 @@ class ContextListView(APIView):
         serializer = JsonLdContextSerializer(qs, many=True)
         return Response({ 'contexts': serializer.data }, status=status.HTTP_200_OK)
 
-
+# ...existing code...
+# Allow non-staff context upsert during development (Worker PWA acting as org UI)
+ALLOW_CONTEXT_UPSERT_FOR_AUTHENTICATED = True
+# ...existing code...
 class ContextUpsertView(APIView):
-    """Create or update a JSON-LD context (admin only)."""
+    """Create or update a JSON-LD context (admin or org admin, or temporary dev override)."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        # Simple admin gate: require is_staff
-        if not request.user.is_staff:
-            return Response({ 'detail': 'Admin only' }, status=status.HTTP_403_FORBIDDEN)
+        user = request.user
+
+        # Temporary dev override: allow any authenticated user if enabled in settings
+        allow_any_auth = getattr(settings, 'ALLOW_CONTEXT_UPSERT_FOR_AUTHENTICATED', settings.DEBUG)
+
+        # Organization admin check (optional; contexts are global, but this lets org admins manage)
+        is_org_admin = OrganizationMember.objects.filter(user=user, role='ADMIN').exists()
+
+        if not (allow_any_auth or user.is_staff or is_org_admin):
+            return Response({'detail': 'Forbidden: requires staff or org admin'}, status=status.HTTP_403_FORBIDDEN)
         serializer = JsonLdContextSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

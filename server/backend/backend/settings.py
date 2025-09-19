@@ -27,6 +27,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 
+ALLOW_CONTEXT_UPSERT_FOR_AUTHENTICATED = config(
+    'ALLOW_CONTEXT_UPSERT_FOR_AUTHENTICATED',
+    default=DEBUG,  # allow while DEBUG=True
+    cast=bool
+)
 
 
 

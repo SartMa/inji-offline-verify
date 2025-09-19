@@ -28,6 +28,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 
+ALLOW_CONTEXT_UPSERT_FOR_AUTHENTICATED = config(
+    'ALLOW_CONTEXT_UPSERT_FOR_AUTHENTICATED',
+    default=DEBUG,  # allow while DEBUG=True
+    cast=bool
+)
 
 
 
@@ -96,6 +101,8 @@ if EMAIL_BACKEND.startswith('django.core.mail.backends.smtp') and not EMAIL_HOST
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Serve static files efficiently in production (and dev with collected files)
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -173,8 +180,16 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
+# Use an absolute URL (leading slash) so admin static assets resolve correctly
+# e.g. /static/admin/css/base.css
+STATIC_URL = '/static/'
 
-STATIC_URL = 'static/'
+# Where collectstatic will gather files for production (e.g., when DEBUG=False)
+# Not required for local dev, but keeps deployment predictable
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Use compressed manifest storage for long-term caching and cache-busting
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

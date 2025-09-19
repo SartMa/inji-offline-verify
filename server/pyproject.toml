@@ -21,4 +21,5 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "google-auth>=2.35.0",
     "cryptography>=42.0.0",
+    "whitenoise>=6.7.0",
 ]

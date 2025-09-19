@@ -2,22 +2,28 @@
   "compilerOptions": {
     "target": "ES5",
     "allowJs": false,
-    "module": "ESNext" /* Specify what module code is generated. */,
-    "rootDir": "src" /* Specify the root folder within your source files. */,
-    "declaration": true /* Generate .d.ts files from TypeScript and JavaScript files in your project. */,
-    "outDir": "dist" /* Specify an output folder for all emitted files. */,
-    "declarationDir": "dist" /* Specify the output directory for generated declaration files. */,
-    "esModuleInterop": true /* Emit additional JavaScript to ease support for importing CommonJS modules. This enables 'allowSyntheticDefaultImports' for type compatibility. */,
+    "module": "ESNext",
+    "rootDir": "src",
+    "declaration": true,
+    "outDir": "dist",
+    "declarationDir": "dist",
+    "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "allowSyntheticDefaultImports": true,
     "noFallthroughCasesInSwitch": true,
-    "moduleResolution": "Node",
+    "moduleResolution": "node",
     "resolveJsonModule": true,
-    "strict": true /* Enable all strict type-checking options. */,
+    "strict": true,
     "skipLibCheck": true,
     "noEmit": false,
     "jsx": "react-jsx"
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist", "__tests__"]
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "__tests__"
+  ]
 }

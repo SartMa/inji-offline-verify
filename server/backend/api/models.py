@@ -66,6 +66,16 @@ class VerificationLog(models.Model):
         blank=True,
     )
 
+    # The user/worker who performed this verification
+    verified_by = models.ForeignKey(
+        'auth.User',
+        on_delete=models.CASCADE,
+        related_name="verification_logs",
+        null=True,
+        blank=True,
+        help_text="The user who performed this verification"
+    )
+
     # A server-generated timestamp to track when the record was synced.
     synced_at = models.DateTimeField(auto_now_add=True)
 

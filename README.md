@@ -11,8 +11,8 @@ pnpm nx preview worker-pwa
 
 
 # Backend
-pnpm nx serve server
 
+pnpm nx serve server
 ## Organization Registration with Email OTP (Backend)
 The organization admin registration is now a 2-step OTP flow:
 

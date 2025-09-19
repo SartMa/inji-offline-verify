@@ -23,6 +23,7 @@ function LandingPage() {
       backgroundColor: '#f5f5f5'
     }}>
       <h1 style={{ color: '#333', marginBottom: '30px' }}>Worker VC Verification System</h1>
+     
       <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
         <button 
           onClick={() => navigate('/worker-signin')}
@@ -98,6 +99,7 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   }
   
   if (!isAuthenticated) {
+    return <Navigate to="/worker-signin" replace />;
     return <Navigate to="/worker-signin" replace />;
   }
   

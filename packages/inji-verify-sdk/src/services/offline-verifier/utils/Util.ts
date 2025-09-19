@@ -107,7 +107,7 @@ export class Util {
    * @param vcJsonObject - Credential object
    * @returns DATA_MODEL enum value or null
    */
-  getContextVersion(vcJsonObject: any): DATA_MODEL | null {
+  static getContextVersion(vcJsonObject: any): DATA_MODEL | null {
     if (vcJsonObject.hasOwnProperty(CredentialValidatorConstants.CONTEXT)) {
       const context = vcJsonObject[CredentialValidatorConstants.CONTEXT];
       const contexts = Array.isArray(context) ? context : [context];

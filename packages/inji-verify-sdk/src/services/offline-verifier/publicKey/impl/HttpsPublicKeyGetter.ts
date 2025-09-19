@@ -1,12 +1,12 @@
 import type { PublicKeyGetter } from '../PublicKeyGetter.js';
 import type { PublicKeyData } from '../Types.js';
-import { NetworkManager } from '../../../../../../../apps/worker-pwa/src/network/NetworkManager.js';
+import { fetchPublicDocument } from '../Utils.js';
 import { getPublicKeyFromPem, getPublicKeyFromJwk, getPublicKeyFromHex, getPublicKeyFromMultibaseEd25519 } from '../Utils.js';
 
 export class HttpsPublicKeyGetter implements PublicKeyGetter {
   async get(verificationMethod: string): Promise<PublicKeyData> {
-    const res = await NetworkManager.fetch(verificationMethod, { auth: false });
-    const json = await res.json();
+    
+    const json = await fetchPublicDocument(verificationMethod);
     // Kotlin checks for presence of keys and uses a key_type field
     const keyType = json.key_type || json.type || json.keyType;
     if (!keyType) throw new Error('Public key string not found');

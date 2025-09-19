@@ -23,6 +23,7 @@ import AppNavbar from '../../components/dash_comp/AppNavbar';
 import SideMenu from '../../components/dash_comp/SideMenu';
 import Header from '../../components/dash_comp/Header';
 import AppTheme from '../../theme/dash_theme/AppTheme';
+import { SidebarProvider } from '../../components/dash_comp/SidebarContext';
 import { registerWorker } from '../../services/workerService';
 import BusinessIcon from '@mui/icons-material/Business';
 import EmailIcon from '@mui/icons-material/Email';
@@ -1105,6 +1106,7 @@ export default function AddWorker() {
 
   return (
     <AppTheme>
+      <SidebarProvider>
       <CalendarGlobalStyles />
       <CssBaseline enableColorScheme />
       <Box sx={{ display: 'flex' }}>
@@ -1355,6 +1357,7 @@ export default function AddWorker() {
           {toast.message}
         </Alert>
       </Snackbar>
+      </SidebarProvider>
     </AppTheme>
   );
 }

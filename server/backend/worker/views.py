@@ -458,6 +458,232 @@ def get_current_user(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_organization_logs(request, org_id):
+    """
+    Get all verification logs for a specific organization
+    Supports filtering by user, status, date range, search, and pagination
+    """
+    try:
+        from api.models import VerificationLog
+        from api.serializers import VerificationLogSerializer
+        
+        # Get the organization
+        organization = get_object_or_404(Organization, id=org_id)
+        
+        # Check if the requesting user has permission to view this org's data
+        user_membership = OrganizationMember.objects.filter(
+            user=request.user,
+            organization=organization,
+            role='ADMIN'
+        ).first()
+        
+        if not user_membership:
+            return Response({
+                'success': False,
+                'error': 'You do not have permission to view this organization\'s logs'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get query parameters for filtering and pagination
+        user_id = request.GET.get('user_id', None)
+        status_filter = request.GET.get('status', None)  # 'SUCCESS' or 'FAILED'
+        search = request.GET.get('search', None)
+        date_from = request.GET.get('date_from', None)
+        date_to = request.GET.get('date_to', None)
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 20))
+        
+        # Build the queryset
+        queryset = VerificationLog.objects.filter(organization=organization)
+        
+        # Apply filters
+        if user_id:
+            # Filter by specific user - get user from OrganizationMember
+            try:
+                member = OrganizationMember.objects.get(id=user_id, organization=organization)
+                # Filter logs by the specific user who verified them
+                queryset = queryset.filter(verified_by=member.user)
+            except OrganizationMember.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'error': 'User not found in organization'
+                }, status=status.HTTP_404_NOT_FOUND)
+        
+        if status_filter and status_filter in ['SUCCESS', 'FAILED']:
+            queryset = queryset.filter(verification_status=status_filter)
+        
+        if search:
+            queryset = queryset.filter(
+                models.Q(vc_hash__icontains=search) |
+                models.Q(error_message__icontains=search) |
+                models.Q(credential_subject__icontains=search)
+            )
+        
+        if date_from:
+            from datetime import datetime
+            date_from_obj = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
+            queryset = queryset.filter(verified_at__gte=date_from_obj)
+        
+        if date_to:
+            from datetime import datetime
+            date_to_obj = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
+            queryset = queryset.filter(verified_at__lte=date_to_obj)
+        
+        # Order by verification date (newest first)
+        queryset = queryset.order_by('-verified_at')
+        
+        # Pagination
+        paginator = Paginator(queryset, page_size)
+        page_obj = paginator.get_page(page)
+        
+        # Serialize the data
+        serializer = VerificationLogSerializer(page_obj, many=True)
+        
+        # Calculate stats
+        total_logs = organization.verification_logs.count()
+        success_count = organization.verification_logs.filter(verification_status='SUCCESS').count()
+        failed_count = organization.verification_logs.filter(verification_status='FAILED').count()
+        
+        # Response data
+        response_data = {
+            'success': True,
+            'organization': {
+                'id': str(organization.id),
+                'name': getattr(organization, 'name', 'Unknown'),
+            },
+            'logs': serializer.data,
+            'pagination': {
+                'current_page': page,
+                'total_pages': paginator.num_pages,
+                'total_count': paginator.count,
+                'page_size': page_size,
+                'has_next': page_obj.has_next(),
+                'has_previous': page_obj.has_previous(),
+            },
+            'stats': {
+                'total_logs': total_logs,
+                'success_count': success_count,
+                'failed_count': failed_count,
+            }
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+        
+    except ValueError as e:
+        return Response({
+            'success': False,
+            'error': 'Invalid organization ID format'
+        }, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_organization_logs_stats(request, org_id):
+    """
+    Get verification logs statistics for a specific organization
+    """
+    try:
+        from api.models import VerificationLog
+        from datetime import datetime, timedelta
+        
+        # Get the organization
+        organization = get_object_or_404(Organization, id=org_id)
+        
+        # Check if the requesting user has permission to view this org's data
+        user_membership = OrganizationMember.objects.filter(
+            user=request.user,
+            organization=organization,
+            role='ADMIN'
+        ).first()
+        
+        if not user_membership:
+            return Response({
+                'success': False,
+                'error': 'You do not have permission to view this organization\'s logs'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Calculate stats
+        total_logs = organization.verification_logs.count()
+        success_count = organization.verification_logs.filter(verification_status='SUCCESS').count()
+        failed_count = organization.verification_logs.filter(verification_status='FAILED').count()
+        
+        # Recent logs (last 24 hours)
+        from django.utils import timezone
+        last_24h = timezone.now() - timedelta(hours=24)
+        recent_logs = organization.verification_logs.filter(verified_at__gte=last_24h).count()
+        
+        response_data = {
+            'success': True,
+            'stats': {
+                'total_logs': total_logs,
+                'success_count': success_count,
+                'failed_count': failed_count,
+                'recent_logs': recent_logs,
+            }
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+        
+    except ValueError as e:
+        return Response({
+            'success': False,
+            'error': 'Invalid organization ID format'
+        }, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_log_detail(request, log_id):
+    """
+    Get detailed information of a specific verification log
+    """
+    try:
+        from api.models import VerificationLog
+        from api.serializers import VerificationLogSerializer
+        
+        log = get_object_or_404(VerificationLog, id=log_id)
+        
+        # Check if the requesting user has permission to view this log
+        if log.organization:
+            user_membership = OrganizationMember.objects.filter(
+                user=request.user,
+                organization=log.organization,
+                role='ADMIN'
+            ).first()
+            
+            if not user_membership:
+                return Response({
+                    'success': False,
+                    'error': 'You do not have permission to view this log'
+                }, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = VerificationLogSerializer(log)
+        
+        return Response({
+            'success': True,
+            'log': serializer.data
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 def get_tokens_for_user(user):  # add helper if not already defined
     refresh = RefreshToken.for_user(user)
     return {"refresh": str(refresh), "access": str(refresh.access_token)}

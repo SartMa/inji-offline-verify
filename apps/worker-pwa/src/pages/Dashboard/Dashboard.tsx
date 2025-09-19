@@ -24,6 +24,7 @@ import Statistics from '../../components/Statistics.tsx';
 import TestInterface from '../../components/TestInterface';
 import SyncControls from '../../components/SyncControls';
 import StorageLogs from '../../components/StorageLogs.tsx';
+import VerificationActions from '../../components/VerificationActions';
 
 import {
   chartsCustomizations,
@@ -75,6 +76,21 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
               <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
                 Worker VC Verification
               </Typography>
+              
+              {/* Verification Actions - Top Section */}
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid size={{ xs: 12, md: 12 }}>
+                  <Paper elevation={2} sx={{ p: 2.5, minHeight: '200px' }}>
+                    <Typography variant="h6" gutterBottom fontWeight="medium" sx={{ mb: 2 }}>
+                      Verification Actions
+                    </Typography>
+                    <VerificationActions 
+                      onScanComplete={(data) => console.log('Scan result:', data)}
+                      onUploadComplete={(file) => console.log('File uploaded:', file.name)}
+                    />
+                  </Paper>
+                </Grid>
+              </Grid>
               
               <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid size={{ xs: 12, md: 8 }}>

@@ -1,5 +1,5 @@
 from rest_framework.permissions import BasePermission
-from .models import OrganizationMember
+from worker.models import OrganizationMember
 
 
 class IsOrganizationAdmin(BasePermission):

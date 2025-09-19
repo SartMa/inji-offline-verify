@@ -14,12 +14,45 @@ interface LoginResponse {
 }
 
 export async function login(baseUrl: string, payload: { username: string; password: string; org_name: string }): Promise<LoginResponse> {
-  const res = await fetch(`${baseUrl}/api/auth/login/`, {
+  const res = await fetch(`${baseUrl}/worker/api/login/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`Login failed: ${res.status}`);
+  const data: LoginResponse = await res.json();
+  setApiBaseUrl(baseUrl);
+  if (data?.access || data?.refresh || data?.token) {
+    saveTokens({ access: data.access, refresh: data.refresh, legacyToken: data.token });
+  }
+  return data;
+}
+
+export async function googleLogin(baseUrl: string, payload: { access_token: string; org_name: string }): Promise<LoginResponse> {
+  const res = await fetch(`${baseUrl}/worker/api/google-login/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.non_field_errors?.[0] || `Google login failed: ${res.status}`);
+  }
+  const data: LoginResponse = await res.json();
+  setApiBaseUrl(baseUrl);
+  if (data?.access || data?.refresh || data?.token) {
+    saveTokens({ access: data.access, refresh: data.refresh, legacyToken: data.token });
+  }
+  return data;
+}
+
+export async function organizationLogin(baseUrl: string, payload: { username: string; password: string; org_name: string }): Promise<LoginResponse> {
+  const res = await fetch(`${baseUrl}/organization/api/login/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Organization login failed: ${res.status}`);
   const data: LoginResponse = await res.json();
   setApiBaseUrl(baseUrl);
   if (data?.access || data?.refresh || data?.token) {

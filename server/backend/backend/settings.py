@@ -45,6 +45,8 @@ ALLOWED_HOSTS = [
 
 INSTALLED_APPS = [
     'api',
+    'organization',  # organization app
+    'worker',        # worker app
     'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',

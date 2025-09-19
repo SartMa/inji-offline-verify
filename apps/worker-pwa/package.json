@@ -12,6 +12,8 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@inji-offline-verify/shared-auth": "workspace:*",
+    "@inji-offline-verify/shared-ui": "workspace:*",
     "@mui/icons-material": "^7.3.2",
     "@mui/material": "^7.3.2",
     "react": "^19.1.1",
@@ -23,6 +25,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@nx/js": "21.5.1",
     "@types/node": "^22.18.1",
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",

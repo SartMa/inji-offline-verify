@@ -19,7 +19,7 @@ import AppTheme from '../../theme/dash_theme/AppTheme';
 import Copyright from '../../internals/components/Copyright';
 
 // Worker-specific components
-import StatusBar from '../../components/StatusBar';
+import SystemStatus from '../../components/SystemStatus';
 import Statistics from '../../components/Statistics.tsx';
 import TestInterface from '../../components/TestInterface';
 import SyncControls from '../../components/SyncControls';
@@ -58,7 +58,6 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
             overflow: 'auto',
           })}
         >
-          <StatusBar />
           <Stack
             spacing={2}
             sx={{
@@ -69,6 +68,11 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
             }}
           >
             <Header />
+            
+            {/* System Status - Compact, positioned below header */}
+            <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' }, mb: 2 }}>
+              <SystemStatus compact />
+            </Box>
             
             <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
               {/* Overview section with statistics */}

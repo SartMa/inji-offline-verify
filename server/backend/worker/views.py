@@ -494,8 +494,8 @@ def get_organization_logs(request, org_id):
         page = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('page_size', 20))
         
-        # Build the queryset
-        queryset = VerificationLog.objects.filter(organization=organization)
+        # Build the queryset - select related user info to avoid N+1 queries
+        queryset = VerificationLog.objects.filter(organization=organization).select_related('verified_by')
         
         # Apply filters
         if user_id:
@@ -540,10 +540,19 @@ def get_organization_logs(request, org_id):
         # Serialize the data
         serializer = VerificationLogSerializer(page_obj, many=True)
         
-        # Calculate stats
-        total_logs = organization.verification_logs.count()
-        success_count = organization.verification_logs.filter(verification_status='SUCCESS').count()
-        failed_count = organization.verification_logs.filter(verification_status='FAILED').count()
+        # Calculate stats based on the filtered queryset (not just organization logs)
+        if user_id:
+            # Stats for specific user only
+            user_member = OrganizationMember.objects.get(id=user_id, organization=organization)
+            user_logs_queryset = VerificationLog.objects.filter(organization=organization, verified_by=user_member.user)
+            total_logs = user_logs_queryset.count()
+            success_count = user_logs_queryset.filter(verification_status='SUCCESS').count()
+            failed_count = user_logs_queryset.filter(verification_status='FAILED').count()
+        else:
+            # Stats for entire organization
+            total_logs = organization.verification_logs.count()
+            success_count = organization.verification_logs.filter(verification_status='SUCCESS').count()
+            failed_count = organization.verification_logs.filter(verification_status='FAILED').count()
         
         # Response data
         response_data = {
@@ -588,6 +597,7 @@ def get_organization_logs(request, org_id):
 def get_organization_logs_stats(request, org_id):
     """
     Get verification logs statistics for a specific organization
+    Supports filtering by user_id to get stats for a specific user
     """
     try:
         from api.models import VerificationLog
@@ -609,15 +619,37 @@ def get_organization_logs_stats(request, org_id):
                 'error': 'You do not have permission to view this organization\'s logs'
             }, status=status.HTTP_403_FORBIDDEN)
         
-        # Calculate stats
-        total_logs = organization.verification_logs.count()
-        success_count = organization.verification_logs.filter(verification_status='SUCCESS').count()
-        failed_count = organization.verification_logs.filter(verification_status='FAILED').count()
+        # Get user_id parameter for filtering
+        user_id = request.GET.get('user_id', None)
         
-        # Recent logs (last 24 hours)
-        from django.utils import timezone
-        last_24h = timezone.now() - timedelta(hours=24)
-        recent_logs = organization.verification_logs.filter(verified_at__gte=last_24h).count()
+        if user_id:
+            # Stats for specific user only
+            try:
+                member = OrganizationMember.objects.get(id=user_id, organization=organization)
+                user_logs_queryset = VerificationLog.objects.filter(organization=organization, verified_by=member.user)
+                total_logs = user_logs_queryset.count()
+                success_count = user_logs_queryset.filter(verification_status='SUCCESS').count()
+                failed_count = user_logs_queryset.filter(verification_status='FAILED').count()
+                
+                # Recent logs (last 24 hours) for this user
+                from django.utils import timezone
+                last_24h = timezone.now() - timedelta(hours=24)
+                recent_logs = user_logs_queryset.filter(verified_at__gte=last_24h).count()
+            except OrganizationMember.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'error': 'User not found in organization'
+                }, status=status.HTTP_404_NOT_FOUND)
+        else:
+            # Stats for entire organization
+            total_logs = organization.verification_logs.count()
+            success_count = organization.verification_logs.filter(verification_status='SUCCESS').count()
+            failed_count = organization.verification_logs.filter(verification_status='FAILED').count()
+            
+            # Recent logs (last 24 hours)
+            from django.utils import timezone
+            last_24h = timezone.now() - timedelta(hours=24)
+            recent_logs = organization.verification_logs.filter(verified_at__gte=last_24h).count()
         
         response_data = {
             'success': True,

@@ -282,8 +282,18 @@ export default function VerificationLogsTable({
                   {showUserColumn && (
                     <TableCell>
                       <Typography variant="body2" color="text.secondary">
-                        {/* We'll need to add user info to the log model or join */}
-                        N/A
+                        {log.verified_by_info ? (
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                              {log.verified_by_info.full_name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              @{log.verified_by_info.username}
+                            </Typography>
+                          </Box>
+                        ) : (
+                          'Unknown'
+                        )}
                       </Typography>
                     </TableCell>
                   )}

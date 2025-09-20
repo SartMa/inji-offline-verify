@@ -22,6 +22,8 @@ class VerificationLogSerializer(serializers.ModelSerializer):
     Serializer for the VerificationLog model. It validates and converts
     incoming JSON data into VerificationLog model instances.
     """
+    verified_by_info = serializers.SerializerMethodField()
+    
     class Meta:
         model = VerificationLog
         # Define the fields that the API will accept.
@@ -34,9 +36,40 @@ class VerificationLogSerializer(serializers.ModelSerializer):
             'error_message',
             'organization',
             'verified_by',
+            'verified_by_info',
+            'synced_at',
         ]
 
-    read_only_fields = ['organization', 'verified_by']
+    read_only_fields = ['organization', 'verified_by', 'verified_by_info', 'synced_at']
+    
+    def get_verified_by_info(self, obj):
+        """Get user information for the person who verified this log"""
+        if obj.verified_by:
+            try:
+                # Get the organization member info to include full_name
+                member = OrganizationMember.objects.filter(
+                    user=obj.verified_by, 
+                    organization=obj.organization
+                ).first()
+                
+                if member:
+                    return {
+                        'id': str(member.id),
+                        'username': obj.verified_by.username,
+                        'full_name': member.full_name or f"{obj.verified_by.first_name} {obj.verified_by.last_name}".strip() or obj.verified_by.username,
+                        'email': obj.verified_by.email,
+                    }
+                else:
+                    # Fallback if member relationship not found
+                    return {
+                        'id': str(obj.verified_by.id),
+                        'username': obj.verified_by.username,
+                        'full_name': f"{obj.verified_by.first_name} {obj.verified_by.last_name}".strip() or obj.verified_by.username,
+                        'email': obj.verified_by.email,
+                    }
+            except Exception:
+                return None
+        return None
 
     def create(self, validated_data):
         request = self.context.get('request')

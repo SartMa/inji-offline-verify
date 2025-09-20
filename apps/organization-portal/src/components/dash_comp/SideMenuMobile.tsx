@@ -10,6 +10,8 @@ import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
 import MenuButton from './MenuButton';
 import MenuContent from './MenuContent';
 import CardAlert from './CardAlert';
+import { logoutService } from '../../services/logoutService';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
 
 interface SideMenuMobileProps {
   open: boolean | undefined;
@@ -17,6 +19,24 @@ interface SideMenuMobileProps {
 }
 
 export default function SideMenuMobile({ open, toggleDrawer }: SideMenuMobileProps) {
+  const { user, loading } = useCurrentUser();
+  
+  // Get user display name - user is the full response, so we need user.user for the actual user data
+  const userData = user?.user;
+  const displayName = userData?.full_name || 
+    (userData?.first_name && userData?.last_name ? `${userData.first_name} ${userData.last_name}` : userData?.username) || 
+    'User';
+
+  const handleLogout = async () => {
+    // Close the drawer first
+    toggleDrawer(false)();
+    
+    // Perform complete logout and redirect
+    await logoutService.logout({
+      redirect: true,
+      redirectPath: '/signin'
+    });
+  };
   return (
     <Drawer
       anchor="right"
@@ -43,12 +63,12 @@ export default function SideMenuMobile({ open, toggleDrawer }: SideMenuMobilePro
           >
             <Avatar
               sizes="small"
-              alt="Riley Carter"
+              alt={displayName}
               src="/static/images/avatar/7.jpg"
               sx={{ width: 24, height: 24 }}
             />
             <Typography component="p" variant="h6">
-              Riley Carter
+              {loading ? 'Loading...' : displayName}
             </Typography>
           </Stack>
           <MenuButton showBadge>
@@ -62,7 +82,12 @@ export default function SideMenuMobile({ open, toggleDrawer }: SideMenuMobilePro
         </Stack>
         <CardAlert />
         <Stack sx={{ p: 2 }}>
-          <Button variant="outlined" fullWidth startIcon={<LogoutRoundedIcon />}>
+          <Button 
+            variant="outlined" 
+            fullWidth 
+            startIcon={<LogoutRoundedIcon />}
+            onClick={handleLogout}
+          >
             Logout
           </Button>
         </Stack>

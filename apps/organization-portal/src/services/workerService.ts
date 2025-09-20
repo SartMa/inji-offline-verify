@@ -1,7 +1,7 @@
 import { getAccessToken, getApiBaseUrl, refreshAccessToken } from '@inji-offline-verify/shared-auth';
 
 export interface RegisterWorkerPayload {
-  org_name: string;
+  org_name?: string; // optional; UI shows fixed organization and service injects organization_id
   username: string;
   password: string;
   email: string;
@@ -9,6 +9,7 @@ export interface RegisterWorkerPayload {
   phone_number: string;
   gender?: 'M' | 'F' | 'O' | string;
   dob?: string; // YYYY-MM-DD
+  organization_id?: string; // preferred identifier sent automatically when available
 }
 
 class WorkerService {
@@ -77,9 +78,21 @@ class WorkerService {
   }
 
   async registerWorker(payload: RegisterWorkerPayload) {
+    // Try to include organization_id automatically from current session context
+    let enriched: RegisterWorkerPayload = { ...payload };
+    try {
+      const { userService } = await import('./userService');
+      const orgId = userService.getCurrentOrganizationId();
+      if (orgId) {
+        enriched.organization_id = orgId;
+      }
+    } catch (e) {
+      // ignore if userService not available
+    }
+
     const response = await this.fetchWithAuth(`${this.baseUrl}/worker/api/register/`, {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify(enriched),
     });
 
     if (!response.ok) {

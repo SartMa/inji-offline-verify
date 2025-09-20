@@ -15,11 +15,6 @@ from .models import JsonLdContext
 from rest_framework.permissions import IsAuthenticated
 from worker.models import OrganizationMember
 
-try:
-    import requests
-except Exception:  # pragma: no cover
-    requests = None
-
 #     def post(self, request, *args, **kwargs):
 #         """Store a new public key from VC upload."""
 #         data = request.data
@@ -129,22 +124,22 @@ except Exception:  # pragma: no cover
 #         return Response(out, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
 
-# class ContextDefaultsView(APIView):
-#     """Return only the default required contexts used by the client."""
-#     permission_classes = [permissions.IsAuthenticated]
+class ContextDefaultsView(APIView):
+    """Return only the default required contexts used by the client."""
+    permission_classes = [permissions.IsAuthenticated]
 
-#     DEFAULT_URLS = [
-#         'https://www.w3.org/2018/credentials/v1',
-#         'https://w3id.org/security/v1',
-#         'https://w3id.org/security/v2',
-#         'https://sreejit-k.github.io/VCTest/udc-context2.json',
-#         'https://w3id.org/security/suites/ed25519-2020/v1'
-#     ]
+    DEFAULT_URLS = [
+        'https://www.w3.org/2018/credentials/v1',
+        'https://w3id.org/security/v1',
+        'https://w3id.org/security/v2',
+        'https://sreejit-k.github.io/VCTest/udc-context2.json',
+        'https://w3id.org/security/suites/ed25519-2020/v1'
+    ]
 
-#     def get(self, request, *args, **kwargs):
-#         qs = JsonLdContext.objects.filter(url__in=self.DEFAULT_URLS).order_by('url')
-#         serializer = JsonLdContextSerializer(qs, many=True)
-#         return Response({ 'contexts': serializer.data }, status=status.HTTP_200_OK)
+    def get(self, request, *args, **kwargs):
+        qs = JsonLdContext.objects.filter(url__in=self.DEFAULT_URLS).order_by('url')
+        serializer = JsonLdContextSerializer(qs, many=True)
+        return Response({'contexts': serializer.data}, status=status.HTTP_200_OK)
 
 
 # class ContextRefreshFromSourceView(APIView):

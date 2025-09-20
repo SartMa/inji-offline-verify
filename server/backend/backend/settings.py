@@ -50,7 +50,6 @@ INSTALLED_APPS = [
     'worker',        # worker app
     'corsheaders',
     'rest_framework',
-    'rest_framework.authtoken',
     'django.contrib.sites',
     'allauth',
     'allauth.account',
@@ -199,8 +198,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Django REST Framework configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-    'rest_framework_simplejwt.authentication.JWTAuthentication',
-    'rest_framework.authentication.TokenAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
@@ -210,6 +208,8 @@ REST_FRAMEWORK = {
 
 REST_AUTH = {
     'USE_JWT': True,
+    # Disable legacy DRF authtoken model to avoid requiring rest_framework.authtoken
+    'TOKEN_MODEL': None,
 }
 
 # JWT Configuration for offline PWA support

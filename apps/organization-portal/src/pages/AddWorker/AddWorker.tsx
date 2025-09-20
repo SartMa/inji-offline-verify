@@ -25,6 +25,7 @@ import Header from '../../components/dash_comp/Header';
 import AppTheme from '../../theme/dash_theme/AppTheme';
 import { SidebarProvider } from '../../components/dash_comp/SidebarContext';
 import { registerWorker } from '../../services/workerService';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
 import BusinessIcon from '@mui/icons-material/Business';
 import EmailIcon from '@mui/icons-material/Email';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -606,11 +607,11 @@ export default function AddWorker() {
   const theme = useTheme();
   const { mode } = useColorScheme();
   const isDark = mode === 'dark';
+  const { organizationName } = useCurrentUser();
   const [activeStep, setActiveStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
   const [form, setForm] = useState({
-    org_name: '',
     username: '',
     password: '',
     email: '',
@@ -626,7 +627,7 @@ export default function AddWorker() {
     severity: 'success' as 'success' | 'error'
   });
 
-  const steps = ['Organization Info', 'Personal Details', 'Account Setup'];
+  const steps = ['Organization', 'Personal Details', 'Account Setup'];
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -674,10 +675,7 @@ export default function AddWorker() {
 
     switch (activeStep) {
       case 0:
-        if (!form.org_name.trim()) {
-          errors.org_name = 'Organization name is required';
-          isValid = false;
-        }
+        // No validation needed; organization is fixed by admin's current org
         break;
       
       case 1:
@@ -751,25 +749,21 @@ export default function AddWorker() {
             <Box sx={{ textAlign: 'center', mb: 3 }}>
               <BusinessIcon sx={{ fontSize: 48, color: isDark ? '#4299e1' : 'primary.main', mb: 2 }} />
               <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, color: isDark ? '#ffffff' : 'text.primary' }}>
-                Organization Information
+                Organization
               </Typography>
               <Typography variant="body1" sx={{ color: isDark ? '#a0aec0' : 'text.secondary' }}>
-                Let's start with your organization details
+                Workers are added to your current organization.
               </Typography>
             </Box>
             <Grid container spacing={3}>
               <Grid size={{ xs: 12 }}>
                 <StyledTextField
-                  required
                   fullWidth
-                  name="org_name"
-                  value={form.org_name}
-                  onChange={onChange}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Enter organization name *"
-                  error={!!fieldErrors.org_name}
-                  helperText={fieldErrors.org_name}
+                  name="organization"
+                  value={organizationName || 'Loading...'}
+                  placeholder="Organization"
                   InputProps={{
+                    readOnly: true,
                     startAdornment: (
                       <InputAdornment position="start">
                         <BusinessIcon />
@@ -1040,7 +1034,7 @@ export default function AddWorker() {
                       color: '#ffffff',
                     }
                   }}>
-                    {form.org_name || 'Not specified'}
+                    {organizationName || 'Not available'}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>

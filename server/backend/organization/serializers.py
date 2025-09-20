@@ -2,7 +2,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
-from rest_framework.authtoken.models import Token
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Organization, OrganizationDID, PublicKey, PendingOrganizationRegistration
 from worker.models import OrganizationMember
@@ -162,12 +161,14 @@ class OrganizationRegistrationConfirmSerializer(serializers.Serializer):
             is_staff=True,
         )
         OrganizationMember.objects.create(user=user, organization=org, role='ADMIN')
-        token, _ = Token.objects.get_or_create(user=user)
+        # Issue JWT pair for immediate login
+        jwt = RefreshToken.for_user(user)
         pending.mark_consumed()
         return {
             'organization': org,
             'user': user,
-            'token': token.key,
+            'access': str(jwt.access_token),
+            'refresh': str(jwt),
         }
 
 
@@ -195,12 +196,10 @@ class OrganizationLoginSerializer(serializers.Serializer):
         if membership.role != 'ADMIN':
             raise serializers.ValidationError('Organization login requires admin privileges')
 
-        # Issue both DRF token (backward compat) and JWT pair
-        token, _ = Token.objects.get_or_create(user=user)
+        # Issue JWT pair
         jwt = RefreshToken.for_user(user)
         
         return {
-            'token': token.key,
             'access': str(jwt.access_token),
             'refresh': str(jwt),
             'username': user.username,

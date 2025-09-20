@@ -49,41 +49,35 @@ class RegisterWorkerView(APIView):
     Requirements:
       - Authenticated user
       - User is ADMIN of the target organization
-      - org_name required only if the admin belongs to multiple organizations
-    NOTE: org_id has been removed. Use org_name.
+      - organization_id required in request body (aligns with IsOrganizationAdmin)
+    Notes:
+      - org_name remains supported in serializer for backward-compat, but this endpoint
+        enforces organization_id to match permission behavior.
     """
     permission_classes = [IsAuthenticated, IsOrganizationAdmin]
 
     def post(self, request, *args, **kwargs):
-        user = request.user
-        admin_qs = OrganizationMember.objects.filter(user=user, role="ADMIN").select_related("organization")
-        if not admin_qs.exists():
-            return Response({"detail": "Not authorized"}, status=403)
-
         data = request.data.copy()
 
-        # Reject deprecated org_id usage
-        if "org_id" in data:
-            return Response({"detail": "org_id is no longer supported. Use org_name."}, status=400)
+        # Require organization_id to comply with IsOrganizationAdmin
+        org_id = data.get("organization_id") or data.get("org_id")
+        if not org_id:
+            return Response({"detail": "organization_id is required"}, status=400)
 
-        org_name = data.get("org_name")
-        if org_name:
-            org = next((m.organization for m in admin_qs if m.organization.name == org_name), None)
-            if not org:
-                return Response({"detail": "You are not admin of provided org_name"}, status=403)
-        else:
-            if admin_qs.count() == 1:
-                org = admin_qs.first().organization
-            else:
-                return Response({"detail": "Multiple admin organizations. Provide org_name."}, status=400)
+        # Resolve organization (permission already validated admin rights)
+        try:
+            org = Organization.objects.get(id=org_id)
+        except Organization.DoesNotExist:
+            return Response({"detail": "Organization not found"}, status=404)
 
-        # Enforce (prevent spoofing)
-        data["org_name"] = org.name
+        # Pass through organization_id to serializer (org_name optional for BC)
+        data["organization_id"] = str(org.id)
 
-        serializer = WorkerRegistrationSerializer(data=data, context={"organization": org})
+        serializer = WorkerRegistrationSerializer(data=data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
 
+        user = request.user
         save_result = serializer.save(organization=org, created_by=user)
 
         # Robust handling of various return shapes

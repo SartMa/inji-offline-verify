@@ -6,7 +6,6 @@ from organization.models import Organization
 from organization.serializers import OrganizationSerializer
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
-from rest_framework.authtoken.models import Token
 from rest_framework_simplejwt.tokens import RefreshToken
 from datetime import datetime, timedelta, timezone as dt_timezone
 import random, string
@@ -135,12 +134,10 @@ class EmailLoginCodeVerifySerializer(serializers.Serializer):
         record.save(update_fields=['consumed_at'])
         user = validated_data['user']
         jwt = RefreshToken.for_user(user)
-        token, _ = Token.objects.get_or_create(user=user)
         # Attempt to include first org membership context if exists
         membership = OrganizationMember.objects.filter(user=user).first()
         org_data = OrganizationSerializer(membership.organization).data if membership else None
         return {
-            'token': token.key,
             'access': str(jwt.access_token),
             'refresh': str(jwt),
             'username': user.username,

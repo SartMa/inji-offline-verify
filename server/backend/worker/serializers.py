@@ -1,16 +1,18 @@
 # server/worker/serializers.py
 from rest_framework import serializers
-from django.contrib.auth.models import User
-from django.contrib.auth import authenticate
-from rest_framework.authtoken.models import Token
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import OrganizationMember
 from organization.models import Organization
 from organization.serializers import OrganizationSerializer
 
+User = get_user_model()
+
 
 class WorkerRegistrationSerializer(serializers.Serializer):
-    org_name = serializers.CharField()
+    # Prefer organization_id for alignment with IsOrganizationAdmin; keep org_name as fallback
+    organization_id = serializers.UUIDField(required=False)
+    org_name = serializers.CharField(required=False)
     username = serializers.CharField()
     password = serializers.CharField(write_only=True, min_length=8)
     email = serializers.EmailField()
@@ -20,12 +22,25 @@ class WorkerRegistrationSerializer(serializers.Serializer):
     dob = serializers.DateField()
 
     def validate(self, attrs):
-        try:
-            org = Organization.objects.get(name__iexact=attrs['org_name'])
-        except Organization.DoesNotExist:
-            raise serializers.ValidationError('Organization not found')
+        org = None
+        org_id = attrs.get('organization_id')
+        org_name = attrs.get('org_name')
+
+        if org_id:
+            try:
+                org = Organization.objects.get(id=org_id)
+            except Organization.DoesNotExist:
+                raise serializers.ValidationError({'organization_id': 'Organization not found'})
+        elif org_name:
+            try:
+                org = Organization.objects.get(name__iexact=org_name)
+            except Organization.DoesNotExist:
+                raise serializers.ValidationError({'org_name': 'Organization not found'})
+        else:
+            raise serializers.ValidationError('organization_id or org_name is required')
+
         if User.objects.filter(username=attrs['username']).exists():
-            raise serializers.ValidationError('Username already exists')
+            raise serializers.ValidationError({'username': 'Username already exists'})
         attrs['org'] = org
         return attrs
 
@@ -77,12 +92,9 @@ class WorkerLoginSerializer(serializers.Serializer):
         if not membership:
             raise serializers.ValidationError('User is not a member of this organization')
 
-        # Issue both DRF token (backward compat) and JWT pair
-        token, _ = Token.objects.get_or_create(user=user)
         jwt = RefreshToken.for_user(user)
         
         return {
-            'token': token.key,
             'access': str(jwt.access_token),
             'refresh': str(jwt),
             'username': user.username,
@@ -102,24 +114,24 @@ class GoogleWorkerLoginSerializer(serializers.Serializer):
     def validate(self, attrs):
         access_token = attrs['access_token']
         org_name = attrs['org_name']
-        
+
+        # Verify the Google access token without depending on 'requests'
         try:
-            # Verify the Google access token by making a request to Google's API
-            import requests as http_requests
-            response = http_requests.get(
-                f'https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={access_token}',
-                timeout=10
-            )
-            
-            if response.status_code != 200:
-                raise serializers.ValidationError('Invalid Google access token')
-            
-            token_info = response.json()
-            email = token_info.get('email')
-            
-            if not email:
-                raise serializers.ValidationError('Could not retrieve email from Google token')
-                
+            import json as _json
+            from urllib.request import urlopen
+            from urllib.error import URLError, HTTPError
+
+            url = f'https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={access_token}'
+            with urlopen(url, timeout=10) as resp:  # nosec B310 (external call intended)
+                if resp.status != 200:
+                    raise serializers.ValidationError('Invalid Google access token')
+                data = resp.read().decode('utf-8')
+                token_info = _json.loads(data)
+                email = token_info.get('email')
+                if not email:
+                    raise serializers.ValidationError('Could not retrieve email from Google token')
+        except (HTTPError, URLError) as e:
+            raise serializers.ValidationError(f'Failed to verify Google token: {str(e)}')
         except Exception as e:
             raise serializers.ValidationError(f'Failed to verify Google token: {str(e)}')
         
@@ -140,12 +152,9 @@ class GoogleWorkerLoginSerializer(serializers.Serializer):
         if not membership:
             raise serializers.ValidationError('This email is not registered as a worker for this organization')
         
-        # Issue both DRF token (backward compat) and JWT pair
-        token, _ = Token.objects.get_or_create(user=user)
         jwt = RefreshToken.for_user(user)
         
         return {
-            'token': token.key,
             'access': str(jwt.access_token),
             'refresh': str(jwt),
             'username': user.username,

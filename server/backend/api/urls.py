@@ -5,13 +5,14 @@ from .views import (
     EmailLoginCodeVerifyView,
     PasswordResetRequestView,
     PasswordResetConfirmView,
+    ContextDefaultsView,
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
     # # JSON-LD Context endpoints (core functionality)
     # path('contexts/', ContextListView.as_view(), name='contexts_list'),
-    # path('contexts/defaults/', ContextDefaultsView.as_view(), name='contexts_defaults'),
+    path('contexts/defaults/', ContextDefaultsView.as_view(), name='contexts_defaults'),
     # path('contexts/upsert/', ContextUpsertView.as_view(), name='contexts_upsert'),
     # path('contexts/refresh/', ContextRefreshFromSourceView.as_view(), name='contexts_refresh'),
     

@@ -1,16 +1,11 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { styled } from '@mui/material/styles';
-import Divider, { dividerClasses } from '@mui/material/Divider';
 import Menu from '@mui/material/Menu';
 import MuiMenuItem from '@mui/material/MenuItem';
-import { paperClasses } from '@mui/material/Paper';
-import { listClasses } from '@mui/material/List';
 import ListItemText from '@mui/material/ListItemText';
 import ListItemIcon, { listItemIconClasses } from '@mui/material/ListItemIcon';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
-import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
-import SyncIcon from '@mui/icons-material/Sync';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
 import MenuButton from './MenuButton';
 import { useAuth } from '../../context/AuthContext';
@@ -54,33 +49,9 @@ export default function OptionsMenu() {
         onClick={handleClose}
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-        sx={{
-          [`& .${listClasses.root}`]: {
-            padding: '4px',
-          },
-          [`& .${paperClasses.root}`]: {
-            padding: 0,
-          },
-          [`& .${dividerClasses.root}`]: {
-            margin: '4px -4px',
-          },
-        }}
+  sx={{}}
       >
-        <MenuItem onClick={handleClose}>
-          <ListItemIcon>
-            <VerifiedUserIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>VC Verification</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={handleClose}>
-          <ListItemIcon>
-            <SyncIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Sync Status</ListItemText>
-        </MenuItem>
-        <Divider />
-        <MenuItem onClick={handleClose}>Settings</MenuItem>
-        <Divider />
+  {/* Keep only Logout */}
         <MenuItem
           onClick={handleSignOut}
           sx={{

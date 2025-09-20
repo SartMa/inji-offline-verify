@@ -7,7 +7,6 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import SelectContent from './SelectContent';
 import MenuContent from './MenuContent';
-import CardAlert from './CardAlert';
 import OptionsMenu from './OptionsMenu';
 import { useAuth } from '../../context/AuthContext';
 
@@ -28,24 +27,11 @@ export default function SideMenu() {
   const { user, organization } = useAuth();
   
   const getDisplayName = () => {
-    if (user?.full_name) return user.full_name;
-    if (user?.first_name || user?.last_name) {
-      return `${user.first_name || ''} ${user.last_name || ''}`.trim();
-    }
-    if (user?.username) return user.username;
-    return 'Worker';
+    // Always prefer username for display
+    return user?.username || 'Worker';
   };
 
   const getInitials = () => {
-    if (user?.first_name && user?.last_name) {
-      return `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`;
-    }
-    if (user?.full_name) {
-      const names = user.full_name.split(' ');
-      return names.length > 1 
-        ? `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`
-        : names[0].charAt(0);
-    }
     if (user?.username) {
       return user.username.charAt(0).toUpperCase();
     }
@@ -80,8 +66,7 @@ export default function SideMenu() {
           flexDirection: 'column',
         }}
       >
-        <MenuContent />
-        <CardAlert />
+  <MenuContent />
       </Box>
       <Stack
         direction="row"

@@ -184,8 +184,10 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
             request.onsuccess = () => {
                 console.log('Data stored successfully with ID:', (request as any).result);
                 
-                // Trigger background sync if online
+                // If online, trigger an immediate sync (fire-and-forget) to avoid delays
                 if (navigator.onLine) {
+                    // Try immediate sync; background sync stays as a fallback
+                    try { void syncToServer(); } catch {}
                     registerBackgroundSync();
                 }
                 resolve((request as any).result as number);

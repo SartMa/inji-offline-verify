@@ -48,3 +48,11 @@ server/db.sql3lite
 ./server/backend/db.sqlite3
 vite.config.*.timestamp*
 vitest.config.*.timestamp*
+
+
+# Database files
+*.sqlite3
+*.db
+*.sql3lite
+db.sqlite3
+server/backend/db.sqlite3

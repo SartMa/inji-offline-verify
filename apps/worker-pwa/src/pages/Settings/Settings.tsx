@@ -15,6 +15,7 @@ import Copyright from '../../internals/components/Copyright';
 
 // Settings-specific components
 import SyncSettings from '../../components/SyncSettings';
+import OfflineIndicator from '../../components/OfflineIndicator';
 
 import {
   chartsCustomizations,
@@ -34,6 +35,7 @@ export default function Settings(props: { disableCustomTheme?: boolean }) {
   return (
     <AppTheme {...props} themeComponents={xThemeComponents}>
       <CssBaseline enableColorScheme />
+      <OfflineIndicator />
       <Box sx={{ display: 'flex' }}>
         <SideMenu />
         <AppNavbar />

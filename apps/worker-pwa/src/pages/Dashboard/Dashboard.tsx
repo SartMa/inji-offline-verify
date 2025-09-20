@@ -4,8 +4,6 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import Grid from '@mui/material/Grid';
-import Paper from '@mui/material/Paper';
 
 // MUI Dashboard template components
 import AppNavbar from '../../components/dash_comp/AppNavbar';
@@ -20,6 +18,7 @@ import Statistics from '../../components/Statistics.tsx';
 import TestInterface from '../../components/TestInterface';
 import StorageLogs from '../../components/StorageLogs.tsx';
 import VerificationActions from '../../components/VerificationActions';
+import OfflineIndicator from '../../components/OfflineIndicator';
 
 import {
   chartsCustomizations,
@@ -40,6 +39,7 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
   return (
     <AppTheme {...props} themeComponents={xThemeComponents}>
       <CssBaseline enableColorScheme />
+      <OfflineIndicator />
       <Box sx={{ display: 'flex' }}>
         <SideMenu />
         <AppNavbar />
@@ -55,7 +55,7 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
           })}
         >
           <Stack
-            spacing={2}
+            spacing={3}
             sx={{
               alignItems: 'center',
               mx: 3,
@@ -66,75 +66,88 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
             <Header />
             
             {/* System Status - positioned below header */}
-            <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' }, mb: 2 }}>
+            <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
               <SystemStatus />
             </Box>
             
             <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
-              {/* Overview section with statistics */}
-              <Box sx={{ mx: 2 }}>
-                <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
-                  Worker VC Verification
-                </Typography>
-                {/* Verification Actions - Top Section */}
-                <Grid container spacing={2} sx={{ mb: 3 }}>
-                  <Grid size={{ xs: 12, md: 12 }}>
-                    <Box 
-                      sx={{ 
-                        p: 3,
-                        borderRadius: 2,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        backgroundColor: 'background.paper',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                      }}
-                    >
-                      <VerificationActions 
-                        onScanComplete={(data) => console.log('Scan result:', data)}
-                        onUploadComplete={(file) => console.log('File uploaded:', file.name)}
-                      />
-                    </Box>
-                  </Grid>
-                </Grid>
+              {/* Main section title */}
+              <Typography 
+                component="h2" 
+                variant="h6" 
+                sx={{ 
+                  mb: 3,
+                  fontWeight: 600,
+                  color: 'text.primary'
+                }}
+              >
+                Worker VC Verification
+              </Typography>
+              
+              {/* Verification Actions - Now using its own styling */}
+              <Box sx={{ mb: 4 }}>
+                <VerificationActions 
+                  onScanComplete={(data) => console.log('Scan result:', data)}
+                  onUploadComplete={(file) => console.log('File uploaded:', file.name)}
+                />
               </Box>
               
-              <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid size={{ xs: 12 }}>
-                  <Paper
-                    elevation={2}
-                    sx={{ p: 2, height: '100%', overflow: 'auto' }}
-                  >
-                    <Typography variant="subtitle1" gutterBottom fontWeight="medium">
-                      Statistics
-                    </Typography>
-                    <Statistics />
-                    
-                    {/* Storage Logs moved below Statistics */}
-                    <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
-                      <Typography variant="subtitle1" gutterBottom fontWeight="medium" sx={{ mb: 1.5 }}>
-                        Storage Logs
-                      </Typography>
-                      <Box sx={{ height: 300 }}>
-                        <StorageLogs />
-                      </Box>
-                    </Box>
-                  </Paper>
-                </Grid>
-              </Grid>
+              {/* Statistics Section */}
+              <Box sx={{ mb: 4 }}>
+                <Typography 
+                  variant="h6" 
+                  gutterBottom 
+                  sx={{ 
+                    fontWeight: 600,
+                    color: 'text.primary',
+                    mb: 2
+                  }}
+                >
+                  Overview
+                </Typography>
+                <Statistics />
+              </Box>
               
-              <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid size={{ xs: 12 }}>
-                  <Paper 
-                    elevation={2}
-                    sx={{ p: 2, height: '100%' }}
-                  >
-                    <Typography variant="subtitle1" gutterBottom fontWeight="medium">
-                      Test Interface
-                    </Typography>
-                    <TestInterface />
-                  </Paper>
-                </Grid>
-              </Grid>
+              {/* Storage Logs Section */}
+              <Box sx={{ mb: 4 }}>
+                <Typography 
+                  variant="h6" 
+                  gutterBottom 
+                  sx={{ 
+                    fontWeight: 600,
+                    color: 'text.primary',
+                    mb: 2
+                  }}
+                >
+                  Storage Logs
+                </Typography>
+                <StorageLogs />
+              </Box>
+              
+              {/* Test Interface Section */}
+              <Box 
+                sx={{ 
+                  mb: 4,
+                  p: 3,
+                  borderRadius: 2,
+                  backgroundColor: 'rgba(55, 65, 81, 0.2)',
+                  border: '1px solid',
+                  borderColor: 'rgba(55, 65, 81, 0.3)',
+                }}
+              >
+                <Typography 
+                  variant="h6" 
+                  gutterBottom 
+                  sx={{ 
+                    fontWeight: 600,
+                    color: 'text.primary',
+                    mb: 2
+                  }}
+                >
+                  Test Interface
+                </Typography>
+                <TestInterface />
+              </Box>
               
               <Copyright sx={{ my: 4 }} />
             </Box>

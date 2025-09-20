@@ -1,17 +1,16 @@
 import { useState, useMemo } from 'react';
 import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
-import Chip from '@mui/material/Chip';
+import InputLabel from '@mui/material/InputLabel';
+import Button from '@mui/material/Button';
 import SearchIcon from '@mui/icons-material/Search';
-import { DataGrid } from '@mui/x-data-grid';
-import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import { useVCStorage } from '../context/VCStorageContext';
+import './styles/StorageLogs.css';
 
 type Status = 'success' | 'failure';
 type Log = {
@@ -22,44 +21,30 @@ type Log = {
     hash: string;
 };
 
-// Status chip renderer
+// Status badge renderer
 const renderStatus = (status: Status | undefined, synced: boolean | undefined) => {
     if (status === undefined || synced === undefined) {
-        return <Chip label="-" size="small" variant="outlined" />;
+        return <span className="status-badge neutral">-</span>;
     }
-    let color: 'success' | 'error' | 'warning' | 'default', label: string;
+    
+    let className = 'status-badge ';
+    let label = '';
+    
     if (synced && status === 'success') {
-        color = 'success';
+        className += 'success';
         label = 'Success';
-    } else if (synced && status === 'failure') {
-        color = 'error';
-        label = 'Failed';
-    } else if (!synced && status === 'failure') {
-        color = 'error';
+    } else if (status === 'failure') {
+        className += 'error';
         label = 'Failed';
     } else if (!synced) {
-        color = 'warning';
+        className += 'pending';
         label = 'Pending';
     } else {
-        color = 'default';
+        className += 'neutral';
         label = 'Unknown';
     }
-    return <Chip label={label} color={color} size="small" />;
-};
-
-// Sync status chip renderer
-const renderSyncStatus = (synced: boolean | undefined) => {
-    if (synced === undefined) {
-        return <Chip label="-" size="small" variant="outlined" />;
-    }
-    return (
-        <Chip 
-            label={synced ? 'Synced' : 'Pending'} 
-            color={synced ? 'success' : 'default'} 
-            size="small"
-            variant={synced ? 'filled' : 'outlined'}
-        />
-    );
+    
+    return <span className={className}>{label}</span>;
 };
 
 // Time formatter
@@ -79,151 +64,98 @@ const formatTimestamp = (timestamp: number | undefined) => {
     return date.toLocaleDateString();
 };
 
-// Hash cell renderer
-const renderHash = (hash: string | undefined) => {
-    if (!hash) return '';
-    const shortHash = hash.length > 8 ? `${hash.substring(0, 8)}...` : hash;
-    return (
-        <Typography 
-            variant="body2" 
-            sx={{ 
-                fontFamily: 'monospace',
-                fontSize: '0.75rem',
-                color: 'text.secondary'
-            }}
-        >
-            {shortHash}
-        </Typography>
-    );
-};
-
 const StorageLogs = () => {
     const ctx = useVCStorage();
     const logs = ctx?.logs || [];
+    
     const [filter, setFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
-
-    // Define compact columns for horizontal layout
-    const columns: GridColDef[] = [
-        {
-            field: 'id',
-            headerName: 'ID',
-            width: 60,
-            renderCell: (params: GridRenderCellParams<any, number | undefined>) => (
-                <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
-                    #{params.value ?? '-'}
-                </Typography>
-            ),
-        },
-        {
-            field: 'status',
-            headerName: 'Status',
-            width: 90,
-            renderCell: (params: GridRenderCellParams<any, Status | undefined>) => renderStatus(params.value, (params.row as Log).synced),
-        },
-        {
-            field: 'synced',
-            headerName: 'Sync',
-            width: 90,
-            renderCell: (params: GridRenderCellParams<any, boolean | undefined>) => renderSyncStatus(params.value),
-        },
-        {
-            field: 'timestamp',
-            headerName: 'Time',
-            width: 100,
-            renderCell: (params: GridRenderCellParams<any, number | undefined>) => (
-                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                    {formatTimestamp(params.value)}
-                </Typography>
-            ),
-        },
-        {
-            field: 'hash',
-            headerName: 'Hash',
-            flex: 1,
-            minWidth: 120,
-            renderCell: (params: GridRenderCellParams<any, string | undefined>) => renderHash(params.value),
-        },
-    ];
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(5);
 
     // Filter and search logs
     const filteredLogs = useMemo(() => {
-        return logs.filter(log => {
-            const matchesFilter = filter === 'all' || 
-                (filter === 'success' && log.status === 'success' && log.synced) ||
-                (filter === 'pending' && !log.synced) ||
-                (filter === 'failed' && log.status === 'failure');
-            
-            const matchesSearch = searchTerm === '' || 
-                log.hash?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                log.id.toString().includes(searchTerm);
-            
-            return matchesFilter && matchesSearch;
-        });
+        let filtered: Log[] = logs;
+        
+        // Apply status filter
+        if (filter !== 'all') {
+            filtered = filtered.filter((log: Log) => {
+                if (filter === 'synced') return log.synced;
+                // Pending should exclude failures and represent unsynced successful verifications
+                if (filter === 'pending') return !log.synced && log.status !== 'failure';
+                // Success is considered only once synced
+                if (filter === 'success') return log.synced && log.status === 'success';
+                if (filter === 'failure') return log.status === 'failure';
+                return true;
+            });
+        }
+        
+        // Apply search filter
+        if (searchTerm) {
+            filtered = filtered.filter((log: Log) => 
+                log.id?.toString().includes(searchTerm) ||
+                log.status?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                log.hash?.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        }
+        
+        return filtered;
     }, [logs, filter, searchTerm]);
 
+    // Pagination logic
+    const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedLogs = filteredLogs.slice(startIndex, startIndex + itemsPerPage);
+
+    // Reset to first page when filters change
+    useMemo(() => {
+        setCurrentPage(1);
+    }, [filter, searchTerm]);
+
     // Calculate statistics
-    const statsCount = useMemo(() => {
-        const total = logs.length;
-        const success = logs.filter(log => log.status === 'success' && log.synced).length;
-        const pending = logs.filter(log => !log.synced).length;
-        const failure = logs.filter(log => log.status === 'failure').length;
-        return { total, success, pending, failure };
-    }, [logs]);
+    const statsCount = {
+        total: logs.length,
+        synced: logs.filter((log: Log) => log.synced).length,
+        // Pending excludes failures, aligning with badge logic (failure overrides pending)
+        pending: logs.filter((log: Log) => !log.synced && log.status !== 'failure').length,
+        // Success counts only when synced, preventing double-count with pending
+        success: logs.filter((log: Log) => log.synced && log.status === 'success').length,
+        // Failure regardless of sync state (badge shows Failed even if not synced)
+        failure: logs.filter((log: Log) => log.status === 'failure').length,
+    };
+
+    const clearFilters = () => {
+        setSearchTerm('');
+        setFilter('all');
+        setCurrentPage(1);
+    };
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+    };
 
     return (
-        <Stack spacing={1.5} sx={{ height: '100%' }}>
-            {/* Compact header with stats and controls */}
-            <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: 1
-            }}>
-                {/* Statistics chips - more compact */}
-                <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                    <Chip 
-                        label={`${statsCount.total} Total`} 
-                        color="default" 
-                        size="small" 
-                        sx={{ height: 24, fontSize: '0.7rem' }}
-                    />
-                    <Chip 
-                        label={`${statsCount.success} Success`} 
-                        color="success" 
-                        size="small" 
-                        sx={{ height: 24, fontSize: '0.7rem' }}
-                    />
-                    {statsCount.pending > 0 && (
-                        <Chip 
-                            label={`${statsCount.pending} Pending`} 
-                            color="warning" 
-                            size="small" 
-                            sx={{ height: 24, fontSize: '0.7rem' }}
-                        />
-                    )}
+        <Box className="storage-logs-container">
+            {/* Statistics chips and controls in one row */}
+            <div className="stats-row">
+                <div className="stats-chips">
+                    <span className="stat-chip total">{statsCount.total} Total</span>
+                    <span className="stat-chip success">{statsCount.success} Success</span>
                     {statsCount.failure > 0 && (
-                        <Chip 
-                            label={`${statsCount.failure} Failed`} 
-                            color="error" 
-                            size="small" 
-                            sx={{ height: 24, fontSize: '0.7rem' }}
-                        />
+                        <span className="stat-chip failure">{statsCount.failure} Failed</span>
                     )}
-                    <Chip 
-                        label={`${filteredLogs.length} Showing`} 
-                        variant="outlined" 
-                        size="small" 
-                        sx={{ height: 24, fontSize: '0.7rem' }}
-                    />
-                </Stack>
-                
-                {/* Compact search and filter */}
-                <Stack direction="row" spacing={1} alignItems="center">
+                    <span className="stat-chip pending">{statsCount.pending} Pending</span>
+                    <span className="stat-chip showing">
+                        {filteredLogs.length} Showing
+                    </span>
+                </div>
+
+                {/* Search and filter controls on the right */}
+                <div className="controls-section">
                     <TextField
+                        className="search-input"
                         size="small"
-                        placeholder="Search..."
+                        placeholder="Search logs..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         InputProps={{
@@ -233,90 +165,260 @@ const StorageLogs = () => {
                                 </InputAdornment>
                             ),
                         }}
-                        sx={{ 
-                            minWidth: 150,
+                        sx={{
+                            width: 250,
                             '& .MuiOutlinedInput-root': {
-                                height: 32,
-                            }
+                                backgroundColor: 'var(--hash-bg)',
+                                '& fieldset': {
+                                    borderColor: 'var(--table-border)',
+                                },
+                                '&:hover fieldset': {
+                                    borderColor: 'var(--chip-color)',
+                                },
+                                '&.Mui-focused fieldset': {
+                                    borderColor: 'var(--chip-color)',
+                                },
+                            },
+                            '& .MuiInputBase-input': {
+                                color: 'var(--text-primary)',
+                            },
+                            '& .MuiInputBase-input::placeholder': {
+                                color: 'var(--text-secondary)',
+                            },
                         }}
                     />
                     
-                    <FormControl size="small" sx={{ minWidth: 100 }}>
+                    <FormControl size="small" className="filter-control" sx={{ minWidth: 120 }}>
+                        <InputLabel sx={{ 
+                            color: 'var(--text-secondary)',
+                            '&.Mui-focused': {
+                                color: 'var(--chip-color)',
+                            }
+                        }}>
+                            Filter
+                        </InputLabel>
                         <Select
                             value={filter}
+                            label="Filter"
                             onChange={(e) => setFilter(e.target.value)}
                             displayEmpty
-                            sx={{ height: 32 }}
+                            sx={{
+                                backgroundColor: 'var(--hash-bg)',
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'var(--table-border)',
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'var(--chip-color)',
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'var(--chip-color)',
+                                },
+                                '& .MuiSelect-select': {
+                                    color: 'var(--text-primary)',
+                                    fontSize: '0.875rem',
+                                    fontWeight: 500,
+                                },
+                                '& .MuiSelect-icon': {
+                                    color: 'var(--text-secondary)',
+                                },
+                            }}
+                            MenuProps={{
+                                PaperProps: {
+                                    sx: {
+                                        backgroundColor: 'var(--table-background)',
+                                        border: '1px solid var(--table-border)',
+                                        '& .MuiMenuItem-root': {
+                                            color: 'var(--text-primary)',
+                                            fontSize: '0.875rem',
+                                            '&:hover': {
+                                                backgroundColor: 'var(--table-hover)',
+                                            },
+                                            '&.Mui-selected': {
+                                                backgroundColor: 'var(--chip-hover-bg)',
+                                                color: 'var(--chip-color)',
+                                            },
+                                        },
+                                    },
+                                },
+                            }}
                         >
-                            <MenuItem value="all">All Logs</MenuItem>
-                            <MenuItem value="success">Success</MenuItem>
+                            <MenuItem value="all">All</MenuItem>
+                            <MenuItem value="synced">Synced</MenuItem>
                             <MenuItem value="pending">Pending</MenuItem>
-                            <MenuItem value="failed">Failed</MenuItem>
+                            <MenuItem value="success">Success</MenuItem>
+                            <MenuItem value="failure">Failed</MenuItem>
                         </Select>
                     </FormControl>
-                </Stack>
-            </Box>
 
-            {/* Compact DataGrid */}
-            <Box sx={{ flexGrow: 1, minHeight: 200 }}>
-                <DataGrid
-                    rows={filteredLogs}
-                    columns={columns}
-                    initialState={{
-                        pagination: {
-                            paginationModel: {
-                                page: 0,
-                                pageSize: 5,
-                            },
-                        },
-                    }}
-                    pageSizeOptions={[5, 10]}
-                    disableRowSelectionOnClick
-                    density="compact"
-                    sx={{
-                        border: 'none',
-                        '& .MuiDataGrid-main': {
-                            border: `1px solid`,
-                            borderColor: 'divider',
-                            borderRadius: 1,
-                        },
-                        '& .MuiDataGrid-columnHeaders': {
-                            backgroundColor: 'action.hover',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            minHeight: '32px !important',
-                            maxHeight: '32px !important',
-                        },
-                        '& .MuiDataGrid-row': {
-                            minHeight: '32px !important',
-                            maxHeight: '32px !important',
-                        },
-                        '& .MuiDataGrid-cell': {
-                            fontSize: '0.75rem',
-                            padding: '4px 8px',
-                        },
-                        '& .MuiDataGrid-footerContainer': {
-                            minHeight: '36px',
-                            backgroundColor: 'action.hover',
-                        },
-                        '& .MuiDataGrid-selectedRowCount': {
-                            fontSize: '0.75rem',
-                        },
-                        '[data-mui-color-scheme="dark"] &': {
-                            '& .MuiDataGrid-main': {
-                                borderColor: 'rgba(255, 255, 255, 0.12)',
-                            },
-                            '& .MuiDataGrid-columnHeaders': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                            },
-                            '& .MuiDataGrid-footerContainer': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                            },
-                        },
-                    }}
-                />
-            </Box>
-        </Stack>
+                    {(searchTerm || filter !== 'all') && (
+                        <Button 
+                            onClick={clearFilters}
+                            variant="outlined"
+                            size="small"
+                            sx={{
+                                borderColor: 'var(--table-border)',
+                                color: 'var(--text-secondary)',
+                                backgroundColor: 'var(--table-background)',
+                                '&:hover': {
+                                    borderColor: 'var(--chip-color)',
+                                    backgroundColor: 'var(--chip-hover-bg)',
+                                    color: 'var(--chip-color)',
+                                },
+                            }}
+                        >
+                            Clear
+                        </Button>
+                    )}
+                </div>
+            </div>
+
+            {/* Table or Empty State */}
+            {filteredLogs.length > 0 ? (
+                <>
+                    <div className="table-container">
+                        <table className="minimal-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Status</th>
+                                    <th>Time</th>
+                                    <th>Hash</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paginatedLogs.map((log) => (
+                                    <tr key={log.id}>
+                                        <td>
+                                            <Typography 
+                                                variant="body2" 
+                                                sx={{ 
+                                                    fontWeight: 600, 
+                                                    color: 'var(--text-primary)',
+                                                    fontSize: '0.875rem'
+                                                }}
+                                            >
+                                                #{log.id}
+                                            </Typography>
+                                        </td>
+                                        <td>
+                                            {renderStatus(log.status, log.synced)}
+                                        </td>
+                                        <td>
+                                            <Typography 
+                                                variant="body2" 
+                                                sx={{ 
+                                                    color: 'var(--text-secondary)',
+                                                    fontSize: '0.875rem'
+                                                }}
+                                            >
+                                                {formatTimestamp(log.timestamp)}
+                                            </Typography>
+                                        </td>
+                                        <td>
+                                            <span className="hash-text">
+                                                {log.hash ? (log.hash.length > 12 ? `${log.hash.substring(0, 12)}...` : log.hash) : '-'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="pagination-container">
+                            <div className="pagination-info">
+                                Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredLogs.length)} of {filteredLogs.length} entries
+                            </div>
+                            <div className="pagination-controls">
+                                <button 
+                                    className="page-button" 
+                                    onClick={() => handlePageChange(currentPage - 1)}
+                                    disabled={currentPage === 1}
+                                >
+                                    Previous
+                                </button>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        className={`page-button ${currentPage === page ? 'active' : ''}`}
+                                        onClick={() => handlePageChange(page)}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+                                <button 
+                                    className="page-button" 
+                                    onClick={() => handlePageChange(currentPage + 1)}
+                                    disabled={currentPage === totalPages}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </>
+            ) : (
+                <div className="empty-state">
+                    {logs.length === 0 ? (
+                        <>
+                            <div className="empty-state-icon">📭</div>
+                            <Typography 
+                                variant="h6" 
+                                gutterBottom
+                                sx={{ color: 'var(--text-primary)' }}
+                            >
+                                No logs yet
+                            </Typography>
+                            <Typography 
+                                variant="body2"
+                                sx={{ color: 'var(--text-secondary)' }}
+                            >
+                                Start by testing the verification interface to generate logs
+                            </Typography>
+                        </>
+                    ) : (
+                        <>
+                            <div className="empty-state-icon">🔍</div>
+                            <Typography 
+                                variant="h6" 
+                                gutterBottom
+                                sx={{ color: 'var(--text-primary)' }}
+                            >
+                                No matching logs
+                            </Typography>
+                            <Typography 
+                                variant="body2" 
+                                sx={{ 
+                                    mb: 2,
+                                    color: 'var(--text-secondary)'
+                                }}
+                            >
+                                Try adjusting your search or filter criteria
+                            </Typography>
+                            <Button 
+                                onClick={clearFilters}
+                                variant="outlined"
+                                size="small"
+                                sx={{
+                                    borderColor: 'var(--table-border)',
+                                    color: 'var(--text-secondary)',
+                                    backgroundColor: 'var(--table-background)',
+                                    '&:hover': {
+                                        borderColor: 'var(--chip-color)',
+                                        backgroundColor: 'var(--chip-hover-bg)',
+                                        color: 'var(--chip-color)',
+                                    },
+                                }}
+                            >
+                                Clear Filters
+                            </Button>
+                        </>
+                    )}
+                </div>
+            )}
+        </Box>
     );
 };
 

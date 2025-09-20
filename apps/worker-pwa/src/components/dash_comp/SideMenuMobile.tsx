@@ -8,7 +8,7 @@ import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
 import MenuButton from './MenuButton';
 import MenuContent from './MenuContent';
-import CardAlert from './CardAlert';
+import { useAuth } from '../../context/AuthContext';
 
 interface SideMenuMobileProps {
   open: boolean | undefined;
@@ -16,6 +16,19 @@ interface SideMenuMobileProps {
 }
 
 export default function SideMenuMobile({ open, toggleDrawer }: SideMenuMobileProps) {
+  const { user, organization } = useAuth();
+
+  const getDisplayName = () => {
+    // Always prefer username for display
+    return user?.username || 'Worker';
+  };
+
+  const getInitials = () => {
+    if (user?.username) {
+      return user.username.charAt(0).toUpperCase();
+    }
+    return 'W';
+  };
   return (
     <Drawer
       anchor="right"
@@ -42,13 +55,19 @@ export default function SideMenuMobile({ open, toggleDrawer }: SideMenuMobilePro
           >
             <Avatar
               sizes="small"
-              alt="Riley Carter"
-              src="/static/images/avatar/7.jpg"
-              sx={{ width: 24, height: 24 }}
-            />
-            <Typography component="p" variant="h6">
-              Riley Carter
-            </Typography>
+              alt={getDisplayName()}
+              sx={{ width: 24, height: 24, bgcolor: 'warning.main' }}
+            >
+              {getInitials()}
+            </Avatar>
+            <Stack sx={{ minWidth: 0 }}>
+              <Typography component="p" variant="subtitle1" sx={{ lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {getDisplayName()}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {organization?.name || 'Verified User'}
+              </Typography>
+            </Stack>
           </Stack>
           <MenuButton showBadge>
             <NotificationsRoundedIcon />
@@ -59,7 +78,6 @@ export default function SideMenuMobile({ open, toggleDrawer }: SideMenuMobilePro
           <MenuContent />
           <Divider />
         </Stack>
-        <CardAlert />
         <Stack sx={{ p: 2 }}>
           <Button variant="outlined" fullWidth startIcon={<LogoutRoundedIcon />}>
             Logout

@@ -8,7 +8,6 @@ import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
 import MenuButton from './MenuButton';
 import MenuContent from './MenuContent';
-import CardAlert from './CardAlert';
 import { useAuth } from '../../context/AuthContext';
 
 interface SideMenuMobileProps {
@@ -20,24 +19,11 @@ export default function SideMenuMobile({ open, toggleDrawer }: SideMenuMobilePro
   const { user, organization } = useAuth();
 
   const getDisplayName = () => {
-    if (user?.full_name) return user.full_name;
-    if (user?.first_name || user?.last_name) {
-      return `${user.first_name || ''} ${user.last_name || ''}`.trim();
-    }
-    if (user?.username) return user.username;
-    return 'Worker';
+    // Always prefer username for display
+    return user?.username || 'Worker';
   };
 
   const getInitials = () => {
-    if (user?.first_name && user?.last_name) {
-      return `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`;
-    }
-    if (user?.full_name) {
-      const names = user.full_name.split(' ');
-      return names.length > 1
-        ? `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`
-        : names[0].charAt(0);
-    }
     if (user?.username) {
       return user.username.charAt(0).toUpperCase();
     }
@@ -92,7 +78,6 @@ export default function SideMenuMobile({ open, toggleDrawer }: SideMenuMobilePro
           <MenuContent />
           <Divider />
         </Stack>
-        <CardAlert />
         <Stack sx={{ p: 2 }}>
           <Button variant="outlined" fullWidth startIcon={<LogoutRoundedIcon />}>
             Logout

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { syncToServer } from '../services/syncService';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -68,10 +69,18 @@ const SyncSettings: React.FC = () => {
 
   const handleForceSyncNow = async () => {
     setLoadingState('sync', true);
-    setTimeout(() => {
+    try {
+      const result = await syncToServer();
+      if (result?.success) {
+        showNotification(`Sync completed: ${result.synced ?? 0} item(s)`, 'success');
+      } else {
+        showNotification(`Sync failed: ${result?.error || result?.reason || 'Unknown error'}`, 'error');
+      }
+    } catch (e: any) {
+      showNotification(`Sync failed: ${e?.message || 'Unknown error'}`, 'error');
+    } finally {
       setLoadingState('sync', false);
-      showNotification('Sync completed successfully!', 'success');
-    }, 2000);
+    }
   };
 
   const handleClearPendingSync = () => {

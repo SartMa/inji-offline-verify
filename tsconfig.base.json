@@ -22,7 +22,9 @@
     "paths": {
       "@inji-offline-verify/shared-ui/*": ["packages/shared-ui/src/*"],
       "@inji-offline-verify/shared-auth/*": ["packages/shared-auth/src/*"],
-      "@inji-offline-verify/shared-auth": ["packages/shared-auth/src/index.ts"]
+      "@inji-offline-verify/shared-auth": ["packages/shared-auth/src/index.ts"],
+      "@inji-offline-verify/inji-verify-sdk": ["packages/inji-verify-sdk/src/index.ts"],
+      "@mosip/react-inji-verify-sdk": ["packages/inji-verify-sdk/src/index.ts"] 
     }
   }
 }

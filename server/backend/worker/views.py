@@ -14,7 +14,7 @@ from .serializers import (
 )
 from .models import OrganizationMember
 from organization.models import Organization
-from api.permissions import IsOrganizationAdmin
+from organization.permissions import IsOrganizationAdmin
 from api.serializers import VerificationLogSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken

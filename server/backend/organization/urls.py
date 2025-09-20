@@ -15,6 +15,8 @@ urlpatterns = [
     path('api/login/', views.OrganizationLoginView.as_view(), name='organization-login'),
     path('api/register/', views.RegisterOrganizationView.as_view(), name='organization-register'),
     path('api/confirm/', views.ConfirmOrganizationRegistrationView.as_view(), name='organization-confirm'),
-    path('api/submit-did/', views.SubmitOrganizationDIDView.as_view(), name='organization-submit-did'),
-    path('api/public-keys/', views.OrganizationPublicKeysView.as_view(), name='organization-public-keys'),
+    # path('api/submit-did/', views.SubmitOrganizationDIDView.as_view(), name='organization-submit-did'),
+    # path('api/public-keys/', views.OrganizationPublicKeysView.as_view(), name='organization-public-keys'),
+    path('api/contexts/upsert/', views.OrganizationContextUpsertView.as_view(), name='organization-contexts-upsert'),
+    path('api/public-keys/upsert/', views.OrganizationPublicKeyUpsertView.as_view(), name='organization-public-keys-upsert'),
 ]

@@ -1,10 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
 from .views import (
-    ContextListView,
-    ContextUpsertView,
-    ContextDefaultsView,
-    ContextRefreshFromSourceView,
     EmailLoginCodeRequestView,
     EmailLoginCodeVerifyView,
     PasswordResetRequestView,
@@ -13,11 +9,11 @@ from .views import (
 from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
-    # JSON-LD Context endpoints (core functionality)
-    path('contexts/', ContextListView.as_view(), name='contexts_list'),
-    path('contexts/defaults/', ContextDefaultsView.as_view(), name='contexts_defaults'),
-    path('contexts/upsert/', ContextUpsertView.as_view(), name='contexts_upsert'),
-    path('contexts/refresh/', ContextRefreshFromSourceView.as_view(), name='contexts_refresh'),
+    # # JSON-LD Context endpoints (core functionality)
+    # path('contexts/', ContextListView.as_view(), name='contexts_list'),
+    # path('contexts/defaults/', ContextDefaultsView.as_view(), name='contexts_defaults'),
+    # path('contexts/upsert/', ContextUpsertView.as_view(), name='contexts_upsert'),
+    # path('contexts/refresh/', ContextRefreshFromSourceView.as_view(), name='contexts_refresh'),
     
     # Shared Authentication endpoints (used by both organization and worker frontends)
     # Note: Login endpoints are now app-specific (/organization/api/login/ and /worker/api/login/)

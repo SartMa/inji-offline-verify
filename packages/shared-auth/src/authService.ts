@@ -128,6 +128,46 @@ export function getRefreshToken(): string | null {
   try { return localStorage.getItem(REFRESH_KEY); } catch { return null; }
 }
 
+export async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = getAccessToken();
+  const baseUrl = getApiBaseUrl();
+
+  if (!baseUrl) {
+    throw new Error('API base URL not set');
+  }
+
+  const fullUrl = `${baseUrl}${url}`;
+
+  // Set Authorization header
+  const headers = new Headers(options.headers || {});
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  options.headers = headers;
+
+  let response = await fetch(fullUrl, options);
+
+  // If unauthorized, try to refresh the token and retry the request once
+  if (response.status === 401) {
+    console.log('Access token expired. Attempting to refresh...');
+    const newToken = await refreshAccessToken(baseUrl);
+
+    if (newToken) {
+      console.log('Token refreshed successfully. Retrying request...');
+      headers.set('Authorization', `Bearer ${newToken}`);
+      options.headers = headers;
+      response = await fetch(fullUrl, options); // Retry the request
+    } else {
+      console.error('Failed to refresh token. User may need to log in again.');
+      // Optional: clear tokens and redirect to login
+      // clearTokens();
+      // window.location.href = '/login';
+    }
+  }
+
+  return response;
+}
+
 export function clearTokens() {
   try {
     localStorage.removeItem(ACCESS_KEY);

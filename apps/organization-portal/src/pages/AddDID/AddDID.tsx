@@ -23,6 +23,8 @@ import { SidebarProvider } from '../../components/dash_comp/SidebarContext';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { OrgResolver } from '@mosip/react-inji-verify-sdk';
+import { getApiBaseUrl, getAccessToken, authenticatedFetch } from '@inji-offline-verify/shared-auth';
 
 // Styled Components - Theme Aware with CSS Variables
 const StyledTextField = styled(TextField)(({ theme, error }) => ({
@@ -224,7 +226,7 @@ export default function AddDID() {
   const theme = useTheme();
   const { mode } = useColorScheme();
   const isDark = mode === 'dark';
-  const [didValue, setDidValue] = useState('');
+  const [didValue, setDidValue] = useState(''); // kept for backward compatibility (unused for VC)
   const [fieldError, setFieldError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({
@@ -232,12 +234,11 @@ export default function AddDID() {
     message: '',
     severity: 'success' as 'success' | 'error'
   });
+  const [vcJson, setVcJson] = useState('');
 
-  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDidValue(e.target.value);
-    if (fieldError) {
-      setFieldError('');
-    }
+  const onChangeVc = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setVcJson(e.target.value);
+    if (fieldError) setFieldError('');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -259,53 +260,129 @@ export default function AddDID() {
     });
   };
 
-  const handleCopyDid = async () => {
-    if (didValue) {
-      try {
-        await navigator.clipboard.writeText(didValue);
-        showToast('DID copied to clipboard!', 'success');
-      } catch (err) {
-        showToast('Failed to copy DID', 'error');
-      }
+  const handleCopyVc = async () => {
+    if (!vcJson) return;
+    try {
+      await navigator.clipboard.writeText(vcJson);
+      showToast('VC JSON copied to clipboard!', 'success');
+    } catch {
+      showToast('Failed to copy', 'error');
     }
   };
 
+const getOrganizationId = () => {
+  // 1. Primary: check 'organizationId' (your current key)
+  try {
+    const orgId = localStorage.getItem('organizationId');
+    if (orgId) return orgId;
+  } catch {/* ignore */}
+
+  // 2. Fallback: check 'organization' (JSON object)
+  try {
+    const raw = localStorage.getItem('organization');
+    if (raw) {
+      const obj = JSON.parse(raw);
+      if (obj?.id) return obj.id;
+    }
+  } catch {/* ignore */}
+
+  // 3. Other fallbacks
+  const fallbacks = ['org_id', 'current_org_id'];
+  for (const key of fallbacks) {
+    const val = localStorage.getItem(key);
+    if (val) return val;
+  }
+
+  return null;
+};
+
   const validateInput = () => {
-    if (!didValue.trim()) {
-      setFieldError('DID value is required');
+    if (!vcJson.trim()) {
+      setFieldError('Paste full VC JSON (from QR payload)');
       return false;
     }
-    
-    // Basic DID format validation (you can customize this)
-    if (!didValue.startsWith('did:')) {
-      setFieldError('DID must start with "did:"');
+    try {
+      JSON.parse(vcJson);
+    } catch {
+      setFieldError('Invalid JSON');
       return false;
     }
-    
-    if (didValue.length < 10) {
-      setFieldError('DID appears to be too short');
-      return false;
-    }
-    
+    setFieldError('');
     return true;
   };
 
   const handleSubmit = async () => {
-    if (!validateInput()) {
+    if (!validateInput()) return;
+    setSubmitting(true);
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(vcJson);
+    } catch {
+      showToast('Invalid JSON', 'error');
       return;
     }
-    
-    setSubmitting(true);
+
+    const organization_id = getOrganizationId();
+    if (!organization_id) {
+      showToast('No organization selected in session', 'error');
+      setSubmitting(false); // Make sure to stop submitting
+      return;
+    }
+
     try {
-      // Simulate API call - replace with actual implementation when ready
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      showToast('DID added successfully!', 'success');
-      setDidValue('');
-    } catch (err: any) {
-      const errorMessage = err?.message || 'Failed to add DID. Please try again.';
-      showToast(errorMessage, 'error');
-      console.error('Failed to add DID:', err?.message || err);
+      // Build bundle (issuer key + exact contexts) using SDK
+      const bundle = await OrgResolver.buildBundleFromVC(parsed, true);
+      const keys = bundle.publicKeys || [];
+      const contexts = bundle.contexts || [];
+
+      // Upsert contexts under organization
+      for (const c of contexts) {
+        if (!c.document) continue; // Skip contexts that couldn't be fetched
+        const res = await authenticatedFetch(`/organization/api/contexts/upsert/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ organization_id, url: c.url, document: c.document })
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j?.detail || j?.error || `Failed to upsert context: ${c.url}`);
+        }
+      }
+
+      // Upsert issuer public key(s) under organization
+      for (const k of keys) {
+        const payload = {
+          organization_id,
+          key_id: k.key_id,
+          key_type: k.key_type || 'Ed25519VerificationKey2020',
+          controller: k.controller,
+          public_key_multibase: k.public_key_multibase || '',
+          public_key_hex: k.public_key_hex || undefined,
+          public_key_jwk: k.public_key_jwk || undefined,
+          purpose: k.purpose || 'assertion',
+          is_active: k.is_active !== false,
+        };
+        const res = await authenticatedFetch(`/organization/api/public-keys/upsert/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j?.detail || j?.error || 'Failed to upsert public key');
+        }
+      }
+
+      showToast(`Stored keys: ${keys.length}, contexts: ${contexts.length}`, 'success');
+      setVcJson('');
+    } catch (e: any) {
+      console.error('AddDID submission error:', e);
+      showToast(e?.message || 'Failed to add VC data', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -362,10 +439,10 @@ export default function AddDID() {
                         },
                       }} />
                       <Typography variant="h3" sx={{ fontWeight: 800, color: isDark ? '#ffffff' : 'text.primary', mb: 1 }}>
-                        Add DID
+                        ADD SAMPLE VC DATA
                       </Typography>
                       <Typography variant="h6" sx={{ color: isDark ? '#a0aec0' : 'text.secondary', fontWeight: 400 }}>
-                        Register a new Decentralized Identifier (DID) to the system
+                        Register a new Verifiable Credential (VC) to the system
                       </Typography>
                     </Box>
                   </Box>
@@ -418,10 +495,10 @@ export default function AddDID() {
                     <Stack spacing={4}>
                       <Box sx={{ textAlign: 'center', mb: 3 }}>
                         <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, color: isDark ? '#ffffff' : 'text.primary' }}>
-                          Enter DID Information
+                          Enter VC Information
                         </Typography>
                         <Typography variant="body1" sx={{ color: isDark ? '#a0aec0' : 'text.secondary' }}>
-                          Provide the DID string to register it in the system
+                          Paste the complete VC JSON to extract issuer keys and contexts
                         </Typography>
                       </Box>
 
@@ -431,34 +508,24 @@ export default function AddDID() {
                             required
                             fullWidth
                             multiline
-                            rows={6}
-                            value={didValue}
-                            onChange={onChange}
+                            rows={10}
+                            value={vcJson}
+                            onChange={onChangeVc}
                             onKeyDown={handleKeyDown}
-                            placeholder="Enter DID (e.g., did:example:123456789abcdefghi) *"
+                            placeholder='Paste complete VC JSON starting with {"credential": {...}} *'
                             error={!!fieldError}
-                            helperText={fieldError || "Enter a valid DID string. DIDs typically start with 'did:' followed by the method and identifier."}
-                            FormHelperTextProps={{
-                              sx: {
-                                color: fieldError 
-                                  ? (isDark ? '#fc8181' : 'error.main')
-                                  : (isDark ? '#a0aec0' : 'text.secondary'),
-                                fontSize: '0.875rem',
-                                fontWeight: 500,
-                                mt: 1,
-                              }
-                            }}
+                            helperText={fieldError || 'Paste the entire VC JSON object. Must include credential, @context, issuer, and proof fields.'}
                             InputProps={{
                               startAdornment: (
                                 <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 2 }}>
                                   <FingerprintIcon />
                                 </InputAdornment>
                               ),
-                              endAdornment: didValue && (
+                              endAdornment: vcJson && (
                                 <InputAdornment position="end" sx={{ alignSelf: 'flex-start', mt: 1 }}>
                                   <Stack direction="row" spacing={1}>
                                     <IconButton
-                                      onClick={handleCopyDid}
+                                      onClick={handleCopyVc}
                                       edge="end"
                                       size="small"
                                       sx={{ 
@@ -484,13 +551,14 @@ export default function AddDID() {
                             }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                minHeight: '160px',
+                                minHeight: '300px',
                                 '& textarea': {
                                   fontFamily: 'monospace',
-                                  fontSize: '1rem',
+                                  fontSize: '0.875rem',
                                   lineHeight: 1.6,
                                   color: isDark ? '#ffffff !important' : 'inherit',
                                   resize: 'none',
+                                  padding: '16px',
                                   '&::placeholder': {
                                     color: isDark ? '#a0aec0 !important' : 'inherit',
                                     opacity: 1,
@@ -502,63 +570,6 @@ export default function AddDID() {
                         </Grid>
                       </Grid>
 
-                      {/* DID Format Examples */}
-                      {/* <Paper sx={{ 
-                        p: 3, 
-                        borderRadius: 3, 
-                        bgcolor: isDark ? '#2d3748' : '#f7fafc',
-                        border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                      }}> */}
-                        {/* <Typography variant="h6" sx={{ 
-                          fontWeight: 600, 
-                          mb: 2, 
-                          color: isDark ? '#4299e1' : 'primary.main',
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: 1,
-                        }}>
-                          <FingerprintIcon />
-                          DID Format Examples
-                        </Typography> */}
-                        {/* <Stack spacing={2}>
-                          <Box>
-                            <Typography variant="body2" sx={{ 
-                              color: isDark ? '#a0aec0' : 'text.secondary',
-                              mb: 0.5
-                            }}>
-                              Web DID:
-                            </Typography>
-                            <Typography variant="body2" sx={{ 
-                              fontFamily: 'monospace',
-                              color: isDark ? '#90cdf4' : 'primary.main',
-                              backgroundColor: isDark ? '#1a202c' : '#edf2f7',
-                              p: 1,
-                              borderRadius: 1,
-                            }}>
-                              did:web:example.com:users:alice
-                            </Typography>
-                          </Box>
-                          <Box>
-                            <Typography variant="body2" sx={{ 
-                              color: isDark ? '#a0aec0' : 'text.secondary',
-                              mb: 0.5
-                            }}>
-                              Key DID:
-                            </Typography>
-                            <Typography variant="body2" sx={{ 
-                              fontFamily: 'monospace',
-                              color: isDark ? '#90cdf4' : 'primary.main',
-                              backgroundColor: isDark ? '#1a202c' : '#edf2f7',
-                              p: 1,
-                              borderRadius: 1,
-                            }}>
-                              did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK
-                            </Typography>
-                          </Box>
-                        </Stack> */}
-                      {/* </Paper> */}
-
-                      {/* Submit Button */}
                       <Box sx={{ 
                         display: 'flex', 
                         justifyContent: 'center',
@@ -575,7 +586,7 @@ export default function AddDID() {
                         <Button
                           onClick={handleSubmit}
                           variant="contained"
-                          disabled={submitting || !didValue.trim()}
+                          disabled={submitting || !vcJson.trim()}
                           startIcon={<CheckCircleIcon />}
                           sx={{
                             borderRadius: '12px',

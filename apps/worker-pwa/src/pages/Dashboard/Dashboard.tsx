@@ -19,6 +19,7 @@ import Statistics from '../../components/Statistics.tsx';
 import TestInterface from '../../components/TestInterface';
 import StorageLogs from '../../components/StorageLogs.tsx';
 import VerificationActions from '../../components/VerificationActions';
+import OfflineIndicator from '../../components/OfflineIndicator';
 
 import {
   chartsCustomizations,
@@ -39,6 +40,7 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
   return (
     <AppTheme {...props} themeComponents={xThemeComponents}>
       <CssBaseline enableColorScheme />
+      <OfflineIndicator />
       <Box sx={{ display: 'flex' }}>
         <SideMenu />
         <AppNavbar />

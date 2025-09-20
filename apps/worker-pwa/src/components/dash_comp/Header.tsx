@@ -12,12 +12,8 @@ export default function Header() {
   const { user, organization } = useAuth();
   
   const getDisplayName = () => {
-    if (user?.full_name) return user.full_name;
-    if (user?.first_name || user?.last_name) {
-      return `${user.first_name || ''} ${user.last_name || ''}`.trim();
-    }
-    if (user?.username) return user.username;
-    return 'Worker';
+  // Always prefer username for display
+  return user?.username || 'Worker';
   };
   
   return (

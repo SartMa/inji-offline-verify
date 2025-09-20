@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { getAccessToken, clearTokens, getCurrentUser } from './authService';
+import { getAccessToken, clearTokens, getCurrentUser, getCachedUserData } from './authService';
 
 interface User {
   id: number;
@@ -67,7 +67,12 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
         setOrganization(profileData.organization || null);
         setIsAuthenticated(true);
       } else {
-        // If we can't get user data, clear everything
+        // If we can't get user data but we're offline, keep the auth state
+        if (!navigator.onLine) {
+          // Keep existing auth state when offline
+          return;
+        }
+        // If we're online but can't get user data, clear everything
         setUser(null);
         setOrganization(null);
         setIsAuthenticated(false);
@@ -75,6 +80,12 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
       }
     } catch (error) {
       console.error('Failed to fetch user data:', error);
+      // If we're offline, don't clear auth state
+      if (!navigator.onLine) {
+        console.log('Offline mode: keeping existing auth state');
+        return;
+      }
+      // Only clear auth state if we're online and there's an error
       setUser(null);
       setOrganization(null);
       setIsAuthenticated(false);
@@ -87,6 +98,15 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
     const checkExistingAuth = async () => {
       const token = getAccessToken();
       if (token) {
+        // First, try to load cached user data immediately for better UX
+        const cachedData = getCachedUserData();
+        if (cachedData?.success && cachedData.user) {
+          setUser(cachedData.user);
+          setOrganization(cachedData.organization || null);
+          setIsAuthenticated(true);
+        }
+        
+        // Then try to refresh with fresh data (will use cache if offline)
         await refreshUserData();
       }
       setIsLoading(false);
@@ -95,7 +115,29 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
     checkExistingAuth();
   }, []);
 
-  const signIn = async (email: string, _password: string): Promise<void> => {
+  // Listen for online/offline events to handle connectivity changes
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('Back online - refreshing user data');
+      if (isAuthenticated) {
+        refreshUserData();
+      }
+    };
+
+    const handleOffline = () => {
+      console.log('Gone offline - using cached data');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [isAuthenticated]);
+
+  const signIn = async (_email: string, _password: string): Promise<void> => {
     // After successful login, refresh user data
     await refreshUserData();
     return Promise.resolve();

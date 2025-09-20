@@ -4,7 +4,6 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-//import Grid from '@mui/material/Grid';
 
 // MUI Dashboard template components
 import AppNavbar from '../../components/dash_comp/AppNavbar';
@@ -85,24 +84,15 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
                 Worker VC Verification
               </Typography>
               
-              {/* Verification Actions - Clean minimal design */}
-              <Box 
-                sx={{ 
-                  mb: 4,
-                  p: 3,
-                  borderRadius: 2,
-                  backgroundColor: 'rgba(55, 65, 81, 0.2)',
-                  border: '1px solid',
-                  borderColor: 'rgba(55, 65, 81, 0.3)',
-                }}
-              >
+              {/* Verification Actions - Now using its own styling */}
+              <Box sx={{ mb: 4 }}>
                 <VerificationActions 
                   onScanComplete={(data) => console.log('Scan result:', data)}
                   onUploadComplete={(file) => console.log('File uploaded:', file.name)}
                 />
               </Box>
               
-              {/* Statistics Section - Remove outer container */}
+              {/* Statistics Section */}
               <Box sx={{ mb: 4 }}>
                 <Typography 
                   variant="h6" 
@@ -118,7 +108,7 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
                 <Statistics />
               </Box>
               
-              {/* Storage Logs Section - Remove outer container */}
+              {/* Storage Logs Section */}
               <Box sx={{ mb: 4 }}>
                 <Typography 
                   variant="h6" 

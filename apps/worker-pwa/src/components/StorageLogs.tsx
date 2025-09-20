@@ -81,8 +81,10 @@ const StorageLogs = () => {
         if (filter !== 'all') {
             filtered = filtered.filter((log: Log) => {
                 if (filter === 'synced') return log.synced;
-                if (filter === 'pending') return !log.synced;
-                if (filter === 'success') return log.status === 'success';
+                // Pending should exclude failures and represent unsynced successful verifications
+                if (filter === 'pending') return !log.synced && log.status !== 'failure';
+                // Success is considered only once synced
+                if (filter === 'success') return log.synced && log.status === 'success';
                 if (filter === 'failure') return log.status === 'failure';
                 return true;
             });
@@ -114,9 +116,12 @@ const StorageLogs = () => {
     const statsCount = {
         total: logs.length,
         synced: logs.filter((log: Log) => log.synced).length,
-        pending: logs.filter((log: Log) => !log.synced).length,
-        success: logs.filter((log: Log) => log.status === 'success').length,
-        failure: logs.filter((log: Log) => log.status === 'failure').length
+        // Pending excludes failures, aligning with badge logic (failure overrides pending)
+        pending: logs.filter((log: Log) => !log.synced && log.status !== 'failure').length,
+        // Success counts only when synced, preventing double-count with pending
+        success: logs.filter((log: Log) => log.synced && log.status === 'success').length,
+        // Failure regardless of sync state (badge shows Failed even if not synced)
+        failure: logs.filter((log: Log) => log.status === 'failure').length,
     };
 
     const clearFilters = () => {

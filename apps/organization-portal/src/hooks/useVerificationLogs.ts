@@ -52,7 +52,7 @@ export function useLogs(options: UseLogsOptions = {}) {
   };
 }
 
-export function useLogsStats(orgId?: string) {
+export function useLogsStats(orgId?: string, userId?: string) {
   const [data, setData] = useState<LogsStatsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +62,7 @@ export function useLogsStats(orgId?: string) {
     setError(null);
     
     try {
-      const response = await logsService.getLogsStats(orgId);
+      const response = await logsService.getLogsStats(orgId, userId);
       setData(response);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch logs stats');
@@ -75,7 +75,7 @@ export function useLogsStats(orgId?: string) {
     if (orgId) {
       fetchStats();
     }
-  }, [orgId]);
+  }, [orgId, userId]);
 
   const refetch = () => fetchStats();
 

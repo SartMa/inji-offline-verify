@@ -59,8 +59,8 @@ export async function confirmRegistration(baseUrl: string, payload: {
   
   // Persist baseUrl and tokens after successful confirmation
   setApiBaseUrl(baseUrl);
-  if (data?.access || data?.refresh || data?.token) {
-    saveTokens({ access: data.access, refresh: data.refresh, legacyToken: data.token });
+  if (data?.access || data?.refresh) {
+    saveTokens({ access: data.access, refresh: data.refresh });
   }
   return data;
 }

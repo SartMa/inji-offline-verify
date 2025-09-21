@@ -49,41 +49,35 @@ class RegisterWorkerView(APIView):
     Requirements:
       - Authenticated user
       - User is ADMIN of the target organization
-      - org_name required only if the admin belongs to multiple organizations
-    NOTE: org_id has been removed. Use org_name.
+      - organization_id required in request body (aligns with IsOrganizationAdmin)
+    Notes:
+      - org_name remains supported in serializer for backward-compat, but this endpoint
+        enforces organization_id to match permission behavior.
     """
     permission_classes = [IsAuthenticated, IsOrganizationAdmin]
 
     def post(self, request, *args, **kwargs):
-        user = request.user
-        admin_qs = OrganizationMember.objects.filter(user=user, role="ADMIN").select_related("organization")
-        if not admin_qs.exists():
-            return Response({"detail": "Not authorized"}, status=403)
-
         data = request.data.copy()
 
-        # Reject deprecated org_id usage
-        if "org_id" in data:
-            return Response({"detail": "org_id is no longer supported. Use org_name."}, status=400)
+        # Require organization_id to comply with IsOrganizationAdmin
+        org_id = data.get("organization_id") or data.get("org_id")
+        if not org_id:
+            return Response({"detail": "organization_id is required"}, status=400)
 
-        org_name = data.get("org_name")
-        if org_name:
-            org = next((m.organization for m in admin_qs if m.organization.name == org_name), None)
-            if not org:
-                return Response({"detail": "You are not admin of provided org_name"}, status=403)
-        else:
-            if admin_qs.count() == 1:
-                org = admin_qs.first().organization
-            else:
-                return Response({"detail": "Multiple admin organizations. Provide org_name."}, status=400)
+        # Resolve organization (permission already validated admin rights)
+        try:
+            org = Organization.objects.get(id=org_id)
+        except Organization.DoesNotExist:
+            return Response({"detail": "Organization not found"}, status=404)
 
-        # Enforce (prevent spoofing)
-        data["org_name"] = org.name
+        # Pass through organization_id to serializer (org_name optional for BC)
+        data["organization_id"] = str(org.id)
 
-        serializer = WorkerRegistrationSerializer(data=data, context={"organization": org})
+        serializer = WorkerRegistrationSerializer(data=data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
 
+        user = request.user
         save_result = serializer.save(organization=org, created_by=user)
 
         # Robust handling of various return shapes
@@ -494,8 +488,8 @@ def get_organization_logs(request, org_id):
         page = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('page_size', 20))
         
-        # Build the queryset
-        queryset = VerificationLog.objects.filter(organization=organization)
+        # Build the queryset - select related user info to avoid N+1 queries
+        queryset = VerificationLog.objects.filter(organization=organization).select_related('verified_by')
         
         # Apply filters
         if user_id:
@@ -540,10 +534,19 @@ def get_organization_logs(request, org_id):
         # Serialize the data
         serializer = VerificationLogSerializer(page_obj, many=True)
         
-        # Calculate stats
-        total_logs = organization.verification_logs.count()
-        success_count = organization.verification_logs.filter(verification_status='SUCCESS').count()
-        failed_count = organization.verification_logs.filter(verification_status='FAILED').count()
+        # Calculate stats based on the filtered queryset (not just organization logs)
+        if user_id:
+            # Stats for specific user only
+            user_member = OrganizationMember.objects.get(id=user_id, organization=organization)
+            user_logs_queryset = VerificationLog.objects.filter(organization=organization, verified_by=user_member.user)
+            total_logs = user_logs_queryset.count()
+            success_count = user_logs_queryset.filter(verification_status='SUCCESS').count()
+            failed_count = user_logs_queryset.filter(verification_status='FAILED').count()
+        else:
+            # Stats for entire organization
+            total_logs = organization.verification_logs.count()
+            success_count = organization.verification_logs.filter(verification_status='SUCCESS').count()
+            failed_count = organization.verification_logs.filter(verification_status='FAILED').count()
         
         # Response data
         response_data = {
@@ -588,6 +591,7 @@ def get_organization_logs(request, org_id):
 def get_organization_logs_stats(request, org_id):
     """
     Get verification logs statistics for a specific organization
+    Supports filtering by user_id to get stats for a specific user
     """
     try:
         from api.models import VerificationLog
@@ -609,15 +613,37 @@ def get_organization_logs_stats(request, org_id):
                 'error': 'You do not have permission to view this organization\'s logs'
             }, status=status.HTTP_403_FORBIDDEN)
         
-        # Calculate stats
-        total_logs = organization.verification_logs.count()
-        success_count = organization.verification_logs.filter(verification_status='SUCCESS').count()
-        failed_count = organization.verification_logs.filter(verification_status='FAILED').count()
+        # Get user_id parameter for filtering
+        user_id = request.GET.get('user_id', None)
         
-        # Recent logs (last 24 hours)
-        from django.utils import timezone
-        last_24h = timezone.now() - timedelta(hours=24)
-        recent_logs = organization.verification_logs.filter(verified_at__gte=last_24h).count()
+        if user_id:
+            # Stats for specific user only
+            try:
+                member = OrganizationMember.objects.get(id=user_id, organization=organization)
+                user_logs_queryset = VerificationLog.objects.filter(organization=organization, verified_by=member.user)
+                total_logs = user_logs_queryset.count()
+                success_count = user_logs_queryset.filter(verification_status='SUCCESS').count()
+                failed_count = user_logs_queryset.filter(verification_status='FAILED').count()
+                
+                # Recent logs (last 24 hours) for this user
+                from django.utils import timezone
+                last_24h = timezone.now() - timedelta(hours=24)
+                recent_logs = user_logs_queryset.filter(verified_at__gte=last_24h).count()
+            except OrganizationMember.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'error': 'User not found in organization'
+                }, status=status.HTTP_404_NOT_FOUND)
+        else:
+            # Stats for entire organization
+            total_logs = organization.verification_logs.count()
+            success_count = organization.verification_logs.filter(verification_status='SUCCESS').count()
+            failed_count = organization.verification_logs.filter(verification_status='FAILED').count()
+            
+            # Recent logs (last 24 hours)
+            from django.utils import timezone
+            last_24h = timezone.now() - timedelta(hours=24)
+            recent_logs = organization.verification_logs.filter(verified_at__gte=last_24h).count()
         
         response_data = {
             'success': True,

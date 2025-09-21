@@ -56,7 +56,24 @@ function StatCard({ title, value, trend, description, data }: StatCardProps) {
 
     const chartColor = trendColors[trend];
     const chipColor = labelColors[trend];
-    const trendValues = { up: '+5%', down: '-2%', neutral: '±0%' };
+    
+    // Calculate actual trend percentage from data
+    const getTrendPercentage = (data: number[]) => {
+        if (data.length < 2) return '±0%';
+        
+        const recent = data.slice(-3);
+        const first = recent[0];
+        const last = recent[recent.length - 1];
+        
+        if (first === 0 && last === 0) return '±0%';
+        if (first === 0) return '+100%';
+        
+        const percentage = Math.round(((last - first) / first) * 100);
+        const sign = percentage > 0 ? '+' : '';
+        return `${sign}${percentage}%`;
+    };
+    
+    const trendPercentage = getTrendPercentage(data);
 
     return (
         <Card variant="outlined" sx={{ height: '100%', flexGrow: 1 }}>
@@ -70,7 +87,7 @@ function StatCard({ title, value, trend, description, data }: StatCardProps) {
                             <Typography variant="h4" component="p">
                                 {value.toLocaleString()}
                             </Typography>
-                            <Chip size="small" color={chipColor} label={trendValues[trend]} />
+                            <Chip size="small" color={chipColor} label={trendPercentage} />
                         </Stack>
                         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                             {description}
@@ -107,54 +124,82 @@ function StatCard({ title, value, trend, description, data }: StatCardProps) {
 const Statistics = () => {
     const storage = useVCStorage();
     const stats = storage?.stats || { totalStored: 0, pendingSyncCount: 0, syncedCount: 0, failedCount: 0 };
+    const historicalStats = storage?.historicalStats || [];
     
-    // Calculate sync percentage
+    // Calculate sync percentage - percentage of items that have been processed (synced or failed)
+    const syncedItems = stats.totalStored - stats.pendingSyncCount;
     const syncPercentage = stats.totalStored > 0 
-        ? Math.round((stats.syncedCount / stats.totalStored) * 100) 
+        ? Math.round((syncedItems / stats.totalStored) * 100) 
         : 0;
     
-    // Generate some mock trend data for visualization
-    const generateTrendData = (baseValue: number, trend: Trend) => {
-        const data = [];
-        let current = Math.max(1, baseValue - 10);
-        for (let i = 0; i < 15; i++) {
-            const variation = (Math.random() - 0.5) * 2;
-            if (trend === 'up') current += Math.abs(variation) + 0.5;
-            else if (trend === 'down') current -= Math.abs(variation) + 0.5;
-            else current += variation;
-            data.push(Math.max(0, Math.round(current)));
+    // Generate trend data from historical stats
+    const generateTrendDataFromHistory = (field: 'totalStored' | 'syncedCount' | 'failedCount' | 'pendingSyncCount') => {
+        if (historicalStats.length === 0) {
+            // If no historical data, return empty array to hide charts
+            return [];
         }
-        return data;
+        
+        // Take last 15 data points for sparkline
+        const recentStats = historicalStats.slice(-15);
+        return recentStats.map(stat => stat[field]);
+    };
+
+    // Determine trend direction based on recent data
+    const getTrend = (data: number[]): Trend => {
+        if (data.length < 2) return 'neutral';
+        const recent = data.slice(-3); // Look at last 3 points
+        const first = recent[0];
+        const last = recent[recent.length - 1];
+        
+        if (last > first) return 'up';
+        if (last < first) return 'down';
+        return 'neutral';
     };
 
     const statisticsData: StatCardProps[] = [
         {
             title: 'Total Stored',
             value: stats.totalStored,
-            trend: stats.totalStored > 0 ? 'up' : 'neutral',
+            trend: (() => {
+                const data = generateTrendDataFromHistory('totalStored');
+                return data.length > 0 ? getTrend(data) : 'neutral';
+            })(),
             description: 'Total verifications stored',
-            data: generateTrendData(stats.totalStored, 'up')
+            data: generateTrendDataFromHistory('totalStored')
         },
         {
             title: 'Success',
             value: stats.syncedCount,
-            trend: stats.syncedCount > 0 ? 'up' : 'neutral',
-            description: 'Successfully synced',
-            data: generateTrendData(stats.syncedCount, 'up')
+            trend: (() => {
+                const data = generateTrendDataFromHistory('syncedCount');
+                return data.length > 0 ? getTrend(data) : 'neutral';
+            })(),
+            description: 'Successfully verified & synced',
+            data: generateTrendDataFromHistory('syncedCount')
         },
         {
             title: 'Failed',
             value: stats.failedCount,
-            trend: stats.failedCount > 0 ? 'down' : 'neutral',
+            trend: (() => {
+                const data = generateTrendDataFromHistory('failedCount');
+                // For failures, invert the trend logic (more failures = down trend)
+                const trend = data.length > 0 ? getTrend(data) : 'neutral';
+                return trend === 'up' ? 'down' : trend === 'down' ? 'up' : 'neutral';
+            })(),
             description: 'Failed verifications',
-            data: generateTrendData(stats.failedCount, 'down')
+            data: generateTrendDataFromHistory('failedCount')
         },
         {
             title: 'Pending',
             value: stats.pendingSyncCount,
-            trend: stats.pendingSyncCount > 0 ? 'neutral' : 'up',
+            trend: (() => {
+                const data = generateTrendDataFromHistory('pendingSyncCount');
+                // For pending, neutral is good (stable queue), up is concerning
+                const trend = data.length > 0 ? getTrend(data) : 'neutral';
+                return trend === 'up' ? 'down' : trend === 'down' ? 'up' : 'neutral';
+            })(),
             description: 'Waiting to sync',
-            data: generateTrendData(stats.pendingSyncCount, 'neutral')
+            data: generateTrendDataFromHistory('pendingSyncCount')
         }
     ];
     

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { syncToServer } from '../services/syncService';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { useVCStorage } from '../context/VCStorageContext';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -28,8 +29,9 @@ type NotificationState = { open: boolean; message: string; severity: 'success' |
 type ConfirmDialogState = { open: boolean; action: 'clearPending' | 'clearAll' | null; title: string; message: string };
 
 const SyncSettings: React.FC = () => {
-  // Mock data and functions for now
-  const stats = { pendingSyncCount: 2, totalStored: 12, syncedCount: 9 };
+  // Get real data from VCStorage context
+  const storage = useVCStorage();
+  const stats = storage?.stats || { pendingSyncCount: 0, totalStored: 0, syncedCount: 0, failedCount: 0 };
   const isOnline = useOnlineStatus();
 
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
@@ -54,16 +56,24 @@ const SyncSettings: React.FC = () => {
 
     if (action === 'clearPending') {
       setLoadingState('clearPending', true);
-      setTimeout(() => {
-        setLoadingState('clearPending', false);
+      try {
+        await storage?.clearPendingSync();
         showNotification('Cleared pending sync queue', 'success');
-      }, 1000);
+      } catch (error: any) {
+        showNotification(`Failed to clear pending: ${error?.message || 'Unknown error'}`, 'error');
+      } finally {
+        setLoadingState('clearPending', false);
+      }
     } else if (action === 'clearAll') {
       setLoadingState('clearAll', true);
-      setTimeout(() => {
-        setLoadingState('clearAll', false);
+      try {
+        await storage?.clearAllData();
         showNotification('All data cleared successfully', 'success');
-      }, 1500);
+      } catch (error: any) {
+        showNotification(`Failed to clear data: ${error?.message || 'Unknown error'}`, 'error');
+      } finally {
+        setLoadingState('clearAll', false);
+      }
     }
   };
 
@@ -83,7 +93,7 @@ const SyncSettings: React.FC = () => {
     }
   };
 
-  const handleClearPendingSync = () => {
+  const handleClearPendingSync = async () => {
     setConfirmDialog({
       open: true,
       action: 'clearPending',
@@ -92,7 +102,7 @@ const SyncSettings: React.FC = () => {
     });
   };
 
-  const handleClearAllData = () => {
+  const handleClearAllData = async () => {
     setConfirmDialog({
       open: true,
       action: 'clearAll',

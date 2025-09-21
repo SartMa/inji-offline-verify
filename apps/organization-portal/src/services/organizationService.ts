@@ -98,10 +98,27 @@ class OrganizationService {
           'Authorization': `Bearer ${newToken}`,
           ...options.headers,
         };
-        return fetch(url, {
+        const retryResponse = await fetch(url, {
           ...options,
           headers: newHeaders,
         });
+        
+        // If still unauthorized after refresh, logout user
+        if (retryResponse.status === 401) {
+          console.warn('Session expired - logging out user');
+          // Import dynamically to avoid circular dependencies
+          const { logoutService } = await import('./logoutService');
+          await logoutService.logout();
+          throw new Error('Session expired. Please login again.');
+        }
+        
+        return retryResponse;
+      } else {
+        // If refresh failed, logout user
+        console.warn('Token refresh failed - logging out user');
+        const { logoutService } = await import('./logoutService');
+        await logoutService.logout();
+        throw new Error('Session expired. Please login again.');
       }
     }
 

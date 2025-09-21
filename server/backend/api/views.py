@@ -12,11 +12,6 @@ from django.db import transaction
 from rest_framework.permissions import IsAuthenticated
 from worker.models import OrganizationMember
 
-try:
-    import requests
-except Exception:  # pragma: no cover
-    requests = None
-
 #     def post(self, request, *args, **kwargs):
 #         """Store a new public key from VC upload."""
 #         data = request.data

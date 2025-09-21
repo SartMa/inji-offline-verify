@@ -6,9 +6,10 @@ import InputAdornment from '@mui/material/InputAdornment';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
 import Button from '@mui/material/Button';
+import Menu from '@mui/material/Menu';
 import SearchIcon from '@mui/icons-material/Search';
+import DownloadIcon from '@mui/icons-material/Download';
 import { useVCStorage } from '../context/VCStorageContext';
 import './styles/StorageLogs.css';
 
@@ -72,6 +73,9 @@ const StorageLogs = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(5);
+    const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
+    const [sortField, setSortField] = useState<keyof Log | null>('timestamp');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
     // Filter and search logs
     const filteredLogs = useMemo(() => {
@@ -98,9 +102,31 @@ const StorageLogs = () => {
                 log.hash?.toLowerCase().includes(searchTerm.toLowerCase())
             );
         }
+
+        // Apply sorting
+        if (sortField) {
+            filtered.sort((a, b) => {
+                let aValue = a[sortField];
+                let bValue = b[sortField];
+                
+                // Handle different data types
+                if (typeof aValue === 'string' && typeof bValue === 'string') {
+                    aValue = aValue.toLowerCase();
+                    bValue = bValue.toLowerCase();
+                }
+                
+                if (aValue < bValue) {
+                    return sortDirection === 'asc' ? -1 : 1;
+                }
+                if (aValue > bValue) {
+                    return sortDirection === 'asc' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
         
         return filtered;
-    }, [logs, filter, searchTerm]);
+    }, [logs, filter, searchTerm, sortField, sortDirection]);
 
     // Pagination logic
     const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
@@ -132,6 +158,80 @@ const StorageLogs = () => {
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
+    };
+
+    const handleSort = (field: keyof Log) => {
+        if (sortField === field) {
+            // Toggle direction if clicking same field
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            // Set new field and default to desc for timestamp, asc for others
+            setSortField(field);
+            setSortDirection(field === 'timestamp' ? 'desc' : 'asc');
+        }
+        // Reset to first page when sorting changes
+        setCurrentPage(1);
+    };
+
+    const getSortIcon = (field: keyof Log) => {
+        if (sortField !== field) return '';
+        return sortDirection === 'asc' ? ' ↑' : ' ↓';
+    };
+
+    // Export functions
+    const handleExportClick = (event: React.MouseEvent<HTMLElement>) => {
+        setExportMenuAnchor(event.currentTarget);
+    };
+
+    const handleExportClose = () => {
+        setExportMenuAnchor(null);
+    };
+
+    const downloadFile = (content: string, filename: string, mimeType: string) => {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    const exportToJSON = () => {
+        const exportData = filteredLogs.map(log => ({
+            id: log.id,
+            status: log.status,
+            synced: log.synced,
+            timestamp: log.timestamp,
+            formattedTime: formatTimestamp(log.timestamp),
+            hash: log.hash
+        }));
+        
+        const jsonContent = JSON.stringify(exportData, null, 2);
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        downloadFile(jsonContent, `storage-logs-${timestamp}.json`, 'application/json');
+        handleExportClose();
+    };
+
+    const exportToCSV = () => {
+        const headers = ['ID', 'Status', 'Synced', 'Timestamp', 'Formatted Time', 'Hash'];
+        const csvContent = [
+            headers.join(','),
+            ...filteredLogs.map(log => [
+                log.id,
+                log.status,
+                log.synced,
+                log.timestamp,
+                `"${formatTimestamp(log.timestamp)}"`,
+                `"${log.hash}"`
+            ].join(','))
+        ].join('\n');
+        
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        downloadFile(csvContent, `storage-logs-${timestamp}.csv`, 'text/csv');
+        handleExportClose();
     };
 
     return (
@@ -189,17 +289,8 @@ const StorageLogs = () => {
                     />
                     
                     <FormControl size="small" className="filter-control" sx={{ minWidth: 120 }}>
-                        <InputLabel sx={{ 
-                            color: 'var(--text-secondary)',
-                            '&.Mui-focused': {
-                                color: 'var(--chip-color)',
-                            }
-                        }}>
-                            Filter
-                        </InputLabel>
                         <Select
                             value={filter}
-                            label="Filter"
                             onChange={(e) => setFilter(e.target.value)}
                             displayEmpty
                             sx={{
@@ -250,6 +341,53 @@ const StorageLogs = () => {
                         </Select>
                     </FormControl>
 
+                    <Button 
+                        onClick={handleExportClick}
+                        variant="outlined"
+                        size="small"
+                        startIcon={<DownloadIcon />}
+                        disabled={filteredLogs.length === 0}
+                        sx={{
+                            borderColor: 'var(--table-border)',
+                            color: 'var(--text-secondary)',
+                            backgroundColor: 'var(--table-background)',
+                            '&:hover': {
+                                borderColor: 'var(--chip-color)',
+                                backgroundColor: 'var(--chip-hover-bg)',
+                                color: 'var(--chip-color)',
+                            },
+                            '&:disabled': {
+                                borderColor: 'var(--table-border)',
+                                color: 'var(--text-secondary)',
+                                opacity: 0.5,
+                            },
+                        }}
+                    >
+                        Export
+                    </Button>
+
+                    <Menu
+                        anchorEl={exportMenuAnchor}
+                        open={Boolean(exportMenuAnchor)}
+                        onClose={handleExportClose}
+                        PaperProps={{
+                            sx: {
+                                backgroundColor: 'var(--table-background)',
+                                border: '1px solid var(--table-border)',
+                                '& .MuiMenuItem-root': {
+                                    color: 'var(--text-primary)',
+                                    fontSize: '0.875rem',
+                                    '&:hover': {
+                                        backgroundColor: 'var(--table-hover)',
+                                    },
+                                },
+                            },
+                        }}
+                    >
+                        <MenuItem onClick={exportToJSON}>Export as JSON</MenuItem>
+                        <MenuItem onClick={exportToCSV}>Export as CSV</MenuItem>
+                    </Menu>
+
                     {(searchTerm || filter !== 'all') && (
                         <Button 
                             onClick={clearFilters}
@@ -279,9 +417,19 @@ const StorageLogs = () => {
                         <table className="minimal-table">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
+                                    <th 
+                                        onClick={() => handleSort('id')}
+                                        style={{ cursor: 'pointer', userSelect: 'none' }}
+                                    >
+                                        ID{getSortIcon('id')}
+                                    </th>
                                     <th>Status</th>
-                                    <th>Time</th>
+                                    <th 
+                                        onClick={() => handleSort('timestamp')}
+                                        style={{ cursor: 'pointer', userSelect: 'none' }}
+                                    >
+                                        Time{getSortIcon('timestamp')}
+                                    </th>
                                     <th>Hash</th>
                                 </tr>
                             </thead>

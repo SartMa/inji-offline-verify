@@ -2,12 +2,20 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import { syncToServer as syncToServerService } from '../services/syncService';
 
 type Stats = { totalStored: number; pendingSyncCount: number; syncedCount: number; failedCount: number };
+type HistoricalStats = {
+    timestamp: number;
+    totalStored: number;
+    syncedCount: number;
+    failedCount: number;
+    pendingSyncCount: number;
+};
 type LogItem = any;
 
 type VCStorageContextValue = {
     isOnline: boolean;
     serviceWorkerActive: boolean;
     stats: Stats;
+    historicalStats: HistoricalStats[];
     logs: LogItem[];
     storeVerificationResult: (jsonData: any) => Promise<number | undefined>;
     getAllVerifications: () => Promise<any[]>;
@@ -22,6 +30,7 @@ const defaultContextValue: VCStorageContextValue = {
   isOnline: false,
   serviceWorkerActive: false,
   stats: { totalStored: 0, pendingSyncCount: 0, syncedCount: 0, failedCount: 0 },
+  historicalStats: [],
   logs: [],
     storeVerificationResult: async (_json: any) => undefined,
     getAllVerifications: async () => [],
@@ -43,6 +52,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         syncedCount: 0,
         failedCount: 0
     });
+    const [historicalStats, setHistoricalStats] = useState<HistoricalStats[]>([]);
     const [logs, setLogs] = useState<LogItem[]>([]);
     const [serviceWorkerActive, setServiceWorkerActive] = useState(false);
 
@@ -92,7 +102,22 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
             });
         };
 
+        // Load historical stats from localStorage
+        const loadHistoricalStats = () => {
+            try {
+                const stored = localStorage.getItem('historicalStats');
+                if (stored) {
+                    const parsed = JSON.parse(stored) as HistoricalStats[];
+                    setHistoricalStats(parsed);
+                }
+            } catch (error) {
+                console.warn('Failed to load historical stats:', error);
+                setHistoricalStats([]);
+            }
+        };
+
         initDB();
+        loadHistoricalStats();
     }, []);
 
     // Track service worker state and listen for sync triggers
@@ -144,12 +169,42 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
                 const all = await getAllVerifications();
                 const unsynced = await getUnsyncedVerifications();
                 
-                setStats({
+                const newStats = {
                     totalStored: all.length,
                     pendingSyncCount: unsynced.length,
-                    syncedCount: all.filter(v => v.synced).length,
+                    syncedCount: all.filter(v => v.synced && v.status === 'success').length, // Only successful AND synced
                     failedCount: all.filter(v => v.status === 'failure').length
-                });
+                };
+
+                setStats(newStats);
+
+                // Update historical stats (keep last 30 data points)
+                const now = Date.now();
+                const existingHistorical = JSON.parse(localStorage.getItem('historicalStats') || '[]') as HistoricalStats[];
+                
+                // Only add new historical point if stats have changed or it's been more than 1 hour
+                const lastEntry = existingHistorical[existingHistorical.length - 1];
+                const shouldAddPoint = !lastEntry || 
+                    (now - lastEntry.timestamp > 3600000) || // 1 hour
+                    (JSON.stringify(newStats) !== JSON.stringify({
+                        totalStored: lastEntry.totalStored,
+                        syncedCount: lastEntry.syncedCount,
+                        failedCount: lastEntry.failedCount,
+                        pendingSyncCount: lastEntry.pendingSyncCount
+                    }));
+
+                if (shouldAddPoint) {
+                    const newHistoricalPoint: HistoricalStats = {
+                        timestamp: now,
+                        ...newStats
+                    };
+                    
+                    const updatedHistorical = [...existingHistorical, newHistoricalPoint].slice(-30); // Keep last 30 points
+                    localStorage.setItem('historicalStats', JSON.stringify(updatedHistorical));
+                    setHistoricalStats(updatedHistorical);
+                } else {
+                    setHistoricalStats(existingHistorical);
+                }
 
                 setLogs(all.slice(-10).reverse());
             }
@@ -291,6 +346,9 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
             
             request.onsuccess = () => {
                 console.log('All data cleared');
+                // Also clear historical stats
+                localStorage.removeItem('historicalStats');
+                setHistoricalStats([]);
                 resolve();
             };
             
@@ -345,6 +403,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         isOnline,
         serviceWorkerActive,
         stats,
+        historicalStats,
         logs,
         storeVerificationResult,
         getAllVerifications,

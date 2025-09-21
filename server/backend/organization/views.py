@@ -320,25 +320,25 @@ class OrganizationPublicKeyUpsertView(APIView):
             )
 
 
-class OrganizationPublicKeysView(APIView):
-    """Return active public keys for a given organization_id."""
-    permission_classes = [permissions.IsAuthenticated, IsOrganizationAdmin]
+# class OrganizationPublicKeysView(APIView):
+#     """Return active public keys for a given organization_id."""
+#     permission_classes = [permissions.IsAuthenticated, IsOrganizationAdmin]
 
-    def get(self, request, *args, **kwargs):
-        org_id = request.query_params.get('organization_id')
-        if not org_id:
-            return Response({'detail': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            org = Organization.objects.get(id=org_id)
-        except Organization.DoesNotExist:
-            return Response({'detail': 'Organization not found'}, status=status.HTTP_404_NOT_FOUND)
+#     def get(self, request, *args, **kwargs):
+#         org_id = request.query_params.get('organization_id')
+#         if not org_id:
+#             return Response({'detail': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+#         try:
+#             org = Organization.objects.get(id=org_id)
+#         except Organization.DoesNotExist:
+#             return Response({'detail': 'Organization not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        qs = PublicKey.objects.filter(organization=org, is_active=True)
-        keys = list(qs.values(
-            'id', 'key_id', 'key_type', 'public_key_multibase', 'public_key_hex', 'public_key_jwk',
-            'controller', 'purpose', 'created_at', 'expires_at', 'revoked_at', 'revocation_reason', 'is_active'
-        ))
-        return Response({'organization_id': str(org.id), 'keys': keys}, status=status.HTTP_200_OK)
+#         qs = PublicKey.objects.filter(organization=org, is_active=True)
+#         keys = list(qs.values(
+#             'id', 'key_id', 'key_type', 'public_key_multibase', 'public_key_hex', 'public_key_jwk',
+#             'controller', 'purpose', 'created_at', 'expires_at', 'revoked_at', 'revocation_reason', 'is_active'
+#         ))
+#         return Response({'organization_id': str(org.id), 'keys': keys}, status=status.HTTP_200_OK)
 
 
 # # --- DID resolution helpers (minimal, can be replaced by robust resolver) ---

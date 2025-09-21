@@ -1,7 +1,12 @@
 from django.contrib import admin
-from .models import Organization, OrganizationDID, PublicKey, PendingOrganizationRegistration
+from .models import Organization, OrganizationDID, PublicKey, PendingOrganizationRegistration, JsonLdContext
 
+@admin.register(JsonLdContext)
+class JsonLdContextAdmin(admin.ModelAdmin):
+    list_display = ("url", "created_at", "updated_at")
+    search_fields = ("url",)
 
+    
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ("name", "id", "created_at")

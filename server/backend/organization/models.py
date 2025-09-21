@@ -117,3 +117,35 @@ class PendingOrganizationRegistration(models.Model):
     def __str__(self):
         state = 'used' if self.consumed_at else 'pending'
         return f"Pending org {self.org_name} admin {self.admin_username} ({state})"
+
+
+class JsonLdContext(models.Model):
+    """
+    JSON-LD Context scoped to an Organization.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="contexts"
+    )
+    url = models.URLField(max_length=500)
+    document = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["organization"], name="idx_ctx_org"),
+            models.Index(fields=["url"], name="idx_ctx_url"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "url"], name="uniq_ctx_org_url"
+            )
+        ]
+        verbose_name = "JSON-LD Context"
+        verbose_name_plural = "JSON-LD Contexts"
+
+    def __str__(self):
+        return f"{self.organization_id} :: {self.url}"
+
+

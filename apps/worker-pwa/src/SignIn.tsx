@@ -19,9 +19,8 @@ import { AppTheme, ColorModeSelect } from '@inji-offline-verify/shared-ui/src/th
 import { GoogleIcon, FacebookIcon, SitemarkIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons.tsx';
 import { useAuth } from './context/AuthContext.tsx';
 import { login, googleLogin, setApiBaseUrl } from './services/authService';
-import { PublicKeyService } from './services/PublicKeyService';
-import { ContextService } from './services/ContextService';
-import { KeyCacheManager } from './cache/KeyCacheManager';
+import { WorkerCacheService } from './services/WorkerCacheService';
+import { NetworkManager } from './network/NetworkManager';
 import { useGoogleSignIn } from './hooks/useGoogleSignIn';
 
 const Card = styled(MuiCard)(({ theme }) => ({
@@ -101,26 +100,15 @@ export default function SignIn(props: {
         access_token: accessToken, 
         org_name: orgName 
       });
-
-      // Fetch and cache contexts and keys like regular login
-      try {
-        const isStaff = !!res?.is_staff;
-        const count = isStaff
-          ? await ContextService.refreshOnServerAndCache()
-          : await ContextService.fetchAndCacheDefaults();
-        console.log(`Contexts cached: ${count}`);
-      } catch (e) {
-        console.warn('Context fetch/cache failed:', e);
-      }
-
+      // Prime SDK cache from server responses (org-scoped contexts and public keys)
       const orgId = res?.organization?.id;
       if (orgId) {
         try {
-          await PublicKeyService.fetchAndCacheKeys({ organization_id: orgId });
-          const keys = await KeyCacheManager.getKeysByOrg(orgId);
-          console.log(`Keys cached: ${(keys || []).length}`);
+          const bundle = await buildServerCacheBundle(orgId);
+          await WorkerCacheService.primeFromServer(bundle);
+          console.log('SDK cache primed for organization:', orgId);
         } catch (e) {
-          console.warn('Key fetch/cache failed:', e);
+          console.warn('Priming SDK cache failed:', e);
         }
       }
 
@@ -172,27 +160,15 @@ export default function SignIn(props: {
         password, 
         org_name: orgName 
       });
-
-      // Fetch and cache active public keys for this org after login
-      // Also fetch and cache required JSON-LD contexts for offline usage
-      try {
-        const isStaff = !!res?.is_staff;
-        const count = isStaff
-          ? await ContextService.refreshOnServerAndCache()
-          : await ContextService.fetchAndCacheDefaults();
-        console.log(`Contexts cached: ${count}`);
-      } catch (e) {
-        console.warn('Context fetch/cache failed:', e);
-      }
-
+      // Prime SDK cache directly from server for this organization
       const orgId = res?.organization?.id;
       if (orgId) {
         try {
-          await PublicKeyService.fetchAndCacheKeys({ organization_id: orgId });
-          const keys = await KeyCacheManager.getKeysByOrg(orgId);
-          console.log(`Keys cached: ${(keys || []).length}`);
+          const bundle = await buildServerCacheBundle(orgId);
+          await WorkerCacheService.primeFromServer(bundle);
+          console.log('SDK cache primed for organization:', orgId);
         } catch (e) {
-          console.warn('Key fetch/cache failed:', e);
+          console.warn('Priming SDK cache failed:', e);
         }
       }
 
@@ -400,4 +376,35 @@ export default function SignIn(props: {
       </SignInContainer>
     </AppTheme>
   );
+}
+
+// Build a CacheBundle for SDK from backend endpoints
+async function buildServerCacheBundle(organizationId: string) {
+  // Fetch contexts
+  const ctxRes = await NetworkManager.fetch(`/organization/api/contexts/?organization_id=${encodeURIComponent(organizationId)}`, { method: 'GET' });
+  if (!ctxRes.ok) throw new Error(`Failed to fetch contexts (${ctxRes.status})`);
+  const ctxJson = await ctxRes.json();
+  const contexts = Array.isArray(ctxJson?.contexts)
+    ? ctxJson.contexts.map((c: any) => ({ url: c.url, document: c.document }))
+    : [];
+
+  // Fetch public keys
+  const pkRes = await NetworkManager.fetch(`/organization/api/public-keys/?organization_id=${encodeURIComponent(organizationId)}`, { method: 'GET' });
+  if (!pkRes.ok) throw new Error(`Failed to fetch public keys (${pkRes.status})`);
+  const pkJson = await pkRes.json();
+  const publicKeys = Array.isArray(pkJson?.keys)
+    ? pkJson.keys.map((k: any) => ({
+        key_id: k.key_id,
+        key_type: k.key_type,
+        public_key_multibase: k.public_key_multibase,
+        public_key_hex: k.public_key_hex,
+        public_key_jwk: k.public_key_jwk,
+        controller: k.controller,
+        purpose: k.purpose,
+        is_active: k.is_active,
+        organization_id: organizationId,
+      }))
+    : [];
+
+  return { publicKeys, contexts } as any;
 }

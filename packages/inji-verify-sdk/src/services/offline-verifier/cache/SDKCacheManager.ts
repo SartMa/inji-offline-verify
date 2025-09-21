@@ -3,7 +3,7 @@
  * - Used by Worker app to seed the SDK-managed IndexedDB cache from a CacheBundle.
  * - Also supports deriving cache directly from a VC if needed (online one-time).
  */
-import { CachedPublicKey, openCacheDB, putContexts, putPublicKeys, getContext as dbGetContext } from './utils/CacheHelper';
+import { CachedPublicKey, putContexts, putPublicKeys, getContext } from './utils/CacheHelper';
 import type { CacheBundle } from './utils/OrgResolver';
 import { PublicKeyGetterFactory } from '../publicKey/PublicKeyGetterFactory';
 import { base58btc } from 'multiformats/bases/base58';
@@ -117,7 +117,7 @@ export class SDKCacheManager {
 
   // Quick check if a context is cached
   static async isContextCached(url: string): Promise<boolean> {
-    const db = await openCacheDB();
-    return !!(await dbGetContext(db, url));
+    // This now uses the refactored helper which uses the singleton
+    return !!(await getContext(url));
   }
 }

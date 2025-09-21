@@ -6,8 +6,8 @@ from rest_framework.views import APIView
 from django.db import transaction
 from .models import Organization, OrganizationDID, PublicKey
 from .permissions import IsOrganizationAdmin
-from api.serializers import JsonLdContextSerializer
-from api.models import JsonLdContext
+from .models import JsonLdContext
+from .serializers import JsonLdContextSerializer
 
 from .serializers import (
     OrganizationRegistrationSerializer,
@@ -61,29 +61,37 @@ class ConfirmOrganizationRegistrationView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# class SubmitOrganizationDIDView(APIView):
-#     """Endpoint for org admin to submit a DID; triggers resolution and key storage."""
-#     permission_classes = [permissions.IsAuthenticated]
+class OrganizationPublicKeysView(APIView):
+    """Return active public keys for the given organization or DID."""
+    permission_classes = [permissions.IsAuthenticated]
 
-#     def post(self, request, *args, **kwargs):
-#         serializer = OrganizationDIDSubmitSerializer(data=request.data)
-#         if not serializer.is_valid():
-#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get(self, request, *args, **kwargs):
+        org_id = request.query_params.get('organization_id')
+        did = request.query_params.get('did')
 
-#         org: Organization = serializer.validated_data['organization']
-#         # Ensure requester is admin for that org
-#         is_admin = OrganizationMember.objects.filter(user=request.user, organization=org, role='ADMIN').exists()
-#         if not is_admin:
-#             return Response({'detail': 'Admin privileges required for this org'}, status=status.HTTP_403_FORBIDDEN)
+        org = None
+        if org_id:
+            try:
+                org = Organization.objects.get(id=org_id)
+            except Organization.DoesNotExist:
+                return Response({'detail': 'Organization not found'}, status=status.HTTP_404_NOT_FOUND)
 
-#         org_did: OrganizationDID = serializer.save()
+        qs = PublicKey.objects.filter(is_active=True)
+        if org:
+            qs = qs.filter(organization=org)
+        if did:
+            qs = qs.filter(controller=did)
 
-#         # Resolve keys (best-effort)
-#         try:
-#             resolved_keys = resolve_did_keys(org_did.did)
-#             with transaction.atomic():
-#                 for k in resolved_keys:
-#                     PublicKey.objects.update_or_create(
+        keys = list(qs.values(
+            'id', 'key_id', 'key_type', 'public_key_multibase', 'public_key_hex', 'public_key_jwk',
+            'controller', 'purpose', 'created_at', 'expires_at', 'revoked_at', 'revocation_reason', 'is_active'
+        ))
+        payload = {
+            'organization_id': str(org.id) if org else None,
+            'did': did,
+            'keys': keys,
+        }
+        return Response(payload, status=status.HTTP_200_OK)
 #                         key_id=k['key_id'],
 #                         defaults={
 #                             'organization': org,
@@ -163,6 +171,24 @@ class OrganizationLoginView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class OrganizationContextsView(APIView):
+    """Return all JSON-LD contexts for a given organization."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        org_id = request.query_params.get('organization_id')
+        if not org_id:
+            return Response({'detail': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            org = Organization.objects.get(id=org_id)
+        except Organization.DoesNotExist:
+            return Response({'detail': 'Organization not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        qs = JsonLdContext.objects.filter(organization=org).order_by('url')
+        serializer = JsonLdContextSerializer(qs, many=True)
+        return Response({'contexts': serializer.data}, status=status.HTTP_200_OK)
+
+
 class OrganizationContextUpsertView(APIView):
     """
     Upsert a JSON-LD context document for an organization.
@@ -199,23 +225,22 @@ class OrganizationContextUpsertView(APIView):
             return Response({'detail': 'url must be a valid HTTP/HTTPS URL'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Check if context already exists
-            existing_context = JsonLdContext.objects.filter(url=url).first()
-            
+            org = Organization.objects.get(id=org_id)
+        except Organization.DoesNotExist:
+            return Response({'detail': 'Organization not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            # Check if context already exists for this org+url
+            existing_context = JsonLdContext.objects.filter(organization=org, url=url).first()
+
             if existing_context:
-                # Update existing context if document differs
                 if existing_context.document != document:
                     existing_context.document = document
                     existing_context.save(update_fields=['document'])
-                    created = False
-                else:
-                    # Document is identical, no update needed
-                    created = False
-                
                 obj = existing_context
+                created = False
             else:
-                # Create new context
-                obj = JsonLdContext.objects.create(url=url, document=document)
+                obj = JsonLdContext.objects.create(organization=org, url=url, document=document)
                 created = True
 
             # Return the context data
@@ -223,10 +248,7 @@ class OrganizationContextUpsertView(APIView):
             return Response(out, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
         except Exception as e:
-            return Response(
-                {'detail': f'Failed to upsert context: {str(e)}'}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({'detail': f'Failed to upsert context: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class OrganizationPublicKeyUpsertView(APIView):

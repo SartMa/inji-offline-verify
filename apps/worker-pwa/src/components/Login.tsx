@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { login, setApiBaseUrl } from '../services/authService';
-import { PublicKeyService } from '../services/PublicKeyService';
-import { ContextService } from '../services/ContextService';
-import { ContextCache, KeyCacheManager } from '../cache/KeyCacheManager';
+import { WorkerCacheService } from '../services/WorkerCacheService';
+import { NetworkManager } from '../network/NetworkManager';
 
 export default function Login() {
   const [baseUrl, setBaseUrlState] = useState('http://127.0.0.1:8000');
@@ -10,37 +9,22 @@ export default function Login() {
   const [username, setUsername] = useState('sunsun');
   const [password, setPassword] = useState('sunhith123');
   const [output, setOutput] = useState('');
-  const [cachedKeys, setCachedKeys] = useState<any[]>([]);
-  const [cachedCount, setCachedCount] = useState(0);
-  const [contexts, setContexts] = useState<any[]>([]);
+  // SDK cache is managed internally; no local state tracking here
 
   const doLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setApiBaseUrl(baseUrl);
       const res: any = await login(baseUrl, { username, password, org_name: orgName });
-      // Fetch and cache active public keys for this org after login
-      // Also fetch and cache required JSON-LD contexts for offline usage
-      try {
-        const isStaff = !!res?.is_staff;
-        const count = isStaff
-          ? await ContextService.refreshOnServerAndCache()
-          : await ContextService.fetchAndCacheDefaults();
-        console.log(`Contexts cached: ${count}`);
-        const list = await ContextCache.listContexts();
-        setContexts(list || []);
-      } catch (e) {
-        console.warn('Context fetch/cache failed:', e);
-      }
+      // Prime SDK cache from server responses (org-scoped contexts and public keys)
       const orgId = res?.organization?.id;
       if (orgId) {
         try {
-          await PublicKeyService.fetchAndCacheKeys({ organization_id: orgId });
-          const keys = await KeyCacheManager.getKeysByOrg(orgId);
-          setCachedKeys(keys || []);
-          setCachedCount((keys || []).length);
+          const bundle = await buildServerCacheBundle(orgId);
+          await WorkerCacheService.primeFromServer(bundle);
+          console.log('SDK cache primed for organization:', orgId);
         } catch (e) {
-          console.warn('Key fetch/cache failed:', e);
+          console.warn('Priming SDK cache failed:', e);
         }
       }
       setOutput(JSON.stringify(res, null, 2));
@@ -73,60 +57,38 @@ export default function Login() {
       </form>
       <pre style={{ background: '#f8f8f8', padding: 8, marginTop: 12, maxHeight: 200, overflow: 'auto' }}>{output}</pre>
 
-      <div style={{ marginTop: 16 }}>
-        <h3>Cached Public Keys (IndexedDB)</h3>
-        <div>Count: {cachedCount}</div>
-        <div style={{ maxHeight: 200, overflow: 'auto', background: '#fafafa', padding: 8, border: '1px solid #eee' }}>
-          {cachedKeys && cachedKeys.length > 0 ? (
-            <ul style={{ margin: 0, paddingLeft: 16 }}>
-              {cachedKeys.map((k: any) => (
-                <li key={k.key_id}>
-                  <div>
-                    <strong>key_id:</strong> {k.key_id}
-                  </div>
-                  <div>
-                    <strong>controller:</strong> {k.controller}
-                  </div>
-                  <div>
-                    <strong>type:</strong> {k.key_type}
-                  </div>
-                  <div>
-                    <strong>active:</strong> {String(k.is_active)}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <em>No keys cached yet</em>
-          )}
-        </div>
-      </div>
-
-      <div style={{ marginTop: 16 }}>
-        <h3>Cached JSON-LD Contexts (IndexedDB)</h3>
-        <div>Count: {Array.isArray(contexts) ? contexts.length : 0}</div>
-        <div style={{ maxHeight: 200, overflow: 'auto', background: '#fafafa', padding: 8, border: '1px solid #eee' }}>
-          {Array.isArray(contexts) && contexts.length > 0 ? (
-            <ul style={{ margin: 0, paddingLeft: 16 }}>
-              {contexts.map((c: any) => (
-                <li key={c.url}>
-                  <div>
-                    <strong>url:</strong> {c.url}
-                  </div>
-                  <div>
-                    <strong>cachedAt:</strong> {new Date(c.cachedAt).toLocaleString?.() || c.cachedAt}
-                  </div>
-                  <div>
-                    <strong>source:</strong> {c.source}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <em>No contexts cached yet</em>
-          )}
-        </div>
-      </div>
+      {/* SDK-managed cache, no local listing UI here to avoid duplication */}
     </div>
   );
+}
+
+// Build a CacheBundle for SDK from backend endpoints
+async function buildServerCacheBundle(organizationId: string) {
+  // Fetch contexts
+  const ctxRes = await NetworkManager.fetch(`/organization/api/contexts/?organization_id=${encodeURIComponent(organizationId)}`, { method: 'GET' });
+  if (!ctxRes.ok) throw new Error(`Failed to fetch contexts (${ctxRes.status})`);
+  const ctxJson = await ctxRes.json();
+  const contexts = Array.isArray(ctxJson?.contexts)
+    ? ctxJson.contexts.map((c: any) => ({ url: c.url, document: c.document }))
+    : [];
+
+  // Fetch public keys
+  const pkRes = await NetworkManager.fetch(`/organization/api/public-keys/?organization_id=${encodeURIComponent(organizationId)}`, { method: 'GET' });
+  if (!pkRes.ok) throw new Error(`Failed to fetch public keys (${pkRes.status})`);
+  const pkJson = await pkRes.json();
+  const publicKeys = Array.isArray(pkJson?.keys)
+    ? pkJson.keys.map((k: any) => ({
+        key_id: k.key_id,
+        key_type: k.key_type,
+        public_key_multibase: k.public_key_multibase,
+        public_key_hex: k.public_key_hex,
+        public_key_jwk: k.public_key_jwk,
+        controller: k.controller,
+        purpose: k.purpose,
+        is_active: k.is_active,
+        organization_id: organizationId,
+      }))
+    : [];
+
+  return { publicKeys, contexts } as any;
 }

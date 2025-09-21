@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Organization, OrganizationDID, PublicKey, PendingOrganizationRegistration
+from .models import Organization, OrganizationDID, PublicKey, PendingOrganizationRegistration, JsonLdContext
 from worker.models import OrganizationMember
 from datetime import datetime, timedelta, timezone as dt_timezone
 import random, string
@@ -209,3 +209,9 @@ class OrganizationLoginSerializer(serializers.Serializer):
             'role': membership.role,
             'login_type': 'organization_admin',
         }
+
+
+class JsonLdContextSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JsonLdContext
+        fields = ['id', 'organization', 'url', 'document', 'created_at', 'updated_at']

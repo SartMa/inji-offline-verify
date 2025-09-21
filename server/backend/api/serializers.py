@@ -1,6 +1,6 @@
 # server/api/serializers.py
 from rest_framework import serializers
-from .models import VerificationLog, JsonLdContext
+from .models import VerificationLog
 from worker.models import OrganizationMember, EmailLoginCode
 from organization.models import Organization
 from organization.serializers import OrganizationSerializer
@@ -53,14 +53,7 @@ class VerificationLogSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-class JsonLdContextSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = JsonLdContext
-        fields = ["id", "url", "document", "created_at", "updated_at"]
-
-
-class ContextListResponseSerializer(serializers.Serializer):
-    contexts = JsonLdContextSerializer(many=True)
+## Context serializers moved to organization app.
 
 
 # Shared Authentication Serializers (login serializers are now app-specific)

@@ -58,6 +58,40 @@ export function buildEd25519SpkiFromRaw(raw32: Uint8Array): Uint8Array {
   return out;
 }
 
+// Extract raw 32-byte Ed25519 key from SPKI DER bytes
+export function spkiToRawEd25519(spki: Uint8Array): Uint8Array {
+  if (spki.length === 32) return new Uint8Array(spki);
+  // Minimal ASN.1 parse to find BIT STRING content
+  const readLen = (buf: Uint8Array, at: number) => {
+    let len = buf[at], lenBytes = 1;
+    if (len & 0x80) {
+      const n = len & 0x7f; len = 0;
+      for (let j = 1; j <= n; j++) len = (len << 8) | buf[at + j];
+      lenBytes = 1 + n;
+    }
+    return { len, lenBytes };
+  };
+  for (let i = 0; i < spki.length; i++) {
+    if (spki[i] !== 0x03) continue; // BIT STRING
+    const { len, lenBytes } = readLen(spki, i + 1);
+    const pad = spki[i + 1 + lenBytes];
+    const start = i + 1 + lenBytes + 1;
+    const clen = len - 1;
+    if (pad === 0x00 && clen >= 32 && start + 32 <= spki.length) {
+      return new Uint8Array(spki.subarray(start, start + 32));
+    }
+  }
+  throw new Error('SPKI parse error: 32-byte Ed25519 key not found');
+}
+
+// Encode raw 32-byte Ed25519 as multibase (z-base58) with ed25519-pub multicodec header 0xed 0x01
+export function ed25519RawToMultibase(raw32: Uint8Array): string {
+  const header = new Uint8Array([0xed, 0x01]);
+  const out = new Uint8Array(header.length + raw32.length);
+  out.set(header, 0); out.set(raw32, header.length);
+  return base58btc.encode(out);
+}
+
 export function decodeDidKeyMultibaseEd25519(mb: string): Uint8Array {
   // Expect leading multibase char 'z' for base58btc
   if (!mb || mb.length < 2) throw new PublicKeyNotFoundError('Invalid multibase key');

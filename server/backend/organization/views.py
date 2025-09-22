@@ -87,6 +87,35 @@ class OrganizationPublicKeysView(APIView):
             'keys': keys,
         }
         return Response(payload, status=status.HTTP_200_OK)
+
+
+class OrganizationPublicKeyDetailView(APIView):
+    """Delete a specific public key by key_id."""
+    permission_classes = [permissions.IsAuthenticated, IsOrganizationAdmin]
+
+    def delete(self, request, key_id, *args, **kwargs):
+        try:
+            # Get the user's organization from their membership
+            org_member = OrganizationMember.objects.select_related('organization').get(
+                user=request.user, 
+                role__in=['ADMIN', 'OWNER']
+            )
+            org = org_member.organization
+            
+            # Find the public key
+            public_key = PublicKey.objects.get(key_id=key_id, organization=org)
+            
+            # Delete the public key
+            public_key.delete()
+            
+            return Response({'message': 'Public key deleted successfully'}, status=status.HTTP_200_OK)
+            
+        except OrganizationMember.DoesNotExist:
+            return Response({'detail': 'You do not have permission to delete public keys'}, status=status.HTTP_403_FORBIDDEN)
+        except PublicKey.DoesNotExist:
+            return Response({'detail': 'Public key not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'detail': f'Failed to delete public key: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 #                         key_id=k['key_id'],
 #                         defaults={
 #                             'organization': org,

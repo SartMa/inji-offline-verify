@@ -5,13 +5,19 @@ import Divider from '@mui/material/Divider';
 import Drawer, { drawerClasses } from '@mui/material/Drawer';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import MenuButton from './MenuButton';
 import MenuContent from './MenuContent';
-import CardAlert from './CardAlert';
 import { logoutService } from '../../services/logoutService';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface SideMenuMobileProps {
   open: boolean | undefined;
@@ -20,12 +26,19 @@ interface SideMenuMobileProps {
 
 export default function SideMenuMobile({ open, toggleDrawer }: SideMenuMobileProps) {
   const { user, loading } = useCurrentUser();
+  const navigate = useNavigate();
+  const location = useLocation();
   
   // Get user display name - user is the full response, so we need user.user for the actual user data
   const userData = user?.user;
   const displayName = userData?.full_name || 
     (userData?.first_name && userData?.last_name ? `${userData.first_name} ${userData.last_name}` : userData?.username) || 
     'User';
+
+  const handleMyAccount = () => {
+    toggleDrawer(false)(); // Close drawer
+    navigate('/my-account');
+  };
 
   const handleLogout = async () => {
     // Close the drawer first
@@ -37,6 +50,9 @@ export default function SideMenuMobile({ open, toggleDrawer }: SideMenuMobilePro
       redirectPath: '/signin'
     });
   };
+
+  const isMyAccountSelected = location.pathname === '/my-account';
+
   return (
     <Drawer
       anchor="right"
@@ -78,9 +94,42 @@ export default function SideMenuMobile({ open, toggleDrawer }: SideMenuMobilePro
         <Divider />
         <Stack sx={{ flexGrow: 1 }}>
           <MenuContent />
+          
+          {/* Mobile-only My Account section */}
+          <List dense sx={{ px: 1 }}>
+            <ListItem disablePadding sx={{ display: 'block' }}>
+              <ListItemButton
+                onClick={handleMyAccount}
+                selected={isMyAccountSelected}
+                sx={{
+                  minHeight: 48,
+                  px: 2.5,
+                  borderRadius: 1,
+                  mx: 1,
+                  mb: 0.5,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    backgroundColor: 'action.hover',
+                  },
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    minWidth: 0,
+                    mr: 3,
+                    justifyContent: 'center',
+                    color: isMyAccountSelected ? 'primary.main' : 'text.secondary',
+                  }}
+                >
+                  <AccountCircleIcon />
+                </ListItemIcon>
+                <ListItemText primary="My Account" />
+              </ListItemButton>
+            </ListItem>
+          </List>
+          
           <Divider />
         </Stack>
-        <CardAlert />
         <Stack sx={{ p: 2 }}>
           <Button 
             variant="outlined" 

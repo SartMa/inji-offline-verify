@@ -301,7 +301,7 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
                 Register Organization
               </Link>
             </Typography>
-            <Typography sx={{ textAlign: 'center', mt: 1 }}>
+            {/* <Typography sx={{ textAlign: 'center', mt: 1 }}>
               Are you a worker?{' '}
               <Link
                 component="button"
@@ -312,7 +312,7 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
               >
                 Worker Sign in
               </Link>
-            </Typography>
+            </Typography> */}
           </Box>
         </Card>
       </SignInContainer>

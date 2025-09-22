@@ -3,6 +3,7 @@ import { CredentialValidatorConstants } from './constants/CredentialValidatorCon
 import { CredentialVerifierConstants } from './constants/CredentialVerifierConstants.js';
 import { CredentialVerifierFactory } from './credential-verifier/credentialVerifierFactory.js';
 import { VerificationResult } from './data/data.js';
+import { isVCRevoked } from './cache/utils/CacheHelper.js';
 
 class CredentialsVerifier {
     private logger: Console;
@@ -49,6 +50,22 @@ class CredentialsVerifier {
                     CredentialVerifierConstants.ERROR_MESSAGE_VERIFICATION_FAILED, 
                     CredentialVerifierConstants.ERROR_CODE_VERIFICATION_FAILED
                 );
+            }
+
+            // Check revocation status after successful signature verification
+            try {
+                const credentialJson = JSON.parse(credential);
+                const vcId = credentialJson.id;
+                if (vcId && await isVCRevoked(vcId)) {
+                    return new VerificationResult(
+                        false,
+                        "Credential has been revoked",
+                        "VC_REVOKED"
+                    );
+                }
+            } catch (revocationError) {
+                // Log warning but don't fail verification if revocation check fails
+                console.warn('[CredentialsVerifier] Revocation check failed:', revocationError);
             }
 
             // Only report "expired" info if signature verification succeeded

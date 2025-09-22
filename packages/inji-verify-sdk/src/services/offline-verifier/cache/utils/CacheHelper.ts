@@ -1,4 +1,4 @@
-import { DB_NAME, DB_VERSION, CONTEXT_STORE, KEY_STORE, KEY_INDEX_CONTROLLER } from '../constants/CacheConstants';
+import { DB_NAME, DB_VERSION, CONTEXT_STORE, KEY_STORE, REVOKED_VC_STORE, KEY_INDEX_CONTROLLER } from '../constants/CacheConstants';
 import { dbService } from '../DBService'; // Import the singleton instance
 
 export type CachedPublicKey = {
@@ -11,6 +11,15 @@ export type CachedPublicKey = {
   purpose?: string;
   is_active?: boolean;
   organization_id?: string | null;
+};
+
+export type CachedRevokedVC = {
+  vc_id: string;                  // Verifiable Credential ID
+  issuer: string;                 // Issuer DID
+  subject?: string;               // Subject DID (optional)
+  reason?: string;                // Reason for revocation
+  revoked_at: string;             // When it was revoked
+  organization_id: string;        // Organization ID (required for proper scoping)
 };
 
 export async function putContexts(contexts: { url: string; document: any }[]): Promise<void> {
@@ -63,4 +72,114 @@ export async function getAnyKeyForDid(did: string): Promise<any | null> {
   // For now, assuming the index exists.
   const result = await db.getFromIndex(KEY_STORE, KEY_INDEX_CONTROLLER, did);
   return result ?? null;
+}
+
+export async function putRevokedVCs(revokedVCs: CachedRevokedVC[]): Promise<void> {
+  if (!revokedVCs?.length) return;
+  const db = await dbService.getDB(); // Use the singleton
+  const tx = db.transaction([REVOKED_VC_STORE], 'readwrite');
+  const store = tx.objectStore(REVOKED_VC_STORE);
+  await Promise.all(revokedVCs.map(vc => {
+    if (!vc.vc_id || !vc.issuer) throw new Error('putRevokedVCs: vc_id and issuer are required');
+    return store.put({
+      vc_id: vc.vc_id,
+      issuer: vc.issuer,
+      subject: vc.subject ?? null,
+      reason: vc.reason ?? null,
+      revoked_at: vc.revoked_at,
+      organization_id: vc.organization_id ?? null
+    });
+  }));
+  await tx.done;
+}
+
+export async function isVCRevoked(vcId: string): Promise<boolean> {
+  const db = await dbService.getDB(); // Use the singleton
+  const result = await db.get(REVOKED_VC_STORE, vcId);
+  return !!result;
+}
+
+export async function getRevokedVCInfo(vcId: string): Promise<CachedRevokedVC | null> {
+  const db = await dbService.getDB(); // Use the singleton
+  return await db.get(REVOKED_VC_STORE, vcId) ?? null;
+}
+
+export async function replaceRevokedVCsForOrganization(organizationId: string, revokedVCs: CachedRevokedVC[]): Promise<void> {
+  const db = await dbService.getDB();
+  
+  // First, get all existing revoked VCs for this organization
+  const tx1 = db.transaction(REVOKED_VC_STORE, 'readonly');
+  const store1 = tx1.objectStore(REVOKED_VC_STORE);
+  const index = store1.index('organization_id');
+  const existingVCs = await index.getAll(organizationId);
+  await tx1.done;
+  
+  // Delete all existing VCs for this organization
+  if (existingVCs.length > 0) {
+    const tx2 = db.transaction(REVOKED_VC_STORE, 'readwrite');
+    const store2 = tx2.objectStore(REVOKED_VC_STORE);
+    
+    for (const vc of existingVCs) {
+      await store2.delete(vc.vc_id);
+    }
+    await tx2.done;
+  }
+  
+  // Add the new VCs
+  if (revokedVCs.length > 0) {
+    const tx3 = db.transaction(REVOKED_VC_STORE, 'readwrite');
+    const store3 = tx3.objectStore(REVOKED_VC_STORE);
+    
+    for (const revokedVC of revokedVCs) {
+      await store3.put(revokedVC);
+    }
+    await tx3.done;
+  }
+  
+  console.log(`[CacheHelper] Replaced ${existingVCs.length} existing revoked VCs with ${revokedVCs.length} new VCs for organization ${organizationId}`);
+}
+
+export async function replacePublicKeysForOrganization(organizationId: string, publicKeys: CachedPublicKey[]): Promise<void> {
+  const db = await dbService.getDB();
+  
+  // First, get all existing public keys and filter by organization_id
+  const tx1 = db.transaction(KEY_STORE, 'readonly');
+  const store1 = tx1.objectStore(KEY_STORE);
+  const allKeys = await store1.getAll();
+  const existingKeys = allKeys.filter(key => key.organization_id === organizationId);
+  await tx1.done;
+  
+  // Delete all existing keys for this organization
+  if (existingKeys.length > 0) {
+    const tx2 = db.transaction(KEY_STORE, 'readwrite');
+    const store2 = tx2.objectStore(KEY_STORE);
+    
+    for (const key of existingKeys) {
+      await store2.delete(key.key_id);
+    }
+    await tx2.done;
+  }
+  
+  // Add the new keys
+  if (publicKeys.length > 0) {
+    const tx3 = db.transaction(KEY_STORE, 'readwrite');
+    const store3 = tx3.objectStore(KEY_STORE);
+    
+    for (const publicKey of publicKeys) {
+      await store3.put({
+        key_id: publicKey.key_id,
+        key_type: publicKey.key_type ?? 'Ed25519VerificationKey2020',
+        public_key_multibase: publicKey.public_key_multibase,
+        public_key_hex: publicKey.public_key_hex,
+        public_key_jwk: publicKey.public_key_jwk,
+        controller: publicKey.controller.split('#')[0],
+        purpose: publicKey.purpose ?? 'assertion',
+        is_active: publicKey.is_active ?? true,
+        organization_id: publicKey.organization_id ?? null
+      });
+    }
+    await tx3.done;
+  }
+  
+  console.log(`[CacheHelper] Replaced ${existingKeys.length} existing public keys with ${publicKeys.length} new keys for organization ${organizationId}`);
 }

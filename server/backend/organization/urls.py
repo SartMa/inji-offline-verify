@@ -20,4 +20,8 @@ urlpatterns = [
     path('api/public-keys/', views.OrganizationPublicKeysView.as_view(), name='organization-public-keys'),
     path('api/public-keys/<str:key_id>/', views.OrganizationPublicKeyDetailView.as_view(), name='organization-public-key-detail'),
     path('api/public-keys/upsert/', views.OrganizationPublicKeyUpsertView.as_view(), name='organization-public-keys-upsert'),
+    # Revoked VCs endpoints
+    path('api/revoked-vcs/', views.OrganizationRevokedVCsView.as_view(), name='organization-revoked-vcs'),
+    path('api/revoked-vcs/upsert/', views.OrganizationRevokedVCUpsertView.as_view(), name='organization-revoked-vcs-upsert'),
+    path('api/revoked-vcs/<str:vc_id>/', views.OrganizationRevokedVCDetailView.as_view(), name='organization-revoked-vc-detail'),
 ]

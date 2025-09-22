@@ -3,7 +3,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Organization, OrganizationDID, PublicKey, PendingOrganizationRegistration, JsonLdContext
+from .models import Organization, OrganizationDID, PublicKey, PendingOrganizationRegistration, JsonLdContext, RevokedVC
 from worker.models import OrganizationMember
 from datetime import datetime, timedelta, timezone as dt_timezone
 import random, string
@@ -214,3 +214,83 @@ class JsonLdContextSerializer(serializers.ModelSerializer):
     class Meta:
         model = JsonLdContext
         fields = ['id', 'organization', 'url', 'document', 'created_at', 'updated_at']
+
+
+class RevokedVCSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RevokedVC
+        fields = [
+            'id', 'vc_id', 'issuer', 'subject', 'reason', 'revoked_at', 
+            'metadata', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'revoked_at', 'created_at', 'updated_at']
+
+
+class RevokedVCUpsertSerializer(serializers.Serializer):
+    """Serializer for adding revoked VCs from full VC JSON payload"""
+    organization_id = serializers.UUIDField()
+    vc_json = serializers.JSONField()
+    reason = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        # Validate organization exists
+        try:
+            org = Organization.objects.get(id=attrs['organization_id'])
+        except Organization.DoesNotExist:
+            raise serializers.ValidationError({'organization_id': 'Organization not found'})
+        
+        vc_data = attrs['vc_json']
+        print(f"DEBUG: Received vc_data: {vc_data}")  # Debug line
+        
+        # Handle nested VC structure - check if VC is nested under 'credential' key
+        if 'credential' in vc_data and isinstance(vc_data['credential'], dict):
+            vc_credential = vc_data['credential']
+            print(f"DEBUG: Using nested credential: {vc_credential.get('id', 'NO_ID')}")  # Debug line
+        else:
+            vc_credential = vc_data
+            print(f"DEBUG: Using root level VC: {vc_credential.get('id', 'NO_ID')}")  # Debug line
+        
+        # Extract required fields from VC JSON
+        vc_id = vc_credential.get('id')
+        if not vc_id:
+            raise serializers.ValidationError({'vc_json': f'VC JSON must contain an "id" field. Checked credential structure: {vc_credential.keys() if isinstance(vc_credential, dict) else "not a dict"}'})
+        
+        issuer = vc_credential.get('issuer')
+        if not issuer:
+            raise serializers.ValidationError({'vc_json': 'VC JSON must contain an "issuer" field (either at root level or under "credential" key)'})
+        
+        # Handle issuer as string or object
+        if isinstance(issuer, dict):
+            issuer = issuer.get('id', '')
+        
+        # Extract subject if available
+        subject = None
+        credential_subject = vc_credential.get('credentialSubject', {})
+        if isinstance(credential_subject, dict):
+            subject = credential_subject.get('id')
+        elif isinstance(credential_subject, list) and len(credential_subject) > 0:
+            subject = credential_subject[0].get('id')
+        
+        attrs['organization'] = org
+        attrs['vc_id'] = vc_id
+        attrs['issuer'] = issuer
+        attrs['subject'] = subject
+        # Store the extracted VC credential for future reference
+        attrs['vc_credential'] = vc_credential
+        
+        return attrs
+
+    def create(self, validated_data):
+        return RevokedVC.objects.create(
+            organization=validated_data['organization'],
+            vc_id=validated_data['vc_id'],
+            issuer=validated_data['issuer'],
+            subject=validated_data.get('subject'),
+            reason=validated_data.get('reason', ''),
+            metadata=validated_data['vc_credential']  # Store the actual VC, not the wrapper
+        )
+
+
+class RevokedVCListResponseSerializer(serializers.Serializer):
+    organization_id = serializers.UUIDField()
+    revoked_vcs = RevokedVCSerializer(many=True)

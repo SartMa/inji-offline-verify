@@ -149,3 +149,40 @@ class JsonLdContext(models.Model):
         return f"{self.organization_id} :: {self.url}"
 
 
+class RevokedVC(models.Model):
+    """
+    Revoked Verifiable Credential data scoped to an Organization.
+    This is used for pre-cached revocation checks during offline verification.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="revoked_vcs"
+    )
+    vc_id = models.CharField(max_length=1000, help_text="Verifiable Credential ID (from credential.id)")
+    issuer = models.CharField(max_length=500, help_text="Issuer DID")
+    subject = models.CharField(max_length=500, null=True, blank=True, help_text="Subject DID (if available)")
+    reason = models.CharField(max_length=255, null=True, blank=True, help_text="Reason for revocation")
+    revoked_at = models.DateTimeField(auto_now_add=True, help_text="When the VC was marked as revoked")
+    metadata = models.JSONField(null=True, blank=True, help_text="Additional revocation metadata")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["organization"], name="idx_revokedvc_org"),
+            models.Index(fields=["vc_id"], name="idx_revokedvc_id"),
+            models.Index(fields=["issuer"], name="idx_revokedvc_issuer"),
+            models.Index(fields=["subject"], name="idx_revokedvc_subject"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "vc_id"], name="uniq_revokedvc_org_id"
+            )
+        ]
+        verbose_name = "Revoked Verifiable Credential"
+        verbose_name_plural = "Revoked Verifiable Credentials"
+
+    def __str__(self):
+        return f"{self.vc_id} (revoked by {self.organization.name})"
+
+

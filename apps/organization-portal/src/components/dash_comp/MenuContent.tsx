@@ -10,12 +10,14 @@ import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import BlockIcon from '@mui/icons-material/Block';
 import { NavLink, useLocation } from 'react-router-dom';
 
 const mainListItems = [
   { text: 'Home', icon: <HomeRoundedIcon />, to: '/dashboard' },
   { text: 'Add Worker', icon: <PersonAddIcon />, to: '/add-worker' },
   { text: 'Add DID', icon: <FingerprintIcon />, to: '/add-did' },
+  { text: 'Add Revoked VC', icon: <BlockIcon />, to: '/add-revoked-vc' },
   { text: 'Verification Logs', icon: <AssignmentIcon />, to: '/logs' },
   // you can add more items with `to` fields here later
 ];

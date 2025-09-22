@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework.views import APIView
 from django.db import transaction
-from .models import Organization, OrganizationDID, PublicKey
+from .models import Organization, OrganizationDID, PublicKey, RevokedVC
 from .permissions import IsOrganizationAdmin
 from .models import JsonLdContext
 from .serializers import JsonLdContextSerializer
@@ -16,6 +16,9 @@ from .serializers import (
     PublicKeyListResponseSerializer,
     OrganizationSerializer,
     OrganizationLoginSerializer,
+    RevokedVCSerializer,
+    RevokedVCUpsertSerializer,
+    RevokedVCListResponseSerializer,
 )
 from worker.models import OrganizationMember
 from rest_framework.permissions import IsAuthenticated
@@ -420,3 +423,119 @@ class OrganizationPublicKeyUpsertView(APIView):
 #         }]
 #     else:
 #         raise ValueError('Unsupported DID method')
+
+
+class OrganizationRevokedVCsView(APIView):
+    """Return all revoked VCs for a given organization."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        org_id = request.query_params.get('organization_id')
+        if not org_id:
+            return Response({'detail': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            org = Organization.objects.get(id=org_id)
+        except Organization.DoesNotExist:
+            return Response({'detail': 'Organization not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        qs = RevokedVC.objects.filter(organization=org).order_by('-revoked_at')
+        serializer = RevokedVCSerializer(qs, many=True)
+        return Response({
+            'organization_id': str(org.id), 
+            'revoked_vcs': serializer.data
+        }, status=status.HTTP_200_OK)
+
+
+class OrganizationRevokedVCUpsertView(APIView):
+    """
+    Upsert a revoked VC under an organization.
+    Requires organization_id in body and ADMIN membership in that org.
+    Body:
+      - organization_id: UUID
+      - vc_json: Full VC JSON object (we extract id, issuer, subject)
+      - reason: Optional reason for revocation
+    """
+    permission_classes = [permissions.IsAuthenticated, IsOrganizationAdmin]
+
+    def post(self, request, *args, **kwargs):
+        serializer = RevokedVCUpsertSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        organization_id = serializer.validated_data['organization_id']
+        
+        # Check user permission for this organization
+        try:
+            org_member = OrganizationMember.objects.select_related('organization').get(
+                user=request.user, 
+                organization_id=organization_id,
+                role__in=['ADMIN', 'OWNER']
+            )
+        except OrganizationMember.DoesNotExist:
+            return Response({'detail': 'You do not have permission to manage revoked VCs for this organization'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            # Check if VC is already revoked
+            existing = RevokedVC.objects.filter(
+                organization_id=organization_id,
+                vc_id=serializer.validated_data['vc_id']
+            ).first()
+            
+            if existing:
+                # Update existing revocation record
+                existing.reason = serializer.validated_data.get('reason', existing.reason)
+                existing.metadata = serializer.validated_data['vc_json']
+                existing.save()
+                
+                return Response({
+                    'id': str(existing.id),
+                    'vc_id': existing.vc_id,
+                    'issuer': existing.issuer,
+                    'message': 'Revoked VC updated successfully'
+                }, status=status.HTTP_200_OK)
+            else:
+                # Create new revocation record
+                revoked_vc = serializer.save()
+                
+                return Response({
+                    'id': str(revoked_vc.id),
+                    'vc_id': revoked_vc.vc_id,
+                    'issuer': revoked_vc.issuer,
+                    'message': 'VC added to revocation list successfully'
+                }, status=status.HTTP_201_CREATED)
+                
+        except Exception as e:
+            return Response({
+                'detail': f'Failed to add revoked VC: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class OrganizationRevokedVCDetailView(APIView):
+    """Delete a specific revoked VC by vc_id."""
+    permission_classes = [permissions.IsAuthenticated, IsOrganizationAdmin]
+
+    def delete(self, request, vc_id, *args, **kwargs):
+        try:
+            # Get the user's organization from their membership
+            org_member = OrganizationMember.objects.select_related('organization').get(
+                user=request.user, 
+                role__in=['ADMIN', 'OWNER']
+            )
+            org = org_member.organization
+            
+            # Find the revoked VC
+            revoked_vc = RevokedVC.objects.get(vc_id=vc_id, organization=org)
+            
+            # Delete the revoked VC
+            revoked_vc.delete()
+            
+            return Response({'message': 'Revoked VC removed successfully'}, status=status.HTTP_200_OK)
+            
+        except OrganizationMember.DoesNotExist:
+            return Response({'detail': 'You do not have permission to delete revoked VCs'}, status=status.HTTP_403_FORBIDDEN)
+        except RevokedVC.DoesNotExist:
+            return Response({'detail': 'Revoked VC not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'detail': f'Failed to delete revoked VC: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -406,5 +406,20 @@ async function buildServerCacheBundle(organizationId: string) {
       }))
     : [];
 
-  return { publicKeys, contexts } as any;
+  // Fetch revoked VCs
+  const rvcRes = await NetworkManager.fetch(`/organization/api/revoked-vcs/?organization_id=${encodeURIComponent(organizationId)}`, { method: 'GET' });
+  if (!rvcRes.ok) throw new Error(`Failed to fetch revoked VCs (${rvcRes.status})`);
+  const rvcJson = await rvcRes.json();
+  const revokedVCs = Array.isArray(rvcJson?.revoked_vcs)
+    ? rvcJson.revoked_vcs.map((vc: any) => ({
+        vc_id: vc.vc_id,
+        issuer: vc.issuer,
+        subject: vc.subject,
+        reason: vc.reason,
+        revoked_at: vc.revoked_at,
+        organization_id: organizationId,
+      }))
+    : [];
+
+  return { publicKeys, contexts, revokedVCs } as any;
 }

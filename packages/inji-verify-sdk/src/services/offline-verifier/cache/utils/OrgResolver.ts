@@ -7,23 +7,16 @@
  */
 import { PublicKeyGetterFactory } from '../../publicKey/PublicKeyGetterFactory';
 import { base58btc } from 'multiformats/bases/base58';
+import type { CachedPublicKey, CachedRevokedVC } from './CacheHelper';
 
 export type CacheBundle = {
-  publicKeys?: Array<{
-    key_id: string;
-    key_type?: string;
-    public_key_multibase?: string;
-    public_key_hex?: string;
-    public_key_jwk?: any;
-    controller: string;
-    purpose?: string;
-    is_active?: boolean;
-    organization_id?: string | null;
-  }>;
+  publicKeys?: CachedPublicKey[];
   // Prefer including full JSON documents to avoid network in the Worker app
   contexts?: Array<{ url: string; document: any }>;
   // If you cannot provide documents, you can include URLs; Worker may fetch them once (online)
   contextUrls?: string[];
+  // Revoked VCs for offline revocation checking
+  revokedVCs?: CachedRevokedVC[];
 };
 
 function unique<T>(arr: T[]) { return Array.from(new Set(arr)); }

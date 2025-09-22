@@ -6,6 +6,7 @@ import { useAuth } from '@inji-offline-verify/shared-auth';
 import Dashboard from "../pages/Dashboard";
 import AddWorker from "../pages/AddWorker/AddWorker";
 import AddDID from "../pages/AddDID";
+import AddRevokedVC from "../pages/AddRevokedVC";
 import VerificationLogsPage from "../pages/VerificationLogsPage";
 import MyAccount from "../pages/MyAccount/MyAccount";
 import OrgSignIn from "../pages/SignInPage/orgSignIn";
@@ -129,6 +130,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <AddDID />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/add-revoked-vc" 
+          element={
+            <ProtectedRoute>
+              <AddRevokedVC />
             </ProtectedRoute>
           } 
         />

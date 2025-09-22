@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import VCStorageProvider from './context/VCStorageContext';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
+import CacheSyncProvider from './context/CacheSyncContext';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Settings from './pages/Settings/Settings';
 import SignIn from './SignIn.tsx';
@@ -143,7 +144,11 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppContent />
+        <CacheSyncProvider>
+          <VCStorageProvider>
+            <AppContent />
+          </VCStorageProvider>
+        </CacheSyncProvider>
       </AuthProvider>
     </Router>
   );

@@ -107,7 +107,7 @@ export class CacheSyncService implements NetworkStatusListener {
       if (this.networkService.getIsOnline()) {
         this.syncAllOrganizations();
       }
-    }, 10 * 60 * 1000); // 10 minutes
+    }, 90 * 1000); // 90 seconds
   }
 
   /**
@@ -178,8 +178,8 @@ export class CacheSyncService implements NetworkStatusListener {
     const lastSync = this.lastSyncMetadata.get(organizationId);
     const now = Date.now();
 
-    // Check if we should skip this sync (too recent) - reduced cooldown to 30 seconds
-    if (lastSync && !this.networkService.shouldSync(lastSync.lastSyncTime, 30 * 1000)) {
+    // Check if we should skip this sync (too recent) - reduced cooldown to 10 seconds  
+    if (lastSync && !this.networkService.shouldSync(lastSync.lastSyncTime, 10 * 1000)) {
       console.log(`[CacheSyncService] Skipping sync for ${organizationId} - too recent (last sync: ${new Date(lastSync.lastSyncTime).toISOString()})`);
       return {
         success: true,

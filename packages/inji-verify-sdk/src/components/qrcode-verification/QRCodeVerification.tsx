@@ -129,7 +129,13 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
   }, []);
 
   const startVideoStream = useCallback(() => {
-    if (!isEnableScan || isCameraActive || streamingRef.current) return;
+    console.log('🎥 Attempting to start video stream...', { isEnableScan, isCameraActive, streaming: streamingRef.current });
+    if (!isEnableScan || isCameraActive || streamingRef.current) {
+      console.log('🚫 Video stream start blocked:', { isEnableScan, isCameraActive, streaming: streamingRef.current });
+      return;
+    }
+    
+    console.log('📷 Requesting camera permissions...');
     navigator.mediaDevices
       .getUserMedia({
         video: {
@@ -140,34 +146,58 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
         },
       })
       .then((stream) => {
+        console.log('✅ Camera stream obtained successfully');
         streamingRef.current = true;
+        setIsCameraActive(true); // Set camera active when stream is successfully obtained
         const video = videoRef.current;
-        if (!video) return;
+        if (!video) {
+          console.error('❌ Video element not found');
+          return;
+        }
         video.srcObject = stream;
         video.disablePictureInPicture = true;
         video.playsInline = true;
         video.controls = false;
         video.onloadedmetadata = () => {
+        
           video
             .play()
             .then(() => {
+             
               setTimeout(processFrame, FRAME_PROCESS_INTERVAL_MS);
             })
-            .catch(onError);
+            .catch((playError) => {
+              console.error('❌ Video playback failed:', playError);
+              onError(playError);
+            });
         };
       })
-      .catch(onError);
+      .catch((streamError) => {
+        console.error('❌ Camera stream failed:', streamError);
+        onError(streamError);
+      });
   }, [isEnableScan, isCameraActive, onError, processFrame]);
 
   const stopVideoStream = () => {
+    console.log('🛑 Stopping video stream...', { streaming: streamingRef.current, isCameraActive });
     streamingRef.current = false;
     const video = videoRef.current;
-    if (!video) return;
+    if (!video) {
+      console.log('⚠️ No video element found when stopping stream');
+      return;
+    }
     const stream = video.srcObject as MediaStream | null;
-    stream?.getTracks().forEach((track) => track.stop());
+    if (stream) {
+ 
+      stream.getTracks().forEach((track) => {
+        console.log(`Stopping track: ${track.kind} - ${track.label}`);
+        track.stop();
+      });
+    }
     video.onloadedmetadata = null;
     video.srcObject = null;
     setIsCameraActive(false);
+
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -193,7 +223,6 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
     try {
       // Handle the online redirect payload separately and early
       if (props.mode === 'online' && rawInput && typeof rawInput === 'object' && (rawInput as any).vpToken) {
-        console.log('[Online Mode] Redirect parameters detected; skipping processScanResult.');
         return;
       }
 
@@ -219,15 +248,16 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
         parsed = JSON.parse(rawInput);
       } catch {
         // Not JSON -> try to decode compact format
-        console.log('[Offline] Non-JSON QR detected. Attempting to decode compact payload...');
+
         try {
           decodedRaw = await decodeQrData(new TextEncoder().encode(rawInput));
           if (decodedRaw) {
             console.log('[Offline] Decoded QR (first 120 chars):', decodedRaw.slice(0, 120), '...');
+            parsed = JSON.parse(decodedRaw);
           } else {
             console.error('[Offline] Decoded QR is null.');
+            throw new Error('Decoded QR is null');
           }
-          parsed = JSON.parse(decodedRaw);
         } catch (decodeError) {
           // Decoding failed: surface error once and exit
           if (rawInput !== lastErrorRef.current) {
@@ -244,7 +274,7 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
       lastErrorRef.current = null;
 
       if (props.mode === 'offline') {
-        console.log('[Offline Mode] Verifying credential locally...');
+
         // Now that we have a valid VC object, stop the camera and show loader
         clearTimer();
         stopVideoStream();
@@ -255,7 +285,22 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
           const format = props.credentialFormat ?? CredentialFormat.LDP_VC;
           const payload = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
           const result = await verifier.verify(payload, format);
-          props.onVerificationResult?.(result);
+
+          // Ensure the VerificationResult carries the parsed credential for UI rendering
+          const parsedObject = typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
+          const hasResultShape = result && typeof result === 'object' && 'verificationStatus' in result;
+          if (hasResultShape) {
+            const r = result as VerificationResult & { payload?: any };
+            if (!r.payload) {
+              r.payload = parsedObject;
+            }
+            props.onVerificationResult?.(r as VerificationResult);
+          } else {
+            // Backward-compatibility: wrap boolean into VerificationResult and attach payload
+            const wrapped = new VerificationResult(!!result, !!result ? 'Verification successful' : 'Verification failed', '');
+            wrapped.payload = parsedObject;
+            props.onVerificationResult?.(wrapped);
+          }
         } finally {
           // Bring scanner back for next scan
           setScanning(false);
@@ -373,7 +418,30 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
   const handleZoomChange = (value: number) => { if (value >= 0 && value <= 10) setZoomLevel(value); };
   const handleSliderChange = (_: any, value: number | number[]) => { if (typeof value === "number") handleZoomChange(value); };
   function base64UrlDecode(base64url: string): string { let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/"); const pad = base64.length % 4; if (pad) base64 += "=".repeat(4 - pad); return atob(base64); }
-  useEffect(() => { if (!isEnableScan) return; startVideoStream(); setIsCameraActive(true); timerRef.current = setTimeout(() => { stopVideoStream(); onError(new Error("scanSessionExpired")); }, ScanSessionExpiryTime); return () => { clearTimer(); stopVideoStream(); }; }, [isEnableScan, onError, startVideoStream, isUploading]);
+  useEffect(() => { 
+    console.log('🔄 Scanner useEffect triggered', { isEnableScan, isUploading });
+    if (!isEnableScan) {
+  
+      return;
+    }
+    
+    
+    startVideoStream(); 
+    
+  
+    timerRef.current = setTimeout(() => { 
+  
+      stopVideoStream(); 
+      onError(new Error("scanSessionExpired")); 
+    }, ScanSessionExpiryTime); 
+    
+    return () => { 
+
+      clearTimer(); 
+      stopVideoStream(); 
+    }; 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEnableScan, isUploading]);
   useEffect(() => { const resize = () => setIsMobile(window.innerWidth < 768); window.addEventListener("resize", resize); resize(); return () => window.removeEventListener("resize", resize); }, []);
   useEffect(() => {
     if (props.mode !== 'online') return;
@@ -392,7 +460,7 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
 
       if (vpToken && presentationSubmission) {
         // Do not call processScanResult with an object; handle redirect outside.
-        console.log('[Online Mode] Redirect params present; upstream flow should handle vp_token/presentation_submission.');
+
         window.history.replaceState(null, "", window.location.pathname);
       } else if (!!error) {
         onError(new Error(error));
@@ -404,6 +472,7 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
   }, [onError, processScanResult, props.mode]);
 
   const startScanning = isCameraActive && isEnableScan && !isUploading && !isScanning;
+  
 
   // --- NO CHANGE HERE: The entire JSX and UI rendering is preserved exactly as it was ---
   return (

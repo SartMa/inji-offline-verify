@@ -3,22 +3,23 @@ import { ValidationHelper } from '../../utils/ValidationHelper.js';
 import { DateUtils } from '../../utils/DateUtils.js';
 import { Util, DATA_MODEL } from '../../utils/Util.js';
 import { ValidationException } from '../../exception/ValidationException.js';
+import { ValidationStatus } from '../../data/data.js';
 
 /**
  * Validation Status class to match Kotlin ValidationStatus
  */
-export class ValidationStatus {
-  public validationMessage: string;
-  public validationErrorCode: string;
+// export class ValidationStatus {
+//   public validationMessage: string;
+//   public validationErrorCode: string;
 
-  constructor(
-    validationMessage: string,
-    validationErrorCode: string
-  ) {
-    this.validationMessage = validationMessage;
-    this.validationErrorCode = validationErrorCode;
-  }
-}
+//   constructor(
+//     validationMessage: string,
+//     validationErrorCode: string
+//   ) {
+//     this.validationMessage = validationMessage;
+//     this.validationErrorCode = validationErrorCode;
+//   }
+// }
 
 /**
  * LDP Validator - matches Kotlin LdpValidator functionality exactly

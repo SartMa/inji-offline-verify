@@ -20,7 +20,7 @@ export const CONSTRAINTS_IDEAL_FRAME_RATE = 30;
 export const HEADER_DELIMITER = "";
 export const SUPPORTED_QR_HEADERS = [""];
 export const ZIP_HEADER = "PK";
-export const ScanSessionExpiryTime = 60000; // in milliseconds
+export const ScanSessionExpiryTime = 300000; // 5 minutes in milliseconds (increased from 1 minute)
 export const OvpQrHeader = "INJI_OVP://";
 export const BASE64_PADDING = "=="
 

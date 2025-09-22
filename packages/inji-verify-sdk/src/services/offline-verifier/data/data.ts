@@ -2,11 +2,13 @@ class VerificationResult {
     verificationStatus: boolean;
     verificationMessage: string;
     verificationErrorCode: string;
+    payload: any; // Add payload to carry credential data
 
-    constructor(verificationStatus: boolean, verificationMessage: string = "", verificationErrorCode: string) {
+    constructor(verificationStatus: boolean, verificationMessage: string = "", verificationErrorCode: string, payload: any = null) {
         this.verificationStatus = verificationStatus;
         this.verificationMessage = verificationMessage;
         this.verificationErrorCode = verificationErrorCode;
+        this.payload = payload; // Set payload
     }
 }
 

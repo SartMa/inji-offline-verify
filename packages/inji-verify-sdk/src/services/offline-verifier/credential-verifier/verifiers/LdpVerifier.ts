@@ -365,7 +365,7 @@ export class LdpVerifier {
    */
   async verify(credential: string): Promise<boolean> {
     try {
-      this.logger.info("🔍 Starting CRYPTOGRAPHIC verification process...");
+      this.logger.info('🔍 Starting credential verification process');
 
       const vcJsonLdObject = JSON.parse(credential);
 

@@ -10,11 +10,21 @@ import {
   Button,
 } from '@mui/material';
 import { Close, QrCodeScanner } from '@mui/icons-material';
-import { QRCodeVerification, SDKCacheManager } from '@mosip/react-inji-verify-sdk';
+import { QRCodeVerification } from '@mosip/react-inji-verify-sdk';
 import { VerificationResult } from '@mosip/react-inji-verify-sdk';
 import { CredentialFormat } from '@mosip/react-inji-verify-sdk';
 import VerificationResultModal from './VerificationResultModal';
 import { WorkerCacheService } from '../services/WorkerCacheService';
+import { useVCStorage } from '../context/VCStorageContext';
+import { v4 as uuidv4 } from 'uuid';
+
+// Helper to create a simple hash
+async function createHash(data: string) {
+  const buffer = new TextEncoder().encode(data);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 interface QRScannerModalProps {
   open: boolean;
@@ -27,6 +37,7 @@ export default function QRScannerModal({ open, onClose, onResult }: QRScannerMod
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [cacheReady, setCacheReady] = useState(false);
+  const { storeVerificationResult } = useVCStorage();
 
   // Check cache status when modal opens
   useEffect(() => {
@@ -39,7 +50,7 @@ export default function QRScannerModal({ open, onClose, onResult }: QRScannerMod
     try {
       // Check if cache has any data using SDK
       const stats = WorkerCacheService.getCacheStats();
-      setCacheReady(true); // Set based on actual cache content
+      setCacheReady(true); // Assuming if stats are retrieved, cache is usable
       console.log('Cache status:', stats);
     } catch (error) {
       console.error('Failed to check cache status:', error);
@@ -48,23 +59,37 @@ export default function QRScannerModal({ open, onClose, onResult }: QRScannerMod
   };
 
   const handleStartScanning = async () => {
-    try {
-      // Ensure cache is ready before starting scan
-      if (!cacheReady) {
-        console.warn('Cache not ready, attempting to prime...');
-        // You might want to show a loading state here
-      }
+    // Use a short timeout to allow the dialog's layout to stabilize
+    // before mounting the scanner component. This prevents the negative width error.
+    setTimeout(() => {
       setScannerStarted(true);
-    } catch (error) {
-      console.error('Failed to start scanning:', error);
-    }
+    }, 50);
   };
 
   const handleVerificationResult = async (result: VerificationResult) => {
     console.log('Verification result received:', result);
     
-    // Store verification result locally (not in SDK cache)
-    await WorkerCacheService.storeVerificationResult(result);
+    const payload = (result as any).payload || {};
+    const vc_hash = await createHash(JSON.stringify(payload));
+
+    // Create an object that matches the VerificationLog model for storage
+    const verificationData = {
+      uuid: uuidv4(),
+      verification_status: result.verificationStatus ? "SUCCESS" : "FAILED",
+      verified_at: new Date().toISOString(),
+      vc_hash: vc_hash,
+      credential_subject: payload.credentialSubject || null,
+      error_message: result.verificationStatus ? null : result.verificationMessage,
+      synced: false
+    };
+
+    // Store in VCStorageContext (which uses our dbService)
+    try {
+      await storeVerificationResult(verificationData);
+      console.log('✅ Stored in VCStorageContext successfully', verificationData);
+    } catch (e) {
+      console.error('❌ Failed to store in VCStorage:', e);
+    }
     
     setVerificationResult(result);
     setShowResult(true);
@@ -72,9 +97,29 @@ export default function QRScannerModal({ open, onClose, onResult }: QRScannerMod
     onResult(result);
   };
 
-  const handleError = (error: Error) => {
+  const handleError = async (error: Error) => {
     console.error('QR Scanner error:', error);
     const errorResult = new VerificationResult(false, error.message, 'SCAN_ERROR');
+    
+    // Create an error object for storage
+    const errorData = {
+      uuid: uuidv4(),
+      verification_status: "FAILED",
+      verified_at: new Date().toISOString(),
+      vc_hash: null,
+      credential_subject: null,
+      error_message: error.message,
+      synced: false
+    };
+
+    // Store error result in VCStorageContext
+    try {
+      await storeVerificationResult(errorData);
+      console.log('✅ Stored error in VCStorageContext', errorData);
+    } catch (e) {
+      console.error('❌ Failed to store error in VCStorage:', e);
+    }
+    
     setVerificationResult(errorResult);
     setShowResult(true);
     setScannerStarted(false);
@@ -120,16 +165,16 @@ export default function QRScannerModal({ open, onClose, onResult }: QRScannerMod
           </Box>
         </DialogTitle>
 
-        <DialogContent sx={{ p: 3 }}>
+        <DialogContent sx={{ p: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {!scannerStarted ? (
-            // Scanner Preview UI (matches your screenshot)
-            <Box sx={{ textAlign: 'center' }}>
+            // Scanner Preview UI
+            <Box sx={{ textAlign: 'center', width: '100%' }}>
               <Paper
                 sx={{
                   border: '2px dashed',
                   borderColor: 'primary.main',
                   borderRadius: 3,
-                  p: 6,
+                  p: { xs: 3, sm: 6 },
                   mb: 3,
                   backgroundColor: 'rgba(59, 130, 246, 0.04)',
                 }}
@@ -160,13 +205,6 @@ export default function QRScannerModal({ open, onClose, onResult }: QRScannerMod
                 <Typography variant="body2" color="text.secondary">
                   Position the QR code within the camera frame
                 </Typography>
-
-                {/* Cache status indicator */}
-                {!cacheReady && (
-                  <Typography variant="caption" color="warning.main" sx={{ display: 'block', mt: 2 }}>
-                    ⚠️ Cache not ready - verification may require network
-                  </Typography>
-                )}
               </Paper>
 
               <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
@@ -195,9 +233,9 @@ export default function QRScannerModal({ open, onClose, onResult }: QRScannerMod
             </Box>
           ) : (
             // Actual QR Scanner using SDK
-            <Box sx={{ position: 'relative', minHeight: '400px' }}>
+            <Box sx={{position: 'relative', minHeight: '400px' }}>
               <QRCodeVerification
-                mode="offline"  // Use offline mode to leverage SDK cache
+                mode="offline"
                 onVerificationResult={handleVerificationResult}
                 onError={handleError}
                 credentialFormat={CredentialFormat.LDP_VC}

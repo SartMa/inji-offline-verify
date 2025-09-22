@@ -1,4 +1,4 @@
-import { getUnsyncedVerifications, markAsSynced, getDeviceId, type VerificationRecord } from './dbService';
+import { getUnsyncedVerifications, markAsSynced, type VerificationRecord } from './dbService';
 import { getApiBaseUrl, getAccessToken, refreshAccessToken } from './authService';
 
 const SYNC_ENDPOINT = (): string | null => {
@@ -38,12 +38,13 @@ export async function syncToServer() {
 
       const body = JSON.stringify(
         pendingData.map((item: VerificationRecord) => ({
-          verification_status: item.status?.toUpperCase() === 'FAILURE' ? 'FAILED' : 'SUCCESS',
-          verified_at: item.timestamp,
-          vc_hash: (item as any).hash,
-          credential_subject: item,
-          error_message: item.error || null,
-          device_id: getDeviceId(),
+          // Use the correct fields from the VerificationRecord type
+          id: item.uuid, // The backend expects the UUID as 'id'
+          verification_status: item.verification_status,
+          verified_at: item.verified_at,
+          vc_hash: item.vc_hash,
+          credential_subject: item.credential_subject,
+          error_message: item.error_message,
         }))
       );
 
@@ -65,11 +66,14 @@ export async function syncToServer() {
       }
 
       if (response.ok) {
-        const syncedIds = pendingData.map((item) => item.id!).filter(Boolean) as number[];
-        await markAsSynced(syncedIds);
-        console.log(`Successfully synced ${syncedIds.length} items`);
-        return { success: true, synced: syncedIds.length };
+        // Use the uuid to mark as synced
+        const syncedUuids = pendingData.map((item) => item.uuid);
+        await markAsSynced(syncedUuids);
+        console.log(`Successfully synced ${syncedUuids.length} items`);
+        return { success: true, synced: syncedUuids.length };
       } else {
+        const errorBody = await response.text();
+        console.error('Server error body:', errorBody);
         throw new Error(`Server responded with ${response.status}`);
       }
     } catch (error: any) {

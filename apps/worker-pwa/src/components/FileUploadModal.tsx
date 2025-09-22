@@ -47,7 +47,14 @@ export default function FileUploadModal({ open, onClose, onResult }: Props) {
 
   return (
     <>
-      <Dialog open={open} onClose={closeAll} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, minHeight: '400px' } }}>
+      <Dialog open={open} onClose={closeAll} maxWidth="sm" fullWidth PaperProps={{ 
+        sx: { 
+          borderRadius: 3, 
+          minHeight: '400px',
+          backgroundColor: 'background.paper',
+          backgroundImage: 'none', // Remove default MUI background gradient in dark mode
+        } 
+      }}>
         <DialogTitle sx={{ p: 2, pb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -65,19 +72,27 @@ export default function FileUploadModal({ open, onClose, onResult }: Props) {
                 border: '2px dashed',
                 borderColor: selectedFile ? 'success.main' : 'primary.main',
                 borderRadius: 3,
-                p: 4,
+                p: 6,
                 mb: 3,
-                backgroundColor: selectedFile ? 'rgba(16,185,129,0.04)' : 'rgba(139,92,246,0.04)',
+                backgroundColor: selectedFile 
+                  ? (theme) => 
+                      theme.palette.mode === 'dark' 
+                        ? 'rgba(16, 185, 129, 0.08)' 
+                        : 'rgba(16, 185, 129, 0.04)'
+                  : (theme) => 
+                      theme.palette.mode === 'dark' 
+                        ? 'rgba(139, 92, 246, 0.08)' 
+                        : 'rgba(139, 92, 246, 0.04)',
                 cursor: 'pointer',
               }}
               onClick={() => fileInputRef.current?.click()}
             >
               <Box sx={{
-                width: 64, height: 64, borderRadius: 2,
+                width: 80, height: 80, borderRadius: 3,
                 background: selectedFile
                   ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
                   : 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', m: '0 auto 16px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', m: '0 auto 24px',
               }}>
                 <CloudUpload sx={{ fontSize: 32, color: 'white' }} />
               </Box>
@@ -91,7 +106,33 @@ export default function FileUploadModal({ open, onClose, onResult }: Props) {
             </Paper>
 
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
-              <Button variant="outlined" onClick={closeAll} sx={{ borderRadius: '20px', minWidth: 100 }} disabled={isProcessing}>Cancel</Button>
+              <Button 
+                variant="outlined" 
+                onClick={closeAll} 
+                disabled={isProcessing}
+                sx={{ 
+                  borderRadius: '20px', 
+                  minWidth: 100,
+                  fontWeight: 600,
+                  borderColor: (theme) => 
+                    theme.palette.mode === 'dark' 
+                      ? 'rgba(255, 255, 255, 0.3)' 
+                      : undefined,
+                  color: (theme) => 
+                    theme.palette.mode === 'dark' 
+                      ? 'rgba(255, 255, 255, 0.9)' 
+                      : undefined,
+                  '&:hover': {
+                    opacity: 0.8,
+                    backgroundColor: (theme) => 
+                      theme.palette.mode === 'dark' 
+                        ? 'rgba(255, 255, 255, 0.03)' 
+                        : 'rgba(0, 0, 0, 0.03)',
+                  }
+                }}
+              >
+                Cancel
+              </Button>
               <Button
                 variant="contained"
                 onClick={handleVerifyFile}
@@ -99,8 +140,30 @@ export default function FileUploadModal({ open, onClose, onResult }: Props) {
                 sx={{
                   borderRadius: '20px',
                   minWidth: 120,
-                  background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                  '&:hover': { background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)' },
+                  fontWeight: 600,
+                  color: 'white',
+                  background: (theme) => 
+                    theme.palette.mode === 'dark' 
+                      ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)'
+                      : 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                  '&:hover': {
+                    opacity: 0.9,
+                    transform: 'translateY(-1px)',
+                  },
+                  '&:disabled': {
+                    background: (theme) => 
+                      theme.palette.mode === 'dark' 
+                        ? 'rgba(139, 92, 246, 0.3)'
+                        : 'rgba(139, 92, 246, 0.3)',
+                    color: (theme) => 
+                      theme.palette.mode === 'dark' 
+                        ? 'rgba(255, 255, 255, 0.5)'
+                        : 'rgba(255, 255, 255, 0.7)',
+                  },
+                  boxShadow: (theme) => 
+                    theme.palette.mode === 'dark' 
+                      ? '0 4px 12px rgba(139, 92, 246, 0.3)'
+                      : '0 4px 12px rgba(139, 92, 246, 0.3)',
                 }}
               >
                 {isProcessing ? 'Verifying...' : 'Verify File'}

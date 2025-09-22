@@ -9,6 +9,7 @@ import Typography from '@mui/material/Typography';
 import AppNavbar from '../../components/dash_comp/AppNavbar';
 import Header from '../../components/dash_comp/Header';
 import SideMenu from '../../components/dash_comp/SideMenu';
+import { SidebarProvider } from '../../components/dash_comp/SidebarContext';
 import AppTheme from '../../theme/dash_theme/AppTheme';
 import Copyright from '../../internals/components/Copyright';
 
@@ -38,122 +39,124 @@ const xThemeComponents = {
 export default function Dashboard(props: { disableCustomTheme?: boolean }) {
   return (
     <AppTheme {...props} themeComponents={xThemeComponents}>
-      <CssBaseline enableColorScheme />
-      <OfflineIndicator />
-      <Box sx={{ display: 'flex' }}>
-        <SideMenu />
-        <AppNavbar />
-        {/* Main content */}
-        <Box
-          component="main"
-          sx={(theme) => ({
-            flexGrow: 1,
-            backgroundColor: theme.vars
-              ? `rgba(${theme.vars.palette.background.defaultChannel} / 1)`
-              : alpha(theme.palette.background.default, 1),
-            overflow: 'auto',
-          })}
-        >
-          <Stack
-            spacing={3}
-            sx={{
-              alignItems: 'center',
-              mx: 3,
-              pb: 5,
-              mt: { xs: 8, md: 0 },
-            }}
+      <SidebarProvider>
+        <CssBaseline enableColorScheme />
+        <OfflineIndicator />
+        <Box sx={{ display: 'flex' }}>
+          <SideMenu />
+          <AppNavbar />
+          {/* Main content */}
+          <Box
+            component="main"
+            sx={(theme) => ({
+              flexGrow: 1,
+              backgroundColor: theme.vars
+                ? `rgba(${theme.vars.palette.background.defaultChannel} / 1)`
+                : alpha(theme.palette.background.default, 1),
+              overflow: 'auto',
+            })}
           >
-            <Header />
-            
-            {/* System Status - positioned below header */}
-            <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
-              <SystemStatus />
-            </Box>
-            
-            <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
-              {/* Main section title */}
-              <Typography 
-                component="h2" 
-                variant="h6" 
-                sx={{ 
-                  mb: 3,
-                  fontWeight: 600,
-                  color: 'text.primary'
-                }}
-              >
-                Worker VC Verification
-              </Typography>
+            <Stack
+              spacing={3}
+              sx={{
+                alignItems: 'center',
+                mx: 3,
+                pb: 5,
+                mt: { xs: 8, md: 0 },
+              }}
+            >
+              <Header />
               
-              {/* Verification Actions - Now using its own styling */}
-              <Box sx={{ mb: 4 }}>
-                <VerificationActions 
-                  onScanComplete={(data) => console.log('Scan result:', data)}
-                  onUploadComplete={(file) => console.log('File uploaded:', file.name)}
-                />
+              {/* System Status - positioned below header */}
+              <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
+                <SystemStatus />
               </Box>
               
-              {/* Statistics Section */}
-              <Box sx={{ mb: 4 }}>
+              <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
+                {/* Main section title */}
                 <Typography 
+                  component="h2" 
                   variant="h6" 
-                  gutterBottom 
                   sx={{ 
+                    mb: 3,
                     fontWeight: 600,
-                    color: 'text.primary',
-                    mb: 2
+                    color: 'text.primary'
                   }}
                 >
-                  Overview
+                  Worker VC Verification
                 </Typography>
-                <Statistics />
-              </Box>
-              
-              {/* Storage Logs Section */}
-              <Box sx={{ mb: 4 }}>
-                <Typography 
-                  variant="h6" 
-                  gutterBottom 
+                
+                {/* Verification Actions - Now using its own styling */}
+                <Box sx={{ mb: 4 }}>
+                  <VerificationActions 
+                    onScanComplete={(data) => console.log('Scan result:', data)}
+                    onUploadComplete={(file) => console.log('File uploaded:', file.name)}
+                  />
+                </Box>
+                
+                {/* Statistics Section */}
+                <Box sx={{ mb: 4 }}>
+                  <Typography 
+                    variant="h6" 
+                    gutterBottom 
+                    sx={{ 
+                      fontWeight: 600,
+                      color: 'text.primary',
+                      mb: 2
+                    }}
+                  >
+                    Overview
+                  </Typography>
+                  <Statistics />
+                </Box>
+                
+                {/* Storage Logs Section */}
+                <Box sx={{ mb: 4 }}>
+                  <Typography 
+                    variant="h6" 
+                    gutterBottom 
+                    sx={{ 
+                      fontWeight: 600,
+                      color: 'text.primary',
+                      mb: 2
+                    }}
+                  >
+                    Storage Logs
+                  </Typography>
+                  <StorageLogs />
+                </Box>
+                
+                {/* Test Interface Section */}
+                <Box 
                   sx={{ 
-                    fontWeight: 600,
-                    color: 'text.primary',
-                    mb: 2
+                    mb: 4,
+                    p: 3,
+                    borderRadius: 2,
+                    backgroundColor: 'rgba(55, 65, 81, 0.2)',
+                    border: '1px solid',
+                    borderColor: 'rgba(55, 65, 81, 0.3)',
                   }}
                 >
-                  Storage Logs
-                </Typography>
-                <StorageLogs />
+                  <Typography 
+                    variant="h6" 
+                    gutterBottom 
+                    sx={{ 
+                      fontWeight: 600,
+                      color: 'text.primary',
+                      mb: 2
+                    }}
+                  >
+                    Test Interface
+                  </Typography>
+                  <TestInterface />
+                </Box>
+                
+                <Copyright sx={{ my: 4 }} />
               </Box>
-              
-              {/* Test Interface Section */}
-              <Box 
-                sx={{ 
-                  mb: 4,
-                  p: 3,
-                  borderRadius: 2,
-                  backgroundColor: 'rgba(55, 65, 81, 0.2)',
-                  border: '1px solid',
-                  borderColor: 'rgba(55, 65, 81, 0.3)',
-                }}
-              >
-                <Typography 
-                  variant="h6" 
-                  gutterBottom 
-                  sx={{ 
-                    fontWeight: 600,
-                    color: 'text.primary',
-                    mb: 2
-                  }}
-                >
-                  Test Interface
-                </Typography>
-                <TestInterface />
-              </Box>
-              
-              <Copyright sx={{ my: 4 }} />
-            </Box>
-          </Stack>
+            </Stack>
+          </Box>
         </Box>
-      </Box>
+      </SidebarProvider>
     </AppTheme>
   );
 }

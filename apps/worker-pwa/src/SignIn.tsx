@@ -73,8 +73,8 @@ export default function SignIn(props: {
   const navigate = useNavigate();
   const [baseUrl] = React.useState('http://127.0.0.1:8000'); // Hidden - always the same
   const [orgName, setOrgName] = React.useState('AcmeCorp10');
-  const [username, setUsername] = React.useState('sunsun');
-  const [password, setPassword] = React.useState('sunhith123');
+  const [username, setUsername] = React.useState('worker01');
+  const [password, setPassword] = React.useState('12345678');
   const [emailError, setEmailError] = React.useState(false);
   const [emailErrorMessage, setEmailErrorMessage] = React.useState('');
   const [passwordError, setPasswordError] = React.useState(false);

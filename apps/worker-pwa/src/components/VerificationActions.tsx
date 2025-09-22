@@ -43,9 +43,25 @@ export default function VerificationActions({ onScanComplete, onUploadComplete }
             <Button
               variant="contained"
               sx={{
-                mt: 2, borderRadius: '20px',
+                mt: 2, 
+                borderRadius: '20px',
+                color: 'white',
                 background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
-                '&:hover': { background: 'linear-gradient(135deg, #4b5563 0%, #374151 100%)' },
+                boxShadow: 'none',
+                '&:hover': { 
+                  opacity: 0.9,
+                  transform: 'translateY(-1px)',
+                  background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
+                  boxShadow: 'none',
+                },
+                '&:active': {
+                  background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
+                  boxShadow: 'none',
+                },
+                '&:focus': {
+                  background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
+                  boxShadow: 'none',
+                },
               }}
             >
               Start Scan

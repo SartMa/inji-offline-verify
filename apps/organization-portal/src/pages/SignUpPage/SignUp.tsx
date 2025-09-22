@@ -304,6 +304,15 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
     }
   };
 
+  const handleSwitchToSignIn = () => {
+    if (onSwitchToSignIn) {
+      onSwitchToSignIn();
+    } else {
+      // Fallback to direct navigation
+      navigate('/signin');
+    }
+  };
+
   return (
     <AppTheme disableCustomTheme={disableCustomTheme}>
       <CssBaseline enableColorScheme />
@@ -459,7 +468,7 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
               <Link
                 component="button"
                 type="button"
-                onClick={onSwitchToSignIn}
+                onClick={handleSwitchToSignIn}
                 variant="body2"
                 sx={{ alignSelf: 'center' }}
               >

@@ -129,13 +129,10 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
   }, []);
 
   const startVideoStream = useCallback(() => {
-    console.log('🎥 Attempting to start video stream...', { isEnableScan, isCameraActive, streaming: streamingRef.current });
     if (!isEnableScan || isCameraActive || streamingRef.current) {
-      console.log('🚫 Video stream start blocked:', { isEnableScan, isCameraActive, streaming: streamingRef.current });
       return;
     }
     
-    console.log('📷 Requesting camera permissions...');
     navigator.mediaDevices
       .getUserMedia({
         video: {
@@ -146,12 +143,10 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
         },
       })
       .then((stream) => {
-        console.log('✅ Camera stream obtained successfully');
         streamingRef.current = true;
         setIsCameraActive(true); // Set camera active when stream is successfully obtained
         const video = videoRef.current;
         if (!video) {
-          console.error('❌ Video element not found');
           return;
         }
         video.srcObject = stream;
@@ -163,34 +158,27 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
           video
             .play()
             .then(() => {
-             
               setTimeout(processFrame, FRAME_PROCESS_INTERVAL_MS);
             })
             .catch((playError) => {
-              console.error('❌ Video playback failed:', playError);
               onError(playError);
             });
         };
       })
       .catch((streamError) => {
-        console.error('❌ Camera stream failed:', streamError);
         onError(streamError);
       });
   }, [isEnableScan, isCameraActive, onError, processFrame]);
 
   const stopVideoStream = () => {
-    console.log('🛑 Stopping video stream...', { streaming: streamingRef.current, isCameraActive });
     streamingRef.current = false;
     const video = videoRef.current;
     if (!video) {
-      console.log('⚠️ No video element found when stopping stream');
       return;
     }
     const stream = video.srcObject as MediaStream | null;
     if (stream) {
- 
       stream.getTracks().forEach((track) => {
-        console.log(`Stopping track: ${track.kind} - ${track.label}`);
         track.stop();
       });
     }
@@ -236,7 +224,6 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
 
       // We support only string QR payloads here
       if (typeof rawInput !== 'string') {
-        console.error('QR data is not JSON format:', String(rawInput).slice(0, 120), '...');
         props.onError?.(new Error('QR is not a JSON VC payload'));
         return;
       }
@@ -252,17 +239,13 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
         try {
           decodedRaw = await decodeQrData(new TextEncoder().encode(rawInput));
           if (decodedRaw) {
-            console.log('[Offline] Decoded QR (first 120 chars):', decodedRaw.slice(0, 120), '...');
             parsed = JSON.parse(decodedRaw);
           } else {
-            console.error('[Offline] Decoded QR is null.');
             throw new Error('Decoded QR is null');
           }
         } catch (decodeError) {
           // Decoding failed: surface error once and exit
           if (rawInput !== lastErrorRef.current) {
-            console.error('QR data is not JSON format and decode failed:', rawInput.slice(0, 120), '...');
-            console.error('Decode error:', decodeError);
             props.onError?.(new Error('QR is not a JSON VC payload'));
             lastErrorRef.current = rawInput;
           }
@@ -317,7 +300,6 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
       await triggerCallbacks(vc);
 
     } catch (e: any) {
-      console.error('QR processing failed:', e);
       props.onError?.(e instanceof Error ? e : new Error('QR processing error'));
     }
   }
@@ -344,7 +326,6 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
         const trimmedData = data.trim();
         if (!trimmedData.startsWith('{') && !trimmedData.startsWith('[')) {
           // Not JSON format - could be encoded data, URL, or plain text identifier
-          console.log("QR data is not JSON format:", trimmedData);
           
           // Check if it's a URL
           if (trimmedData.startsWith('http://') || trimmedData.startsWith('https://')) {
@@ -356,7 +337,6 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
             const decoded = await decodeQrData(new TextEncoder().encode(trimmedData));
             return JSON.parse(decoded);
           } catch (decodeError) {
-            console.error("Failed to decode QR data:", decodeError);
             throw new Error(`Unsupported QR code format: ${trimmedData.substring(0, 20)}...`);
           }
         }
@@ -419,9 +399,7 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
   const handleSliderChange = (_: any, value: number | number[]) => { if (typeof value === "number") handleZoomChange(value); };
   function base64UrlDecode(base64url: string): string { let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/"); const pad = base64.length % 4; if (pad) base64 += "=".repeat(4 - pad); return atob(base64); }
   useEffect(() => { 
-    console.log('🔄 Scanner useEffect triggered', { isEnableScan, isUploading });
     if (!isEnableScan) {
-  
       return;
     }
     
@@ -430,13 +408,11 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
     
   
     timerRef.current = setTimeout(() => { 
-  
       stopVideoStream(); 
       onError(new Error("scanSessionExpired")); 
     }, ScanSessionExpiryTime); 
     
     return () => { 
-
       clearTimer(); 
       stopVideoStream(); 
     }; 
@@ -466,7 +442,6 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
         onError(new Error(error));
       }
     } catch (error) {
-      console.error("Error occurred while reading params in redirect url, Error: ", error);
       onError(error instanceof Error ? error : new Error("Unknown error"));
     }
   }, [onError, processScanResult, props.mode]);

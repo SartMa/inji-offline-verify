@@ -167,6 +167,15 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
     return isValid;
   };
 
+  const handleSwitchToSignUp = () => {
+    if (onSwitchToSignUp) {
+      onSwitchToSignUp();
+    } else {
+      // Fallback to direct navigation
+      navigate('/signup');
+    }
+  };
+
   return (
     <AppTheme disableCustomTheme={disableCustomTheme}>
       <CssBaseline enableColorScheme />
@@ -294,7 +303,7 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
               <Link
                 component="button"
                 type="button"
-                onClick={onSwitchToSignUp}
+                onClick={handleSwitchToSignUp}
                 variant="body2"
                 sx={{ alignSelf: 'center' }}
               >

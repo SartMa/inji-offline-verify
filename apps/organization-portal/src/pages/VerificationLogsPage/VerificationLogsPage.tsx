@@ -123,12 +123,19 @@ function LogDetailDialog({ log, open, onClose }: LogDetailDialogProps) {
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 Credential Subject
               </Typography>
-              <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+              <Paper variant="outlined" sx={{ 
+                p: 2, 
+                bgcolor: 'grey.50',
+                '[data-mui-color-scheme="dark"] &': {
+                  bgcolor: 'background.paper',
+                }
+              }}>
                 <pre style={{ 
                   margin: 0, 
                   fontSize: '0.875rem', 
                   whiteSpace: 'pre-wrap',
-                  fontFamily: 'monospace'
+                  fontFamily: 'monospace',
+                  color: 'inherit'
                 }}>
                   {JSON.stringify(log.credential_subject, null, 2)}
                 </pre>
@@ -141,7 +148,15 @@ function LogDetailDialog({ log, open, onClose }: LogDetailDialogProps) {
               <Typography variant="subtitle2" color="error" gutterBottom>
                 Error Message
               </Typography>
-              <Paper variant="outlined" sx={{ p: 2, bgcolor: 'error.50', borderColor: 'error.200' }}>
+              <Paper variant="outlined" sx={{ 
+                p: 2, 
+                bgcolor: 'error.50', 
+                borderColor: 'error.200',
+                '[data-mui-color-scheme="dark"] &': {
+                  bgcolor: 'background.paper',
+                  borderColor: 'error.main',
+                }
+              }}>
                 <Typography variant="body2" color="error.main">
                   {log.error_message}
                 </Typography>

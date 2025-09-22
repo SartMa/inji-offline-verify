@@ -281,7 +281,7 @@ export default function VerificationLogsTable({
                   </TableCell>
                   {showUserColumn && (
                     <TableCell>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" color="text.secondary" component="div">
                         {log.verified_by_info ? (
                           <Box>
                             <Typography variant="body2" sx={{ fontWeight: 500 }}>

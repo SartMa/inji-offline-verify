@@ -12,7 +12,6 @@ import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import MenuOpenRoundedIcon from '@mui/icons-material/MenuOpenRounded';
 import SelectContent from './SelectContent';
 import MenuContent from './MenuContent';
-// import CardAlert from './CardAlert';
 import OptionsMenu from './OptionsMenu';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { useSidebar } from './SidebarContext';
@@ -78,22 +77,18 @@ export default function SideMenu() {
       >
         {!isCollapsed && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            {/* Inji Logo */}
             <Box
+              component="img"
+              src="/assets/inji_logo.png"
+              alt="Inji Logo"
               sx={{
                 width: 36,
                 height: 36,
-                backgroundColor: 'primary.main',
                 borderRadius: 1.5,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'primary.contrastText',
-                fontWeight: 'bold',
-                fontSize: '1.4rem',
+                objectFit: 'contain',
               }}
-            >
-              I
-            </Box>
+            />
             <Box sx={{ py: 0.5, px: 1 }}>
               <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1, fontSize: '1.1rem' }}>
                 Inji Portal
@@ -131,7 +126,6 @@ export default function SideMenu() {
         }}
       >
         <MenuContent isCollapsed={isCollapsed} />
-        {/* <CardAlert /> */}
       </Box>
       <Stack
         direction="row"

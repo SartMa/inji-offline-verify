@@ -38,6 +38,10 @@ const CredentialVerifierConstants = {
     ERROR_MESSAGE_VERIFICATION_FAILED: "Verification Failed",
     ERROR_CODE_VERIFICATION_FAILED: "ERR_SIGNATURE_VERIFICATION_FAILED",
 
+    // Offline dependency errors (contexts/keys not available in cache while offline)
+    ERROR_MESSAGE_OFFLINE_DEPENDENCIES_MISSING: "Required verification data not available offline. Connect to the internet to seed the cache and try again.",
+    ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING: "ERR_OFFLINE_DEPENDENCIES_MISSING",
+
     // This is used to turn public key bytes into a buffer in DER format
     DER_PUBLIC_KEY_PREFIX: "302a300506032b6570032100",
 

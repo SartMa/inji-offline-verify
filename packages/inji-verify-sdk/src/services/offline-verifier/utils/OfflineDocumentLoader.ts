@@ -1,4 +1,5 @@
 import { getContext, putContexts } from '../cache/utils/CacheHelper';
+import { CredentialVerifierConstants } from '../constants/CredentialVerifierConstants';
 
 /**
  * A secure, offline-first document loader for jsonld-signatures.
@@ -35,7 +36,7 @@ export class OfflineDocumentLoader {
     if (typeof navigator !== 'undefined' && navigator.onLine) {
       console.log(`🌐 [OfflineDocumentLoader] Fetching exact context: ${url}`);
       try {
-        const resp = await fetch(url, { headers: { Accept: 'application/ld+json, application/json' } });
+        const resp = await fetch(url, { headers: { Accept: 'application/ld+json, application/json' }, cache: 'no-store' as RequestCache });
         if (!resp.ok) throw new Error(`Failed to fetch context: ${url} (${resp.status})`);
         const document = await resp.json();
         // Use the helper to cache the newly fetched context
@@ -43,13 +44,13 @@ export class OfflineDocumentLoader {
         return { contextUrl: undefined, document, documentUrl: url };
       } catch (e: any) {
         console.error(`[OfflineDocumentLoader] Network fetch failed for ${url}:`, e.message);
-        throw new Error(`Failed to retrieve document for ${url}.`);
+        // Treat any fetch failure (when not already cached) as missing offline dependency
+        // so upstream can show a clear message and guide the user to seed the cache.
+        throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
       }
     }
 
     // 4. If offline and not in cache, fail
-    throw new Error(
-      `The document for "${url}" is not in the cache and the application is offline.`
-    );
+    throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
   }
 }

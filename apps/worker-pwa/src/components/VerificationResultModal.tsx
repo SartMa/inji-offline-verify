@@ -66,6 +66,8 @@ export default function VerificationResultModal({ open, onClose, result }: Props
 
   const isVerified = !!result.verificationStatus;
 
+  const isOfflineDepsMissing = result.verificationErrorCode === 'ERR_OFFLINE_DEPENDENCIES_MISSING';
+
   const headerBg = isVerified
     ? isExpired
       ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
@@ -76,7 +78,9 @@ export default function VerificationResultModal({ open, onClose, result }: Props
     ? isExpired
       ? 'The given credential is valid but expired!'
       : 'Verification Successful!'
-    : 'Verification Failed!';
+    : isOfflineDepsMissing
+      ? 'Offline data required to verify'
+      : 'Verification Failed!';
 
   const credential = (result as any).payload as any | undefined;
   const credentialType: string | undefined = Array.isArray(credential?.type)
@@ -107,7 +111,9 @@ export default function VerificationResultModal({ open, onClose, result }: Props
         >
           <Close />
         </IconButton>
-        {isVerified ? (isExpired ? <Warning sx={{ fontSize: 56 }} /> : <CheckCircle sx={{ fontSize: 56 }} />) : <ErrorIcon sx={{ fontSize: 56 }} />}
+        {isVerified
+          ? (isExpired ? <Warning sx={{ fontSize: 56 }} /> : <CheckCircle sx={{ fontSize: 56 }} />)
+          : <ErrorIcon sx={{ fontSize: 56 }} />}
         <Typography variant="h5" sx={{ mt: 2, fontWeight: 600 }}>
           {titleText}
         </Typography>
@@ -144,7 +150,7 @@ export default function VerificationResultModal({ open, onClose, result }: Props
                   Status
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                  {isVerified ? 'Valid signature' : 'Invalid signature'}
+                  {isVerified ? 'Valid signature' : (isOfflineDepsMissing ? 'Cannot verify offline' : 'Invalid signature')}
                 </Typography>
               </Box>
 
@@ -154,7 +160,7 @@ export default function VerificationResultModal({ open, onClose, result }: Props
                     Message
                   </Typography>
                   <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                    {result.verificationMessage}
+                    {isOfflineDepsMissing ? 'Required contexts or public keys are not in the local cache. Connect to the internet to seed the cache and try again.' : result.verificationMessage}
                   </Typography>
                 </Box>
               )}

@@ -9,9 +9,14 @@ class DBService {
   private constructor() {
     console.log("DBService singleton initializing...");
     this.dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
+      upgrade(db, oldVersion, newVersion, tx) {
         if (!db.objectStoreNames.contains(CONTEXT_STORE)) {
-          db.createObjectStore(CONTEXT_STORE, { keyPath: 'url' });
+          const ctx = db.createObjectStore(CONTEXT_STORE, { keyPath: 'url' });
+          try { ctx.createIndex('organization_id', 'organization_id', { unique: false }); } catch {}
+        } else {
+          // Ensure index exists on upgrade
+          const ctx = tx.objectStore(CONTEXT_STORE);
+          try { ctx.createIndex('organization_id', 'organization_id', { unique: false }); } catch {}
         }
         if (!db.objectStoreNames.contains(KEY_STORE)) {
           db.createObjectStore(KEY_STORE, { keyPath: 'key_id' });

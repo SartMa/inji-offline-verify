@@ -22,30 +22,20 @@ type Log = {
     hash: string;
 };
 
-// Status badge renderer
-const renderStatus = (status: Status | undefined, synced: boolean | undefined) => {
-    if (status === undefined || synced === undefined) {
-        return <span className="status-badge neutral">-</span>;
-    }
-    
-    let className = 'status-badge ';
-    let label = '';
-    
-    if (synced && status === 'success') {
-        className += 'success';
-        label = 'Success';
-    } else if (status === 'failure') {
-        className += 'error';
-        label = 'Failed';
-    } else if (!synced) {
-        className += 'pending';
-        label = 'Pending';
-    } else {
-        className += 'neutral';
-        label = 'Unknown';
-    }
-    
-    return <span className={className}>{label}</span>;
+// Status badge (verification result only)
+const renderStatus = (status: Status | undefined) => {
+    if (status === undefined) return <span className="status-badge neutral">-</span>;
+    if (status === 'success') return <span className="status-badge success">Success</span>;
+    if (status === 'failure') return <span className="status-badge error">Failed</span>;
+    return <span className="status-badge neutral">-</span>;
+};
+
+// Sync badge (transport status only)
+const renderSync = (synced: boolean | undefined) => {
+    if (synced === undefined) return <span className="status-badge neutral">-</span>;
+    return synced
+        ? <span className="status-badge success">Synced</span>
+        : <span className="status-badge pending">Pending</span>;
 };
 
 // Time formatter
@@ -81,14 +71,12 @@ const StorageLogs = () => {
     const filteredLogs = useMemo(() => {
         let filtered: Log[] = logs;
         
-        // Apply status filter
+        // Apply filter
         if (filter !== 'all') {
             filtered = filtered.filter((log: Log) => {
-                if (filter === 'synced') return log.synced;
-                // Pending should exclude failures and represent unsynced successful verifications
-                if (filter === 'pending') return !log.synced && log.status !== 'failure';
-                // Success is considered only once synced
-                if (filter === 'success') return log.synced && log.status === 'success';
+                if (filter === 'synced') return !!log.synced;
+                if (filter === 'pending') return !log.synced;
+                if (filter === 'success') return log.status === 'success';
                 if (filter === 'failure') return log.status === 'failure';
                 return true;
             });
@@ -141,12 +129,9 @@ const StorageLogs = () => {
     // Calculate statistics
     const statsCount = {
         total: logs.length,
-        synced: logs.filter((log: Log) => log.synced).length,
-        // Pending excludes failures, aligning with badge logic (failure overrides pending)
-        pending: logs.filter((log: Log) => !log.synced && log.status !== 'failure').length,
-        // Success counts only when synced, preventing double-count with pending
-        success: logs.filter((log: Log) => log.synced && log.status === 'success').length,
-        // Failure regardless of sync state (badge shows Failed even if not synced)
+        synced: logs.filter((log: Log) => !!log.synced).length,
+        pending: logs.filter((log: Log) => !log.synced).length,
+        success: logs.filter((log: Log) => log.status === 'success').length,
         failure: logs.filter((log: Log) => log.status === 'failure').length,
     };
 
@@ -424,6 +409,7 @@ const StorageLogs = () => {
                                         ID{getSortIcon('id')}
                                     </th>
                                     <th>Status</th>
+                                    <th>Sync</th>
                                     <th 
                                         onClick={() => handleSort('timestamp')}
                                         style={{ cursor: 'pointer', userSelect: 'none' }}
@@ -448,9 +434,8 @@ const StorageLogs = () => {
                                                 #{log.id}
                                             </Typography>
                                         </td>
-                                        <td>
-                                            {renderStatus(log.status, log.synced)}
-                                        </td>
+                                        <td>{renderStatus(log.status)}</td>
+                                        <td>{renderSync(log.synced)}</td>
                                         <td>
                                             <Typography 
                                                 variant="body2" 

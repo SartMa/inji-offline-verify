@@ -23,5 +23,25 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src", "../../packages/shared-ui/src/components/CustomIcons.tsx", "../organization-portal/src/pages/SignUpPage/SignUp.tsx", "../../packages/inji-verify-sdk/src/services/offline-verifier/publicKey/impl", "../../packages/inji-verify-sdk/src/services/offline-verifier/publicKey/PublicKeyGetter.ts", "../../packages/inji-verify-sdk/src/services/offline-verifier/publicKey/PublicKeyGetterFactory.ts", "../../packages/inji-verify-sdk/src/services/offline-verifier/publicKey/Types.ts", "../../packages/inji-verify-sdk/src/services/offline-verifier/publicKey/Utils.ts"]
+  "include": [
+    "src",
+    "../../packages/shared-ui/src/components/CustomIcons.tsx",
+    "../organization-portal/src/pages/SignUpPage/SignUp.tsx",
+    "../../packages/inji-verify-sdk/src/services/offline-verifier/publicKey/impl",
+    "../../packages/inji-verify-sdk/src/services/offline-verifier/publicKey/PublicKeyGetter.ts",
+    "../../packages/inji-verify-sdk/src/services/offline-verifier/publicKey/PublicKeyGetterFactory.ts",
+    "../../packages/inji-verify-sdk/src/services/offline-verifier/publicKey/Types.ts",
+    "../../packages/inji-verify-sdk/src/services/offline-verifier/publicKey/Utils.ts"
+  ],
+  "references": [
+    {
+      "path": "../../packages/inji-verify-sdk"
+    },
+    {
+      "path": "../../packages/shared-ui"
+    },
+    {
+      "path": "../../packages/shared-auth"
+    }
+  ]
 }

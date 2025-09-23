@@ -40,5 +40,16 @@
     "src/**/*.jsx",
     "src/**/*.ts",
     "src/**/*.tsx"
+  ],
+  "references": [
+    {
+      "path": "../../packages/inji-verify-sdk"
+    },
+    {
+      "path": "../../packages/shared-auth"
+    },
+    {
+      "path": "../../packages/shared-ui"
+    }
   ]
 }

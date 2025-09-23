@@ -3,6 +3,12 @@
   "include": [],
   "references": [
     {
+      "path": "../../packages/shared-auth"
+    },
+    {
+      "path": "../../packages/shared-ui"
+    },
+    {
       "path": "./tsconfig.app.json"
     },
     {

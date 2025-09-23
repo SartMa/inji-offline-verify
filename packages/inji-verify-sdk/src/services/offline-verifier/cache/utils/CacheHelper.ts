@@ -22,14 +22,52 @@ export type CachedRevokedVC = {
   organization_id: string;        // Organization ID (required for proper scoping)
 };
 
-export async function putContexts(contexts: { url: string; document: any }[]): Promise<void> {
+export async function putContexts(contexts: { url: string; document: any; organization_id?: string | null }[]): Promise<void> {
   if (!contexts?.length) return;
   const db = await dbService.getDB(); // Use the singleton
   const now = Date.now();
   const tx = db.transaction([CONTEXT_STORE], 'readwrite');
   const store = tx.objectStore(CONTEXT_STORE);
-  await Promise.all(contexts.map(c => store.put({ url: c.url, document: c.document, cachedAt: now, source: 'prime' })));
+  await Promise.all(contexts.map(c => store.put({ url: c.url, document: c.document, cachedAt: now, source: 'prime', organization_id: c.organization_id ?? null })));
   await tx.done;
+}
+
+export async function replaceContextsForOrganization(organizationId: string, contexts: { url: string; document: any }[]): Promise<void> {
+  const db = await dbService.getDB();
+  // Find existing contexts for this organization
+  const tx1 = db.transaction(CONTEXT_STORE, 'readonly');
+  const store1 = tx1.objectStore(CONTEXT_STORE);
+  let existing: any[] = [];
+  try {
+    const idx = store1.index('organization_id');
+    existing = await idx.getAll(organizationId);
+  } catch {
+    // If index not found, treat as none
+    existing = [];
+  }
+  await tx1.done;
+
+  // Delete existing contexts for this org
+  if (existing.length > 0) {
+    const tx2 = db.transaction(CONTEXT_STORE, 'readwrite');
+    const store2 = tx2.objectStore(CONTEXT_STORE);
+    for (const c of existing) {
+      await store2.delete(c.url);
+    }
+    await tx2.done;
+  }
+
+  // Insert new contexts with organization_id
+  if (contexts.length > 0) {
+    const tx3 = db.transaction(CONTEXT_STORE, 'readwrite');
+    const store3 = tx3.objectStore(CONTEXT_STORE);
+    const now = Date.now();
+    for (const c of contexts) {
+      await store3.put({ url: c.url, document: c.document, cachedAt: now, source: 'org-sync', organization_id: organizationId });
+    }
+    await tx3.done;
+  }
+  console.log(`[CacheHelper] Replaced ${existing.length} existing contexts with ${contexts.length} new contexts for organization ${organizationId}`);
 }
 
 export async function putPublicKeys(keys: CachedPublicKey[]): Promise<void> {

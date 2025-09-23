@@ -5,26 +5,40 @@
     "emitDeclarationOnly": true,
     "importHelpers": true,
     "isolatedModules": true,
-    "lib": ["es2022"],
+    "lib": [
+      "es2022"
+    ],
     "baseUrl": ".",
     "module": "esnext",
     "moduleResolution": "bundler",
     "noEmitOnError": true,
     "noFallthroughCasesInSwitch": true,
-    "allowSyntheticDefaultImports": true, 
+    "allowSyntheticDefaultImports": true,
     "noImplicitOverride": true,
     "noImplicitReturns": true,
     "noUnusedLocals": true,
     "skipLibCheck": true,
     "strict": true,
     "target": "es2022",
-    "customConditions": ["inji-offline-platform"],
+    "customConditions": [
+      "inji-offline-platform"
+    ],
     "paths": {
-      "@inji-offline-verify/shared-ui/*": ["packages/shared-ui/src/*"],
-      "@inji-offline-verify/shared-auth/*": ["packages/shared-auth/src/*"],
-      "@inji-offline-verify/shared-auth": ["packages/shared-auth/src/index.ts"],
-      "@inji-offline-verify/inji-verify-sdk": ["packages/inji-verify-sdk/src/index.ts"],
-      "@mosip/react-inji-verify-sdk": ["packages/inji-verify-sdk/src/index.ts"] 
+      "@inji-offline-verify/inji-verify-sdk": [
+        "packages/inji-verify-sdk/src/index.ts"
+      ],
+      "@inji-offline-verify/shared-auth": [
+        "packages/shared-auth/src/index.ts"
+      ],
+      "@inji-offline-verify/shared-auth/*": [
+        "packages/shared-auth/src/*"
+      ],
+      "@inji-offline-verify/shared-ui/*": [
+        "packages/shared-ui/src/*"
+      ],
+      "@mosip/react-inji-verify-sdk": [
+        "packages/inji-verify-sdk/src/index.ts"
+      ]
     }
   }
 }

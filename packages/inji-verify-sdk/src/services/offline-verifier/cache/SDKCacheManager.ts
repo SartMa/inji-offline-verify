@@ -3,7 +3,7 @@
  * - Used by Worker app to seed the SDK-managed IndexedDB cache from a CacheBundle.
  * - Also supports deriving cache directly from a VC if needed (online one-time).
  */
-import { CachedPublicKey, CachedRevokedVC, putContexts, putPublicKeys, putRevokedVCs, replaceRevokedVCsForOrganization, replacePublicKeysForOrganization, getContext } from './utils/CacheHelper';
+import { CachedPublicKey, CachedRevokedVC, putContexts, putPublicKeys, putRevokedVCs, replaceRevokedVCsForOrganization, replacePublicKeysForOrganization, getContext, replaceContextsForOrganization } from './utils/CacheHelper';
 import type { CacheBundle } from './utils/OrgResolver';
 import { PublicKeyGetterFactory } from '../publicKey/PublicKeyGetterFactory';
 import { base58btc } from 'multiformats/bases/base58';
@@ -68,18 +68,18 @@ export class SDKCacheManager {
     // 1) keys - REPLACE instead of add for proper sync
     await replacePublicKeysForOrganization(organizationId, (bundle.publicKeys as CachedPublicKey[]) || []);
     
-    // 2) contexts: prefer full docs (additive - contexts are typically immutable)
+    // 2) contexts - REPLACE by organization (to mirror public keys & revoked VCs behavior)
     if (bundle.contexts?.length) {
-      await putContexts(bundle.contexts);
+      await replaceContextsForOrganization(organizationId, bundle.contexts);
     } else if (bundle.contextUrls?.length && typeof navigator !== 'undefined' && navigator.onLine) {
-      // fetch once and cache
+      // fetch once and replace
       const docs: Array<{ url: string; document: any }> = [];
       for (const url of unique(bundle.contextUrls)) {
         const resp = await fetch(url, { headers: { Accept: 'application/ld+json, application/json' } });
         if (!resp.ok) { console.warn('[SDKCacheManager] Context fetch failed:', url, resp.status); continue; }
         docs.push({ url, document: await resp.json() });
       }
-      if (docs.length) await putContexts(docs);
+      if (docs.length) await replaceContextsForOrganization(organizationId, docs);
     }
     // 3) revoked VCs - REPLACE instead of add for proper sync
     await replaceRevokedVCsForOrganization(organizationId, (bundle.revokedVCs as CachedRevokedVC[]) || []);

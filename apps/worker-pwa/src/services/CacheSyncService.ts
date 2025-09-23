@@ -68,6 +68,33 @@ export class CacheSyncService implements NetworkStatusListener {
   }
 
   /**
+   * Persist the current organization ID for periodic syncs
+   */
+  public setCurrentOrganizationId(organizationId: string): void {
+    try {
+      localStorage.setItem('organizationId', organizationId);
+    } catch {}
+  }
+
+  /**
+   * Notify app that cache has updated so UI can refresh without reload
+   */
+  private notifyCacheUpdated(organizationId: string, itemsUpdated: { publicKeys: number; contexts: number; revokedVCs: number }): void {
+    try {
+      window.dispatchEvent(new CustomEvent('background-sync', {
+        detail: {
+          type: 'cache_updated',
+          payload: {
+            organizationId,
+            itemsUpdated,
+            timestamp: Date.now()
+          }
+        }
+      }));
+    } catch {}
+  }
+
+  /**
    * Called when network comes online
    */
   public onOnline(): void {
@@ -150,10 +177,14 @@ export class CacheSyncService implements NetworkStatusListener {
    * Sync all organizations that need updating
    */
   private async syncAllOrganizations(): Promise<void> {
-    // Get current user's organization(s) from local storage or API
+    // Gather all known organization IDs: current + any from previous syncs
+    const orgIds = new Set<string>();
     const currentOrgId = this.getCurrentOrganizationId();
-    if (currentOrgId) {
-      await this.syncOrganization(currentOrgId);
+    if (currentOrgId) orgIds.add(currentOrgId);
+    for (const orgId of this.lastSyncMetadata.keys()) orgIds.add(orgId);
+
+    for (const orgId of orgIds) {
+      await this.syncOrganization(orgId);
     }
   }
 
@@ -204,6 +235,9 @@ export class CacheSyncService implements NetworkStatusListener {
           revokedVCs: bundle.revokedVCs?.length || 0
         }
       };
+
+      // Broadcast cache update so UI can reflect changes without reload
+      this.notifyCacheUpdated(organizationId, result.itemsUpdated);
 
       return result;
 
@@ -256,6 +290,9 @@ export class CacheSyncService implements NetworkStatusListener {
           revokedVCs: bundle.revokedVCs?.length || 0
         }
       };
+
+      // Broadcast cache update so UI can reflect changes without reload
+      this.notifyCacheUpdated(organizationId, result.itemsUpdated);
 
       return result;
 

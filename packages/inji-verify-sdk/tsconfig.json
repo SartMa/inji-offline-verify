@@ -1,10 +1,14 @@
 {
   "compilerOptions": {
+    "composite": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo",
     "target": "ES5",
     "allowJs": false,
     "module": "ESNext",
     "rootDir": "src",
     "declaration": true,
+    "declarationMap": true,
     "outDir": "dist",
     "declarationDir": "dist",
     "esModuleInterop": true,

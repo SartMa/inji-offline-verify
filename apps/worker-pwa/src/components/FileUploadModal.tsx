@@ -50,6 +50,9 @@ export default function FileUploadModal({ open, onClose, onResult }: FileUploadM
 	const { storeVerificationResult } = useVCStorage();
 
 	// Check cache status when modal opens
+	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const offlineDepsMissingMessage = "⚠️ Offline dependencies are missing. Please check your connection.";
+
 	useEffect(() => {
 		if (!open) return;
 		(async () => {
@@ -83,6 +86,7 @@ export default function FileUploadModal({ open, onClose, onResult }: FileUploadM
 			await storeVerificationResult(verificationData);
 			console.log('✅ Stored upload verification in VCStorageContext', verificationData);
 		} catch (e) {
+			setErrorMessage(offlineDepsMissingMessage);
 			console.error('❌ Failed to store upload verification:', e);
 		}
 
@@ -99,6 +103,9 @@ export default function FileUploadModal({ open, onClose, onResult }: FileUploadM
 		setVerificationResult(result);
 		setShowResult(true);
 		onResult(result);
+		if (errorMessage) {
+			alert(errorMessage); // Display the error message to the user
+		}
 	};
 
 	// In offline mode, the SDK already turns errors into a VerificationResult via onVerificationResult.

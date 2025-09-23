@@ -37,6 +37,9 @@ export function CacheSyncProvider({ children }: CacheSyncProviderProps) {
     if (isAuthenticated && organization?.id) {
       console.log('[CacheSyncProvider] Initializing cache sync for organization:', organization.id);
       
+      // Persist current organization id for sync service
+      cacheSyncService.setCurrentOrganizationId(organization.id);
+
       // Initialize cache sync service
       cacheSyncService.initialize();
       

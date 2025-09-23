@@ -156,6 +156,8 @@ export default function VerificationResultModal({ open, onClose, result }: Props
   // A VC is considered "verified" if it has a valid status OR if it's expired (valid signature but expired)
   const isVerified: boolean = !!result.verificationStatus || isExpired;
 
+  const isOfflineDepsMissing = result.verificationErrorCode === 'ERR_OFFLINE_DEPENDENCIES_MISSING';
+
   // Updated color scheme
   const getStatusColors = () => {
     if (isVerified) {
@@ -191,7 +193,9 @@ export default function VerificationResultModal({ open, onClose, result }: Props
     ? isExpired
       ? 'The given credential is valid but expired!'
       : 'Verification Successful!'
-    : 'Verification Failed!';
+    : isOfflineDepsMissing
+      ? 'Offline data required to verify'
+      : 'Verification Failed!';
 
   const credential = (result as any).payload as any | undefined;
   const credentialType: string | undefined = Array.isArray(credential?.type)

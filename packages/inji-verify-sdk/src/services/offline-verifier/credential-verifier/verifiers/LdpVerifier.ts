@@ -329,8 +329,10 @@ import { Ed25519VerificationKey2020 } from '@digitalbazaar/ed25519-verification-
 
 // Import SDK-internal utilities and exceptions
 import { UnknownException } from '../../exception/index.js';
+import { CredentialVerifierConstants } from '../../constants/CredentialVerifierConstants.js';
 import { PublicKeyService } from '../../publicKey/PublicKeyService.js'; // This service should live inside the SDK
 import { OfflineDocumentLoader } from '../../utils/OfflineDocumentLoader.js'; // Your smart loader, also inside the SDK
+import { getContext } from '../../cache/utils/CacheHelper.js';
 
 /**
  * LDP (Linked Data Proof) Verifier
@@ -369,6 +371,19 @@ export class LdpVerifier {
 
       const vcJsonLdObject = JSON.parse(credential);
 
+      // OFFLINE PREFLIGHT: ensure all @context URLs are present in cache to surface a friendly error early
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const rawCtx = vcJsonLdObject['@context'];
+        const ctxList = Array.isArray(rawCtx) ? rawCtx : [rawCtx];
+        const urlList = (ctxList || []).filter((c: any) => typeof c === 'string') as string[];
+        for (const url of urlList) {
+          const present = await getContext(url);
+          if (!present) {
+            throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
+          }
+        }
+      }
+
       // STEP 1: Extract the proof(s). A credential can have one or more signatures.
       const proof = vcJsonLdObject.proof;
       if (!proof) {
@@ -396,6 +411,11 @@ export class LdpVerifier {
 
     } catch (exception: any) {
       this.logger.error('💥 An unexpected error occurred during signature verification:', exception.message);
+      const msg = (exception?.message ?? '').toString();
+      if (msg.includes(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING)) {
+        // Propagate offline-missing-deps so upper layer can map to friendly message
+        throw exception;
+      }
       // Wrap unknown errors for consistent error handling upstream.
       throw new UnknownException(`Error during cryptographic verification: ${exception.message}`);
     }
@@ -448,6 +468,10 @@ export class LdpVerifier {
       const publicKeyData = await this.publicKeyService.getPublicKey(verificationMethodUrl);
       if (!publicKeyData) {
         this.logger.error(`❌ Could not resolve public key for: ${verificationMethodUrl}`);
+        // If we're offline, surface a specific error so the caller can show a better message
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
+        }
         return false;
       }
 
@@ -482,12 +506,40 @@ export class LdpVerifier {
         this.logger.info(`✅ Signature verification successful for proof type ${proof.type}!`);
         return true;
       } else {
+        const err = verificationResult.error as any;
+        const collectMessages = (e: any): string[] => {
+          if (!e) return [];
+          const out: string[] = [];
+          if (typeof e.message === 'string') out.push(e.message);
+          if (Array.isArray(e.errors)) {
+            for (const sub of e.errors) {
+              out.push(...collectMessages(sub));
+            }
+          }
+          if (Array.isArray(e.details)) {
+            for (const sub of e.details) {
+              out.push(...collectMessages(sub));
+            }
+          }
+          return out;
+        };
+        const messages = collectMessages(err);
+        const errMsg = messages.join(' | ');
+        // If the failure is due to offline-missing dependencies surfaced by the document loader,
+        // propagate a specific error so the higher layer can map it to a friendly message.
+        if (errMsg.includes(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING)) {
+          throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
+        }
         this.logger.error(`❌ Signature verification failed for ${proof.type}:`, verificationResult.error);
         return false;
       }
 
     } catch (error: any) {
       this.logger.error(`💥 A critical error occurred during ${proof.type} verification:`, error.message);
+      // Bubble up offline missing dependencies for higher-level handling
+      if (error?.message === CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING) {
+        throw error;
+      }
       return false;
     }
   }

@@ -8,7 +8,6 @@ import type { CacheBundle } from '../../../../packages/inji-verify-sdk/src/servi
 import { NetworkService } from './NetworkService';
 import type { NetworkStatusListener } from './NetworkService';
 import { NetworkManager } from '../network/NetworkManager';
-import { CacheVersionService } from './CacheVersionService';
 
 interface SyncMetadata {
   lastSyncTime: number;
@@ -29,7 +28,6 @@ interface SyncResult {
 export class CacheSyncService implements NetworkStatusListener {
   private static instance: CacheSyncService;
   private networkService: NetworkService;
-  private versionService: CacheVersionService;
   private isSyncing: boolean = false;
   private syncQueue: Set<string> = new Set(); // Organization IDs to sync
   private lastSyncMetadata: Map<string, SyncMetadata> = new Map();
@@ -37,7 +35,6 @@ export class CacheSyncService implements NetworkStatusListener {
 
   private constructor() {
     this.networkService = NetworkService.getInstance();
-    this.versionService = CacheVersionService.getInstance();
     this.networkService.addListener(this);
     this.loadSyncMetadata();
   }
@@ -74,13 +71,11 @@ export class CacheSyncService implements NetworkStatusListener {
    * Called when network comes online
    */
   public onOnline(): void {
-    console.log('[CacheSyncService] Network online - starting cache sync');
     this.startPeriodicSync();
     
     // Force sync current organization immediately when network comes back
     const currentOrgId = this.getCurrentOrganizationId();
     if (currentOrgId) {
-      console.log('[CacheSyncService] Force syncing current organization due to network reconnection');
       this.forceSyncOrganization(currentOrgId).catch(error => {
         console.error('[CacheSyncService] Failed to force sync on network reconnection:', error);
       });
@@ -93,7 +88,6 @@ export class CacheSyncService implements NetworkStatusListener {
    * Called when network goes offline
    */
   public onOffline(): void {
-    console.log('[CacheSyncService] Network offline - stopping periodic sync');
     this.stopPeriodicSync();
   }
 
@@ -180,17 +174,6 @@ export class CacheSyncService implements NetworkStatusListener {
 
     // Check if we should skip this sync (too recent) - reduced cooldown to 10 seconds  
     if (lastSync && !this.networkService.shouldSync(lastSync.lastSyncTime, 10 * 1000)) {
-      console.log(`[CacheSyncService] Skipping sync for ${organizationId} - too recent (last sync: ${new Date(lastSync.lastSyncTime).toISOString()})`);
-      return {
-        success: true,
-        itemsUpdated: { publicKeys: 0, contexts: 0, revokedVCs: 0 }
-      };
-    }
-
-    // Use version service to check if sync is actually needed
-    const needsSync = await this.versionService.needsSync(organizationId);
-    if (!needsSync && lastSync) {
-      console.log(`[CacheSyncService] Skipping sync for ${organizationId} - cache is up to date`);
       return {
         success: true,
         itemsUpdated: { publicKeys: 0, contexts: 0, revokedVCs: 0 }
@@ -198,7 +181,6 @@ export class CacheSyncService implements NetworkStatusListener {
     }
 
     this.isSyncing = true;
-    console.log(`[CacheSyncService] Starting sync for organization ${organizationId}`);
 
     try {
       // Fetch latest data from server
@@ -206,14 +188,6 @@ export class CacheSyncService implements NetworkStatusListener {
       
       // Update the cache with new data using sync method (replaces instead of adds)
       await SDKCacheManager.syncFromServer(bundle, organizationId);
-
-      // Update version tracking
-      this.versionService.updateLocalVersion(
-        organizationId,
-        bundle.publicKeys || [],
-        bundle.contexts || [],
-        bundle.revokedVCs || []
-      );
 
       // Update sync metadata
       this.lastSyncMetadata.set(organizationId, {
@@ -231,7 +205,6 @@ export class CacheSyncService implements NetworkStatusListener {
         }
       };
 
-      console.log(`[CacheSyncService] Sync completed for ${organizationId}:`, result.itemsUpdated);
       return result;
 
     } catch (error) {
@@ -259,7 +232,6 @@ export class CacheSyncService implements NetworkStatusListener {
     }
 
     this.isSyncing = true;
-    console.log(`[CacheSyncService] Force syncing organization ${organizationId}`);
 
     try {
       // Fetch latest data from server
@@ -267,14 +239,6 @@ export class CacheSyncService implements NetworkStatusListener {
       
       // Update the cache with new data using sync method (replaces instead of adds)
       await SDKCacheManager.syncFromServer(bundle, organizationId);
-
-      // Update version tracking
-      this.versionService.updateLocalVersion(
-        organizationId,
-        bundle.publicKeys || [],
-        bundle.contexts || [],
-        bundle.revokedVCs || []
-      );
 
       // Update sync metadata
       const now = Date.now();
@@ -293,7 +257,6 @@ export class CacheSyncService implements NetworkStatusListener {
         }
       };
 
-      console.log(`[CacheSyncService] Force sync completed for ${organizationId}:`, result.itemsUpdated);
       return result;
 
     } catch (error) {
@@ -397,8 +360,6 @@ export class CacheSyncService implements NetworkStatusListener {
    * Initialize the service and start monitoring
    */
   public initialize(): void {
-    console.log('[CacheSyncService] Initializing cache synchronization service');
-    
     if (this.networkService.getIsOnline()) {
       this.onOnline();
     }

@@ -37,6 +37,18 @@ export class NetworkService {
   }
 
   private async checkConnectivity(): Promise<void> {
+    // Only check connectivity if navigator.onLine suggests we might be online
+    // This prevents unnecessary API calls when we're definitely offline
+    if (!navigator.onLine) {
+      const wasOnline = this.isOnline;
+      this.isOnline = false;
+      
+      if (wasOnline) {
+        this.handleOffline();
+      }
+      return;
+    }
+
     try {
       // Try to fetch a small resource to verify actual connectivity
       const response = await fetch('/worker/api/health/', {

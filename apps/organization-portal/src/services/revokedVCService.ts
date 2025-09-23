@@ -1,53 +1,35 @@
-// Public Key service for organization public key management
+// Revoked VC service for organization revoked VC management
 import { getAccessToken, getApiBaseUrl, refreshAccessToken } from '@inji-offline-verify/shared-auth';
 
-export interface OrganizationPublicKey {
+export interface OrganizationRevokedVC {
   id: string;
-  key_id: string;
-  key_type: string;
-  public_key_multibase: string;
-  public_key_hex: string | null;
-  public_key_jwk: any | null;
-  controller: string;
-  purpose: string;
-  created_at: string;
-  expires_at: string | null;
-  revoked_at: string | null;
-  revocation_reason: string | null;
-  is_active: boolean;
+  vc_id: string;
+  issuer: string;
+  subject: string | null;
+  metadata: any; // Full VC JSON
+  reason: string | null;
+  revoked_at: string;
+  organization: string;
 }
 
-export interface OrganizationPublicKeysResponse {
-  organization_id: string | null;
-  did: string | null;
-  keys: OrganizationPublicKey[];
-}
-
-export interface CreatePublicKeyData {
+export interface OrganizationRevokedVCsResponse {
   organization_id: string;
-  key_id: string;
-  controller: string;
-  key_type?: string;
-  public_key_multibase?: string;
-  public_key_hex?: string;
-  public_key_jwk?: any;
-  purpose?: string;
-  is_active?: boolean;
+  revoked_vcs: OrganizationRevokedVC[];
 }
 
-export interface UpdatePublicKeyData {
+export interface CreateRevokedVCData {
   organization_id: string;
-  key_id: string;
-  controller?: string;
-  key_type?: string;
-  public_key_multibase?: string;
-  public_key_hex?: string;
-  public_key_jwk?: any;
-  purpose?: string;
-  is_active?: boolean;
+  vc_json: any; // Full VC JSON object
+  reason?: string;
 }
 
-class PublicKeyService {
+export interface UpdateRevokedVCData {
+  organization_id: string;
+  vc_json: any; // Full VC JSON object
+  reason?: string;
+}
+
+class RevokedVCService {
   private get baseUrl() {
     return getApiBaseUrl() || 'http://127.0.0.1:8000';
   }
@@ -113,11 +95,16 @@ class PublicKeyService {
   }
 
   /**
-   * Fetch all organization public keys
+   * Fetch all organization revoked VCs
    */
-  async getOrganizationPublicKeys(): Promise<OrganizationPublicKeysResponse> {
+  async getOrganizationRevokedVCs(organizationId?: string): Promise<OrganizationRevokedVCsResponse> {
+    const params = new URLSearchParams();
+    if (organizationId) {
+      params.append('organization_id', organizationId);
+    }
+    
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/organization/api/public-keys/`,
+      `${this.baseUrl}/organization/api/revoked-vcs/?${params.toString()}`,
       {
         method: 'GET',
       }
@@ -125,18 +112,18 @@ class PublicKeyService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch organization public keys: ${response.statusText}`);
+      throw new Error(errorData.error || errorData.detail || `Failed to fetch organization revoked VCs: ${response.statusText}`);
     }
 
     return response.json();
   }
 
   /**
-   * Create a new public key using the upsert endpoint
+   * Create a new revoked VC using the upsert endpoint
    */
-  async createPublicKey(data: CreatePublicKeyData): Promise<any> {
+  async addRevokedVC(data: CreateRevokedVCData): Promise<any> {
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/organization/api/public-keys/upsert/`,
+      `${this.baseUrl}/organization/api/revoked-vcs/upsert/`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -145,18 +132,18 @@ class PublicKeyService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Failed to create public key: ${response.statusText}`);
+      throw new Error(errorData.detail || errorData.error || `Failed to add revoked VC: ${response.statusText}`);
     }
 
     return response.json();
   }
 
   /**
-   * Update an existing public key using the upsert endpoint
+   * Update an existing revoked VC using the upsert endpoint
    */
-  async updatePublicKey(data: UpdatePublicKeyData): Promise<any> {
+  async updateRevokedVC(data: UpdateRevokedVCData): Promise<any> {
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/organization/api/public-keys/upsert/`,
+      `${this.baseUrl}/organization/api/revoked-vcs/upsert/`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -165,19 +152,19 @@ class PublicKeyService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Failed to update public key: ${response.statusText}`);
+      throw new Error(errorData.detail || errorData.error || `Failed to update revoked VC: ${response.statusText}`);
     }
 
     return response.json();
   }
 
   /**
-   * Delete a public key by key_id
+   * Delete a revoked VC by vc_id (remove from revocation list)
    */
-  async deletePublicKey(keyId: string): Promise<void> {
-    const encodedKeyId = encodeURIComponent(keyId);
+  async deleteRevokedVC(vcId: string): Promise<void> {
+    const encodedVcId = encodeURIComponent(vcId);
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/organization/api/public-keys/${encodedKeyId}/`,
+      `${this.baseUrl}/organization/api/revoked-vcs/${encodedVcId}/`,
       {
         method: 'DELETE',
       }
@@ -185,17 +172,17 @@ class PublicKeyService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Failed to delete public key: ${response.statusText}`);
+      throw new Error(errorData.detail || errorData.error || `Failed to remove revoked VC: ${response.statusText}`);
     }
   }
 }
 
-const publicKeyService = new PublicKeyService();
+const revokedVCService = new RevokedVCService();
 
 // Export the service methods for easier importing
-export const getOrganizationPublicKeys = () => publicKeyService.getOrganizationPublicKeys();
-export const createPublicKey = (data: CreatePublicKeyData) => publicKeyService.createPublicKey(data);
-export const updatePublicKey = (data: UpdatePublicKeyData) => publicKeyService.updatePublicKey(data);
-export const deletePublicKey = (keyId: string) => publicKeyService.deletePublicKey(keyId);
+export const getOrganizationRevokedVCs = (organizationId?: string) => revokedVCService.getOrganizationRevokedVCs(organizationId);
+export const addRevokedVC = (data: CreateRevokedVCData) => revokedVCService.addRevokedVC(data);
+export const updateRevokedVC = (data: UpdateRevokedVCData) => revokedVCService.updateRevokedVC(data);
+export const deleteRevokedVC = (vcId: string) => revokedVCService.deleteRevokedVC(vcId);
 
-export default publicKeyService;
+export default revokedVCService;

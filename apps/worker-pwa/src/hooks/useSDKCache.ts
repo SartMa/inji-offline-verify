@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { SDKCacheManager } from '@mosip/react-inji-verify-sdk';
 import { WorkerCacheService } from '../services/WorkerCacheService';
 
 interface CacheStatus {

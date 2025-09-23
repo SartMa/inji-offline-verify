@@ -1,6 +1,6 @@
 // Using automatic JSX runtime
 import type { ReactNode } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import VCStorageProvider from './context/VCStorageContext';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
 import CacheSyncProvider from './context/CacheSyncContext';
@@ -9,58 +9,25 @@ import Settings from './pages/Settings/Settings';
 import SignIn from './SignIn.tsx';
 import './App.css';
 
-// Landing page component - only for workers
-function LandingPage() {
-  const navigate = useNavigate();
+// Root redirect component - redirects based on authentication status
+function RootRedirect() {
+  const { isAuthenticated, isLoading } = useAuth();
   
-  return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      minHeight: '100vh',
-      gap: '20px',
-      backgroundColor: '#f5f5f5'
-    }}>
-      <h1 style={{ color: '#333', marginBottom: '30px' }}>Worker VC Verification System</h1>
-     
-      <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
-        <button 
-          onClick={() => navigate('/worker-signin')}
-          style={{ 
-            padding: '12px 24px', 
-            fontSize: '16px', 
-            borderRadius: '8px',
-            border: '1px solid #ddd',
-            backgroundColor: '#ed6c02',
-            color: 'white', 
-            cursor: 'pointer',
-            transition: 'background-color 0.3s'
-          }}
-        >
-          Worker Sign In
-        </button>
+  if (isLoading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh',
+        fontSize: '18px'
+      }}>
+        Loading...
       </div>
-      <div style={{ marginTop: '20px', textAlign: 'center' }}>
-        <p style={{ color: '#666' }}>
-          Are you an organization admin? 
-          <br />
-          Please use the Organization Portal instead.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// Worker sign in page
-function WorkerSignInPage() {
-  const navigate = useNavigate();
-  return (
-    <SignIn 
-      onSwitchToOrgSignIn={() => navigate('/')}
-    />
-  );
+    );
+  }
+  
+  return <Navigate to={isAuthenticated ? "/dashboard" : "/signin"} replace />;
 }
 
 // Dashboard wrapper component with VCStorageProvider
@@ -100,8 +67,7 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   }
   
   if (!isAuthenticated) {
-    return <Navigate to="/worker-signin" replace />;
-    return <Navigate to="/worker-signin" replace />;
+    return <Navigate to="/signin" replace />;
   }
   
   return <>{children}</>;
@@ -111,9 +77,9 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 function AppContent() {
   return (
     <Routes>
-      {/* Public routes */}
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/worker-signin" element={<WorkerSignInPage />} />
+      {/* Root redirect based on authentication */}
+      <Route path="/" element={<RootRedirect />} />
+      <Route path="/signin" element={<SignIn />} />
       
       {/* Protected routes */}
       <Route 

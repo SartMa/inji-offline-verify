@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Box, Card, CardContent, Typography, Button } from '@mui/material';
 import { QrCodeScanner, CloudUpload } from '@mui/icons-material';
 import QRScannerModal from './QRScannerModal';
@@ -6,7 +6,7 @@ import FileUploadModal from './FileUploadModal';
 
 interface VerificationActionsProps {
   onScanComplete?: (data: any) => void;
-  onUploadComplete?: (file: File) => void;
+  onUploadComplete?: (result: any) => void;
 }
 
 export default function VerificationActions({ onScanComplete, onUploadComplete }: VerificationActionsProps) {

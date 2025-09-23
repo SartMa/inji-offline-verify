@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { styled } from '@mui/material/styles';
 import Avatar from '@mui/material/Avatar';
 import MuiDrawer, { drawerClasses } from '@mui/material/Drawer';
@@ -48,10 +47,6 @@ export default function SideMenu() {
   const getDisplayName = () => {
     // Always prefer username for display
     return user?.username || 'Worker';
-  };
-
-  const getDisplayEmail = () => {
-    return user?.email || 'worker@email.com';
   };
 
   const getInitials = () => {

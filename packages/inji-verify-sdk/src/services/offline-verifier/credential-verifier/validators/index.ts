@@ -1,6 +1,7 @@
 // === VALIDATORS ===
-export { LdpValidator, ValidationStatus as LdpValidationStatus } from './LdpValidator.js';
+export { LdpValidator } from './LdpValidator.js';
 export { MsoMdocValidator, getCborMapValue, isCborMap } from './MsoMdocValidator.js';
+export { ValidationStatus } from '../../data/data.js';
 
 // === UTILITIES ===
 export { ValidationHelper } from '../../utils/ValidationHelper.js';

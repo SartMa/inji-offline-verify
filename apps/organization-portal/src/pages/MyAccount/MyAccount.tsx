@@ -38,7 +38,9 @@ import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import { getOrganizationPublicKeys, deletePublicKey } from '../../services/publicKeyService';
+import { getOrganizationRevokedVCs, deleteRevokedVC, OrganizationRevokedVC } from '../../services/revokedVCService';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import BlockIcon from '@mui/icons-material/Block';
 
 // Styled Components - Theme Aware with consistent styling
 const ContentCard = styled(Box)(({ theme }) => ({
@@ -335,6 +337,134 @@ function KeyDetailDialog({ publicKey, open, onClose }: KeyDetailDialogProps) {
   );
 }
 
+interface VCDetailDialogProps {
+  revokedVC: OrganizationRevokedVC | null;
+  open: boolean;
+  onClose: () => void;
+}
+
+function VCDetailDialog({ revokedVC, open, onClose }: VCDetailDialogProps) {
+  if (!revokedVC) return null;
+
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleString();
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatVCMetadata = (metadata: any) => {
+    try {
+      return JSON.stringify(metadata, null, 2);
+    } catch {
+      return String(metadata);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        <Stack direction="row" alignItems="center" spacing={2}>
+          <BlockIcon color="error" />
+          <Typography variant="h6">Revoked VC Details</Typography>
+          <Chip
+            label="REVOKED"
+            color="error"
+            size="small"
+          />
+        </Stack>
+      </DialogTitle>
+      <DialogContent>
+        <Stack spacing={3}>
+          <Box>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              VC ID
+            </Typography>
+            <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+              {revokedVC.vc_id}
+            </Typography>
+          </Box>
+
+          <Box>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              Issuer
+            </Typography>
+            <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+              {revokedVC.issuer}
+            </Typography>
+          </Box>
+
+          {revokedVC.subject && (
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Subject
+              </Typography>
+              <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                {revokedVC.subject}
+              </Typography>
+            </Box>
+          )}
+
+          {revokedVC.reason && (
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Revocation Reason
+              </Typography>
+              <Typography variant="body2">
+                {revokedVC.reason}
+              </Typography>
+            </Box>
+          )}
+
+          <Box>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              Revoked At
+            </Typography>
+            <Typography variant="body2">
+              {formatDate(revokedVC.revoked_at)}
+            </Typography>
+          </Box>
+
+          <Box>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              Full VC Metadata
+            </Typography>
+            <Box
+              sx={{
+                backgroundColor: 'var(--template-palette-grey-100)',
+                p: 2,
+                borderRadius: '8px',
+                maxHeight: '300px',
+                overflow: 'auto',
+                '[data-mui-color-scheme="dark"] &': {
+                  backgroundColor: '#2d3748',
+                },
+              }}
+            >
+              <Typography
+                variant="body2"
+                component="pre"
+                sx={{
+                  fontFamily: 'monospace',
+                  fontSize: '0.75rem',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all',
+                }}
+              >
+                {formatVCMetadata(revokedVC.metadata)}
+              </Typography>
+            </Box>
+          </Box>
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Close</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 export default function MyAccount() {
   const theme = useTheme();
   const { mode } = useColorScheme();
@@ -342,12 +472,20 @@ export default function MyAccount() {
   const { organizationName } = useCurrentUser();
   
   const [publicKeys, setPublicKeys] = useState<OrganizationPublicKey[]>([]);
+  const [revokedVCs, setRevokedVCs] = useState<OrganizationRevokedVC[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingVCs, setLoadingVCs] = useState(true);
   const [selectedKey, setSelectedKey] = useState<OrganizationPublicKey | null>(null);
+  const [selectedVC, setSelectedVC] = useState<OrganizationRevokedVC | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [vcDetailDialogOpen, setVcDetailDialogOpen] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
     publicKey: null as OrganizationPublicKey | null,
+  });
+  const [deleteVCDialog, setDeleteVCDialog] = useState({
+    open: false,
+    revokedVC: null as OrganizationRevokedVC | null,
   });
   const [toast, setToast] = useState({
     open: false,
@@ -376,8 +514,40 @@ export default function MyAccount() {
     }
   };
 
+  const getOrganizationId = () => {
+    try {
+      const orgId = localStorage.getItem('organizationId');
+      if (orgId) return orgId;
+    } catch {/* ignore */}
+
+    try {
+      const raw = localStorage.getItem('organization');
+      if (raw) {
+        const obj = JSON.parse(raw);
+        if (obj?.id) return obj.id;
+      }
+    } catch {/* ignore */}
+
+    return null;
+  };
+
+  const fetchRevokedVCs = async () => {
+    try {
+      setLoadingVCs(true);
+      const organizationId = getOrganizationId();
+      const response = await getOrganizationRevokedVCs(organizationId || undefined);
+      setRevokedVCs(response.revoked_vcs || []);
+    } catch (error: any) {
+      console.error('Failed to fetch revoked VCs:', error);
+      showToast('Failed to load revoked VCs. Please try again.', 'error');
+    } finally {
+      setLoadingVCs(false);
+    }
+  };
+
   useEffect(() => {
     fetchPublicKeys();
+    fetchRevokedVCs();
   }, []);
 
   const handleDeleteClick = (publicKey: OrganizationPublicKey) => {
@@ -411,6 +581,40 @@ export default function MyAccount() {
   const handleCloseDetail = () => {
     setDetailDialogOpen(false);
     setSelectedKey(null);
+  };
+
+  // Revoked VC handlers
+  const handleDeleteVCClick = (revokedVC: OrganizationRevokedVC) => {
+    setDeleteVCDialog({ open: true, revokedVC });
+  };
+
+  const handleDeleteVCConfirm = async () => {
+    if (!deleteVCDialog.revokedVC) return;
+    
+    try {
+      await deleteRevokedVC(deleteVCDialog.revokedVC.vc_id);
+      setRevokedVCs(prev => prev.filter(vc => vc.vc_id !== deleteVCDialog.revokedVC!.vc_id));
+      showToast('Revoked VC removed from list successfully', 'success');
+    } catch (error: any) {
+      console.error('Failed to delete revoked VC:', error);
+      showToast('Failed to remove revoked VC. Please try again.', 'error');
+    } finally {
+      setDeleteVCDialog({ open: false, revokedVC: null });
+    }
+  };
+
+  const handleDeleteVCCancel = () => {
+    setDeleteVCDialog({ open: false, revokedVC: null });
+  };
+
+  const handleViewVC = (revokedVC: OrganizationRevokedVC) => {
+    setSelectedVC(revokedVC);
+    setVcDetailDialogOpen(true);
+  };
+
+  const handleCloseVCDetail = () => {
+    setVcDetailDialogOpen(false);
+    setSelectedVC(null);
   };
 
   const getStatusIcon = (isActive: boolean) => {
@@ -494,7 +698,7 @@ export default function MyAccount() {
                         color: isDark ? '#a0aec0' : 'text.secondary', 
                         fontWeight: 400 
                       }}>
-                        Manage your organization's public keys
+                        Manage your organization's public keys and revoked VCs
                       </Typography>
                     </Box>
                   </Box>
@@ -563,6 +767,20 @@ export default function MyAccount() {
                           color: 'error.main' 
                         }}>
                           {publicKeys.filter(key => !key.is_active).length}
+                        </Typography>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <Typography variant="body2" sx={{ 
+                          color: isDark ? '#a0aec0' : 'text.secondary',
+                          mb: 1 
+                        }}>
+                          Revoked VCs
+                        </Typography>
+                        <Typography variant="h6" sx={{ 
+                          fontWeight: 600, 
+                          color: 'warning.main' 
+                        }}>
+                          {revokedVCs.length}
                         </Typography>
                       </Grid>
                     </Grid>
@@ -780,6 +998,200 @@ export default function MyAccount() {
                       </Box>
                     )}
                   </ContentCard>
+
+                  {/* Revoked VCs Section */}
+                  <ContentCard>
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      sx={{ mb: 3 }}
+                    >
+                      <Stack direction="row" alignItems="center" spacing={2}>
+                        <BlockIcon sx={{ color: 'error.main', fontSize: 28 }} />
+                        <Typography variant="h5" sx={{ 
+                          fontWeight: 600, 
+                          color: isDark ? '#ffffff' : 'text.primary' 
+                        }}>
+                          Revoked VCs
+                        </Typography>
+                      </Stack>
+                      <Button
+                        variant="outlined"
+                        startIcon={<RefreshIcon />}
+                        onClick={fetchRevokedVCs}
+                        disabled={loadingVCs}
+                        sx={{
+                          borderRadius: '12px',
+                          textTransform: 'none',
+                          fontWeight: 600,
+                        }}
+                      >
+                        Refresh
+                      </Button>
+                    </Stack>
+
+                    {loadingVCs ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+                        <Typography variant="h6">Loading revoked VCs...</Typography>
+                      </Box>
+                    ) : revokedVCs.length === 0 ? (
+                      <Box
+                        sx={{
+                          textAlign: 'center',
+                          py: 8,
+                          color: 'text.secondary',
+                        }}
+                      >
+                        <BlockIcon sx={{ fontSize: 64, mb: 2, opacity: 0.5 }} />
+                        <Typography variant="h6" gutterBottom>
+                          No Revoked VCs Found
+                        </Typography>
+                        <Typography variant="body2">
+                          You haven't revoked any verifiable credentials yet.
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Box sx={{ width: '100%' }}>
+                        <StyledTableContainer>
+                          <Table stickyHeader>
+                            <TableHead>
+                              <TableRow>
+                                <StyledTableCell>VC ID</StyledTableCell>
+                                <StyledTableCell>Issuer</StyledTableCell>
+                                <StyledTableCell>Subject</StyledTableCell>
+                                <StyledTableCell>Reason</StyledTableCell>
+                                <StyledTableCell>Revoked At</StyledTableCell>
+                                <StyledTableCell align="center">Actions</StyledTableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {revokedVCs.map((revokedVC) => (
+                                <TableRow key={revokedVC.id} hover>
+                                  <StyledTableCell>
+                                    <Tooltip title={revokedVC.vc_id} arrow>
+                                      <Typography
+                                        sx={{
+                                          fontFamily: 'monospace',
+                                          fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.8rem' },
+                                          maxWidth: { xs: 100, sm: 150, md: 200 },
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                        }}
+                                      >
+                                        {truncateKey(revokedVC.vc_id)}
+                                      </Typography>
+                                    </Tooltip>
+                                  </StyledTableCell>
+                                  <StyledTableCell>
+                                    <Tooltip title={revokedVC.issuer} arrow>
+                                      <Typography
+                                        sx={{
+                                          fontFamily: 'monospace',
+                                          fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.8rem' },
+                                          maxWidth: { xs: 100, sm: 150, md: 200 },
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                        }}
+                                      >
+                                        {truncateKey(revokedVC.issuer)}
+                                      </Typography>
+                                    </Tooltip>
+                                  </StyledTableCell>
+                                  <StyledTableCell>
+                                    {revokedVC.subject ? (
+                                      <Tooltip title={revokedVC.subject} arrow>
+                                        <Typography
+                                          sx={{
+                                            fontFamily: 'monospace',
+                                            fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.8rem' },
+                                            maxWidth: { xs: 80, sm: 120, md: 150 },
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                          }}
+                                        >
+                                          {truncateKey(revokedVC.subject, 30)}
+                                        </Typography>
+                                      </Tooltip>
+                                    ) : (
+                                      <Typography color="text.secondary">—</Typography>
+                                    )}
+                                  </StyledTableCell>
+                                  <StyledTableCell>
+                                    {revokedVC.reason ? (
+                                      <Tooltip title={revokedVC.reason} arrow>
+                                        <Typography
+                                          sx={{
+                                            maxWidth: { xs: 80, sm: 120, md: 150 },
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.875rem' },
+                                          }}
+                                        >
+                                          {revokedVC.reason}
+                                        </Typography>
+                                      </Tooltip>
+                                    ) : (
+                                      <Typography color="text.secondary">—</Typography>
+                                    )}
+                                  </StyledTableCell>
+                                  <StyledTableCell>
+                                    <Typography 
+                                      sx={{
+                                        fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.875rem' },
+                                        whiteSpace: 'nowrap'
+                                      }}
+                                    >
+                                      {formatDate(revokedVC.revoked_at)}
+                                    </Typography>
+                                  </StyledTableCell>
+                                  <StyledTableCell align="center">
+                                    <Stack direction="row" spacing={{ xs: 0.25, sm: 0.5, md: 1 }} justifyContent="center">
+                                      <Tooltip title="View Details" placement="top">
+                                        <IconButton
+                                          size="small"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleViewVC(revokedVC);
+                                          }}
+                                          sx={{
+                                            color: isDark ? '#4299e1' : 'primary.main',
+                                            '&:hover': {
+                                              backgroundColor: isDark ? 'rgba(66, 153, 225, 0.1)' : 'rgba(25, 118, 210, 0.04)',
+                                              transform: 'scale(1.1)',
+                                            },
+                                            transition: 'all 0.2s ease-in-out',
+                                            p: { xs: '4px', sm: '6px', md: '8px' }
+                                          }}
+                                        >
+                                          <VisibilityIcon sx={{ fontSize: { xs: '14px', sm: '16px', md: '18px' } }} />
+                                        </IconButton>
+                                      </Tooltip>
+                                      <Tooltip title="Remove from List" placement="top">
+                                        <ActionButton
+                                          className="delete"
+                                          size="small"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteVCClick(revokedVC);
+                                          }}
+                                          sx={{
+                                            p: { xs: '4px', sm: '6px', md: '8px' }
+                                          }}
+                                        >
+                                          <DeleteIcon sx={{ fontSize: { xs: '14px', sm: '16px', md: '18px' } }} />
+                                        </ActionButton>
+                                      </Tooltip>
+                                    </Stack>
+                                  </StyledTableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </StyledTableContainer>
+                      </Box>
+                    )}
+                  </ContentCard>
                 </Stack>
               </Box>
             </Stack>
@@ -791,6 +1203,13 @@ export default function MyAccount() {
           publicKey={selectedKey}
           open={detailDialogOpen}
           onClose={handleCloseDetail}
+        />
+
+        {/* VC Detail Dialog */}
+        <VCDetailDialog
+          revokedVC={selectedVC}
+          open={vcDetailDialogOpen}
+          onClose={handleCloseVCDetail}
         />
 
         {/* Delete Confirmation Dialog */}
@@ -886,6 +1305,99 @@ export default function MyAccount() {
               }}
             >
               Delete Public Key
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Delete Revoked VC Confirmation Dialog */}
+        <Dialog
+          open={deleteVCDialog.open}
+          onClose={handleDeleteVCCancel}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: '16px',
+              bgcolor: isDark ? '#1a202c' : 'background.paper',
+              color: isDark ? '#ffffff' : 'text.primary',
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1,
+            color: 'error.main',
+            fontWeight: 600
+          }}>
+            <WarningIcon />
+            Confirm Remove
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              Are you sure you want to remove this VC from the revocation list?
+            </Typography>
+            {deleteVCDialog.revokedVC && (
+              <Box sx={{ 
+                p: 2, 
+                bgcolor: isDark ? '#2d3748' : 'grey.100', 
+                borderRadius: '8px',
+                mb: 2
+              }}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  VC ID:
+                </Typography>
+                <Typography sx={{
+                  fontFamily: 'monospace',
+                  fontSize: '0.8rem',
+                  color: isDark ? '#fc8181' : 'error.main',
+                  fontWeight: 600,
+                  mb: 2,
+                  wordBreak: 'break-all'
+                }}>
+                  {deleteVCDialog.revokedVC.vc_id}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Issuer: {truncateKey(deleteVCDialog.revokedVC.issuer, 60)}
+                </Typography>
+              </Box>
+            )}
+            <Typography variant="body2" color="warning.main" sx={{ fontStyle: 'italic' }}>
+              Note: This will remove the VC from your revocation list, but won't affect its actual revocation status.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ p: 3, gap: 2 }}>
+            <Button
+              onClick={handleDeleteVCCancel}
+              variant="outlined"
+              sx={{
+                borderRadius: '8px',
+                textTransform: 'none',
+                fontWeight: 600,
+                border: `2px solid ${isDark ? '#4a5568' : theme.palette.divider}`,
+                color: isDark ? '#a0aec0' : 'text.secondary',
+                '&:hover': {
+                  border: `2px solid ${isDark ? '#4299e1' : theme.palette.primary.main}`,
+                  color: isDark ? '#4299e1' : 'primary.main',
+                },
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteVCConfirm}
+              variant="contained"
+              color="error"
+              sx={{
+                borderRadius: '8px',
+                textTransform: 'none',
+                fontWeight: 600,
+                '&:hover': {
+                  backgroundColor: 'error.dark',
+                },
+              }}
+            >
+              Remove VC
             </Button>
           </DialogActions>
         </Dialog>

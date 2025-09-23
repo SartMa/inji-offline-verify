@@ -207,7 +207,7 @@ private async verifyValueDigests(issuerSignedNamespaces: any, mso: any): Promise
       }
 
       // Compare digests (equivalent to Kotlin's contentEquals)
-      for (const [actualDigestId, actualDigest] of actualDigests.entries()) {
+      for (const [actualDigestId, actualDigest] of Array.from(actualDigests.entries())) {
         const calculatedDigest = calculatedDigests.get(actualDigestId);
         if (!calculatedDigest || !this.arraysEqual(actualDigest, calculatedDigest)) {
           this.logger.error("Error while doing valueDigests verification - mismatch in digests found");
@@ -313,7 +313,7 @@ private async verifyValueDigests(issuerSignedNamespaces: any, mso: any): Promise
         },
       };
 
-      verify(coseAuth, verifier);
+      verify(coseAuth, verifier, undefined);
       return true;
 
     } catch (error) {

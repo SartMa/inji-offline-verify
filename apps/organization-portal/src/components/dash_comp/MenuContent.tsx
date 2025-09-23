@@ -6,11 +6,11 @@ import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
-import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import BlockIcon from '@mui/icons-material/Block';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { NavLink, useLocation } from 'react-router-dom';
 
 const mainListItems = [
@@ -23,7 +23,7 @@ const mainListItems = [
 ];
 
 const secondaryListItems = [
-  { text: 'Settings', icon: <SettingsRoundedIcon /> },
+  { text: 'My Account', icon: <AccountCircleIcon />, to: '/my-account' },
 ];
 
 interface MenuContentProps {
@@ -84,45 +84,52 @@ export default function MenuContent({ isCollapsed = false }: MenuContentProps) {
         })}
       </List>
       <List dense>
-        {secondaryListItems.map((item, index) => (
-          <ListItem key={index} disablePadding sx={{ display: 'block' }}>
-            <Tooltip title={isCollapsed ? item.text : ''} placement="right" arrow>
-              <ListItemButton
-                sx={{
-                  minHeight: 48,
-                  justifyContent: isCollapsed ? 'center' : 'initial',
-                  px: isCollapsed ? 1.5 : 2.5,
-                  borderRadius: 1,
-                  mx: 1,
-                  mb: 0.5,
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
-                  },
-                }}
-              >
-                <ListItemIcon
+        {secondaryListItems.map((item, index) => {
+          const selected = location.pathname === item.to;
+          
+          return (
+            <ListItem key={index} disablePadding sx={{ display: 'block' }}>
+              <Tooltip title={isCollapsed ? item.text : ''} placement="right" arrow>
+                <ListItemButton
+                  component={NavLink as any}
+                  to={item.to}
+                  selected={selected}
                   sx={{
-                    minWidth: 0,
-                    mr: isCollapsed ? 0 : 3,
-                    justifyContent: 'center',
-                    color: 'text.secondary',
+                    minHeight: 48,
+                    justifyContent: isCollapsed ? 'center' : 'initial',
+                    px: isCollapsed ? 1.5 : 2.5,
+                    borderRadius: 1,
+                    mx: 1,
+                    mb: 0.5,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      backgroundColor: 'action.hover',
+                    },
                   }}
                 >
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.text}
-                  sx={{
-                    opacity: isCollapsed ? 0 : 1,
-                    transition: 'opacity 0.3s ease',
-                    display: isCollapsed ? 'none' : 'block',
-                  }}
-                />
-              </ListItemButton>
-            </Tooltip>
-          </ListItem>
-        ))}
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 0,
+                      mr: isCollapsed ? 0 : 3,
+                      justifyContent: 'center',
+                      color: selected ? 'primary.main' : 'text.secondary',
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.text}
+                    sx={{
+                      opacity: isCollapsed ? 0 : 1,
+                      transition: 'opacity 0.3s ease',
+                      display: isCollapsed ? 'none' : 'block',
+                    }}
+                  />
+                </ListItemButton>
+              </Tooltip>
+            </ListItem>
+          );
+        })}
       </List>
     </Stack>
   );

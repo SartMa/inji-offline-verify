@@ -149,16 +149,16 @@ export async function clearAllData(): Promise<void> {
 }
 
 // Helper functions
-function generateHash(data: string): string {
-  // Simple hash function for demo (replace with crypto.subtle.digest in production)
-  let hash = 0;
-  for (let i = 0; i < data.length; i++) {
-    const char = data.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
-  }
-  return Math.abs(hash).toString(16);
-}
+// function generateHash(data: string): string {
+//   // Simple hash function for demo (replace with crypto.subtle.digest in production)
+//   let hash = 0;
+//   for (let i = 0; i < data.length; i++) {
+//     const char = data.charCodeAt(i);
+//     hash = (hash << 5) - hash + char;
+//     hash = hash & hash;
+//   }
+//   return Math.abs(hash).toString(16);
+// }
 
 export function getDeviceId(): string {
   let deviceId = localStorage.getItem('deviceId');

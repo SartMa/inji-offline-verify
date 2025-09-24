@@ -1,8 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  QRCodeVerificationProps as OriginalQRCodeVerificationProps,
-  scanResult,
-} from "./QRCodeVerification.types"; // Assuming types are in the same folder
+import { scanResult } from "./QRCodeVerification.types"; // types used only for scan result
 import { scanFilesForQr, doFileChecks } from "../../utils/uploadQRCodeUtils";
 import {
   acceptedFileTypes,
@@ -12,15 +9,12 @@ import {
   CONSTRAINTS_IDEAL_WIDTH,
   FRAME_PROCESS_INTERVAL_MS,
   INITIAL_ZOOM_LEVEL,
-  OvpQrHeader,
   ScanSessionExpiryTime,
   THROTTLE_FRAMES_PER_SEC,
   ZOOM_STEP,
 } from "../../utils/constants";
-import { vcSubmission, vcVerification } from "../../utils/api";
 import {
   decodeQrData,
-  extractRedirectUrlFromQrData,
 } from "../../utils/dataProcessor";
 import { readBarcodes } from "zxing-wasm/full";
 import { PlusOutlined, MinusOutlined } from "@ant-design/icons";
@@ -32,21 +26,18 @@ import { CredentialsVerifier } from '../../services/offline-verifier/Credentials
 import { CredentialFormat } from '../../services/offline-verifier/constants/CredentialFormat';
 import { VerificationResult } from '../../services/offline-verifier/data/data';
 
-// --- ADDITIVE CHANGE: The Props type is extended to support a new 'offline' mode ---
-export type QRCodeVerificationProps =
-  // Online Mode Props
-  | (OriginalQRCodeVerificationProps & {
-      mode: 'online';
-    })
-  // Offline Mode Props
-  | (Omit<OriginalQRCodeVerificationProps, 'verifyServiceUrl' | 'onVCReceived' | 'onVCProcessed'> & {
-      mode: 'offline';
-      verifyServiceUrl?: never; // Ensure online-only props are not provided in offline mode
-      onVCReceived?: never;
-      onVCProcessed?: never;
-      onVerificationResult: (result: VerificationResult) => void; // Callback for offline results
-      credentialFormat?: CredentialFormat; // Optional, defaults to LDP_VC
-    });
+// Simplified, single-mode props (offline-style) that works for both offline and online QR payloads
+export interface QRCodeVerificationProps {
+  triggerElement?: React.ReactNode;
+  onError: (error: Error) => void;
+  isEnableUpload?: boolean;
+  isEnableScan?: boolean;
+  uploadButtonId?: string;
+  uploadButtonStyle?: string;
+  isEnableZoom?: boolean;
+  onVerificationResult: (result: VerificationResult) => void;
+  credentialFormat?: CredentialFormat; // Optional, defaults to LDP_VC
+}
 
 
 export default function QRCodeVerification(props: QRCodeVerificationProps) {
@@ -85,17 +76,9 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
     }
   };
 
-  // --- ADDITIVE CHANGE: Prop validation is now mode-aware, but the original checks are still here ---
-  if (props.mode === 'online') {
-    if(!props.verifyServiceUrl) throw new Error("verifyServiceUrl is required for 'online' mode.");
-    if(!props.onVCReceived && !props.onVCProcessed) throw new Error("One of onVCReceived or onVCProcessed is required for 'online' mode.");
-  }
-  if (props.mode === 'offline') {
-    if (!props.onVerificationResult) {
-      throw new Error("onVerificationResult is required for 'offline' mode.");
-    }
-  }
+  // Basic prop validation
   if (!onError) throw new Error("onError callback is required.");
+  if (!props.onVerificationResult) throw new Error("onVerificationResult is required.");
 
   const readQrCodeFromCanvas = useRef(async (canvas: HTMLCanvasElement) => {
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -206,14 +189,9 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
     }
   };
 
-  // Accept unknown (string in offline scan, or object in online redirect scenarios)
+  // Accept unknown (string expected; object not supported here)
   async function processScanResult(rawInput: unknown) {
     try {
-      // Handle the online redirect payload separately and early
-      if (props.mode === 'online' && rawInput && typeof rawInput === 'object' && (rawInput as any).vpToken) {
-        return;
-      }
-
       // Debounce identical scans for strings only
       if (typeof rawInput === 'string' && rawInput === lastProcessedRef.current) {
         return;
@@ -256,148 +234,55 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
       // Reset lastError when we get a good JSON next
       lastErrorRef.current = null;
 
-      if (props.mode === 'offline') {
+      // Single-path verification (offline-style)
+      // Now that we have a valid VC object, stop the camera and show loader
+      clearTimer();
+      stopVideoStream();
+      setScanning(true);
 
-        // Now that we have a valid VC object, stop the camera and show loader
-        clearTimer();
-        stopVideoStream();
-        setScanning(true);
+      try {
+        const verifier = new CredentialsVerifier();
+        const format = props.credentialFormat ?? CredentialFormat.LDP_VC;
+        const payload = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
+        const result = await verifier.verify(payload, format);
 
-        try {
-          const verifier = new CredentialsVerifier();
-          const format = props.credentialFormat ?? CredentialFormat.LDP_VC;
-          const payload = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
-          const result = await verifier.verify(payload, format);
-
-          // Ensure the VerificationResult carries the parsed credential for UI rendering
-          const parsedObject = typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
-          const hasResultShape = result && typeof result === 'object' && 'verificationStatus' in result;
-          if (hasResultShape) {
-            const r = result as VerificationResult & { payload?: any };
-            if (!r.payload) {
-              r.payload = parsedObject;
-            }
-            props.onVerificationResult?.(r as VerificationResult);
-          } else {
-            // Backward-compatibility: wrap boolean into VerificationResult and attach payload
-            const wrapped = new VerificationResult(!!result, !!result ? 'Verification successful' : 'Verification failed', '');
-            wrapped.payload = parsedObject;
-            props.onVerificationResult?.(wrapped);
+        // Ensure the VerificationResult carries the parsed credential for UI rendering
+        const parsedObject = typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
+        const hasResultShape = result && typeof result === 'object' && 'verificationStatus' in result;
+        if (hasResultShape) {
+          const r = result as VerificationResult & { payload?: any };
+          if (!r.payload) {
+            r.payload = parsedObject;
           }
-        } finally {
-          // Bring scanner back for next scan
-          setScanning(false);
-          setUploading(false);
-          setLoading(false);
-          setIsCameraActive(true);
-          startVideoStream();
+          props.onVerificationResult?.(r as VerificationResult);
+        } else {
+          // Backward-compatibility: wrap boolean into VerificationResult and attach payload
+          const wrapped = new VerificationResult(!!result, !!result ? 'Verification successful' : 'Verification failed', '');
+          wrapped.payload = parsedObject;
+          props.onVerificationResult?.(wrapped);
         }
-        return;
+      } finally {
+        // Bring scanner back for next scan
+        setScanning(false);
+        setUploading(false);
+        setLoading(false);
+        setIsCameraActive(true);
+        startVideoStream();
       }
-
-      // Online mode: forward to original online flow
-      const vc = await extractVerifiableCredential(parsed);
-      await triggerCallbacks(vc);
 
     } catch (e: any) {
       props.onError?.(e instanceof Error ? e : new Error('QR processing error'));
     }
   }
 
-  /**
-   * This is the core logic function where the component's behavior is extended.
-   */
-  const extractVerifiableCredential = async (data: any) => {
-    try {
-      if (typeof data === 'string') {
-        if (data.startsWith(OvpQrHeader)) {
-          if (props.mode === 'offline') {
-            throw new Error("OpenID4VP redirect flows are not supported in offline mode.");
-          }
-          const redirectUrl = extractRedirectUrlFromQrData(data);
-          if (!redirectUrl) throw new Error("Failed to extract redirect URL from QR data");
-          const encodedOrigin = encodeURIComponent(window.location.origin);
-          const url = `${redirectUrl}&client_id=${encodedOrigin}&redirect_uri=${encodedOrigin}%2F#`;
-          window.location.href = url;
-          return null;
-        }
-        
-        // Check if data is JSON format before parsing
-        const trimmedData = data.trim();
-        if (!trimmedData.startsWith('{') && !trimmedData.startsWith('[')) {
-          // Not JSON format - could be encoded data, URL, or plain text identifier
-          
-          // Check if it's a URL
-          if (trimmedData.startsWith('http://') || trimmedData.startsWith('https://')) {
-            throw new Error("URL QR codes are not supported for verification");
-          }
-          
-          // For other formats (like plain text identifiers), try to decode
-          try {
-            const decoded = await decodeQrData(new TextEncoder().encode(trimmedData));
-            return JSON.parse(decoded);
-          } catch (decodeError) {
-            throw new Error(`Unsupported QR code format: ${trimmedData.substring(0, 20)}...`);
-          }
-        }
-        
-        return JSON.parse(data);
-      }
-      
-      if (data?.vpToken) {
-        return data.vpToken.verifiableCredential[0];
-      }
-      
-      const decoded = await decodeQrData(new TextEncoder().encode(data));
-      return JSON.parse(decoded);
-
-    } catch (error) {
-      return error;
-    }
-  };
-
-  /**
-   * This entire function is the original online logic.
-   * It is preserved completely and is only called when mode is 'online'.
-   */
-  const triggerCallbacks = async (vc: any) => {
-    if (props.mode !== 'online') return; // Safety guard for offline mode
-
-    try {
-      if (props.onVCReceived) {
-        const id = await vcSubmission(vc, props.verifyServiceUrl);
-        props.onVCReceived(id);
-      } else if (props.onVCProcessed) {
-        const status = await vcVerification(vc, props.verifyServiceUrl);
-        props.onVCProcessed([{ vc, vcStatus: status }]);
-      }
-    } catch (error) {
-      handleError(error);
-    } finally {
-      setScanning(false);
-      setUploading(false);
-      setLoading(false);
-      setIsCameraActive(true);
-      startVideoStream();
-    }
-  };
-  
   const handleError = (error: unknown) => {
-    if (props.mode === 'offline') {
-        const errResult = new VerificationResult(false, (error as Error).message, 'PROCESS_ERROR');
-        props.onVerificationResult(errResult);
-    } else {
-      // --- NO CHANGE HERE: Original online error handling ---
-      props.onError(
-        error instanceof Error ? error : new Error("Unknown error occurred")
-      );
-    }
+    const errResult = new VerificationResult(false, (error as Error).message, 'PROCESS_ERROR');
+    props.onVerificationResult(errResult);
   };
 
   // --- NO CHANGE HERE: All zoom and effect hooks are preserved ---
   const handleZoomChange = (value: number) => { if (value >= 0 && value <= 10) setZoomLevel(value); };
   const handleSliderChange = (_: any, value: number | number[]) => { if (typeof value === "number") handleZoomChange(value); };
-  function base64UrlDecode(base64url: string): string { let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/"); const pad = base64.length % 4; if (pad) base64 += "=".repeat(4 - pad); return atob(base64); }
   useEffect(() => { 
     if (!isEnableScan) {
       return;
@@ -419,32 +304,7 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEnableScan, isUploading]);
   useEffect(() => { const resize = () => setIsMobile(window.innerWidth < 768); window.addEventListener("resize", resize); resize(); return () => window.removeEventListener("resize", resize); }, []);
-  useEffect(() => {
-    if (props.mode !== 'online') return;
-    let vpToken, presentationSubmission, error;
-    try {
-      const hash = window.location.hash;
-      const params = new URLSearchParams(hash.substring(1));
-      const vpTokenParam = params.get("vp_token");
-      const decoded = vpTokenParam && base64UrlDecode(vpTokenParam);
-      const parseVpToken = decoded && JSON.parse(decoded);
-      vpToken = vpTokenParam ? parseVpToken : null;
-      presentationSubmission = params.get("presentation_submission")
-        ? decodeURIComponent(params.get("presentation_submission") as string)
-        : undefined;
-      error = params.get("error");
-
-      if (vpToken && presentationSubmission) {
-        // Do not call processScanResult with an object; handle redirect outside.
-
-        window.history.replaceState(null, "", window.location.pathname);
-      } else if (!!error) {
-        onError(new Error(error));
-      }
-    } catch (error) {
-      onError(error instanceof Error ? error : new Error("Unknown error"));
-    }
-  }, [onError, processScanResult, props.mode]);
+  // Removed online redirect hash handling
 
   const startScanning = isCameraActive && isEnableScan && !isUploading && !isScanning;
   

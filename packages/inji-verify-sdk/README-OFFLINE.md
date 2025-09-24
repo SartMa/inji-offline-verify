@@ -27,7 +27,7 @@ function MyVerifierComponent() {
 
   return (
     <QRCodeVerification
-      mode="offline"                                        // Enable offline verification
+  // offline-style verification (single mode)
       onVerificationResult={handleVerificationResult}      // Required for offline mode
       onError={handleError}                                // Required for both modes
       credentialFormat={CredentialFormat.LDP_VC}          // Optional, defaults to LDP_VC

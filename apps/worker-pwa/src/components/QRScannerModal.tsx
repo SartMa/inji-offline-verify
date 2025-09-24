@@ -400,7 +400,6 @@ export default function QRScannerModal({ open, onClose, onResult }: QRScannerMod
               }}>
                 <QRCodeVerification
                   key={`scanner-${scannerKey}`} // Fresh instance each time
-                  mode="offline"  // Use offline mode to leverage SDK cache
                   onVerificationResult={handleVerificationResult}
                   onError={handleError}
                   credentialFormat={CredentialFormat.LDP_VC}

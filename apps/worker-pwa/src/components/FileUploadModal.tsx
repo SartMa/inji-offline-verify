@@ -281,7 +281,6 @@ export default function FileUploadModal({ open, onClose, onResult }: FileUploadM
 								{/* SDK Uploader (upload-only, offline) - visually hidden input */}
 								<Box sx={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
 									<QRCodeVerification
-										mode="offline"
 										onVerificationResult={handleVerificationResult}
 										onError={handleError}
 										credentialFormat={CredentialFormat.LDP_VC}

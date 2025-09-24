@@ -41,7 +41,11 @@ export async function login(baseUrl: string, payload: { username: string; passwo
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(`Login failed: ${res.status}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const errorMessage = errorData.non_field_errors?.[0] || errorData.error || errorData.message || errorData.detail || 'Invalid credentials';
+    throw new Error(errorMessage);
+  }
   const data: LoginResponse = await res.json();
   setApiBaseUrl(baseUrl);
   if (data?.access || data?.refresh || data?.token) {
@@ -56,7 +60,11 @@ export async function loginorg(baseUrl: string, payload: { username: string; pas
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(`Login failed: ${res.status}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const errorMessage = errorData.non_field_errors?.[0] || errorData.error || errorData.message || errorData.detail || 'Invalid credentials';
+    throw new Error(errorMessage);
+  }
   const data: LoginResponse = await res.json();
   setApiBaseUrl(baseUrl);
   if (data?.access || data?.refresh || data?.token) {
@@ -89,7 +97,11 @@ export async function organizationLogin(baseUrl: string, payload: { username: st
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(`Organization login failed: ${res.status}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const errorMessage = errorData.non_field_errors?.[0] || errorData.error || errorData.message || errorData.detail || 'Invalid credentials';
+    throw new Error(errorMessage);
+  }
   const data: LoginResponse = await res.json();
   setApiBaseUrl(baseUrl);
   if (data?.access || data?.refresh || data?.token) {

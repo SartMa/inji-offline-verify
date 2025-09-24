@@ -5,7 +5,7 @@ from rest_framework import status, permissions
 from rest_framework.views import APIView
 from django.db import transaction
 from .models import Organization, OrganizationDID, PublicKey, RevokedVC
-from .permissions import IsOrganizationAdmin
+from .permissions import IsOrganizationAdmin, IsOrganizationAdminFromMembership
 from .models import JsonLdContext
 from .serializers import JsonLdContextSerializer
 
@@ -25,6 +25,7 @@ from rest_framework.permissions import IsAuthenticated
 import re
 from datetime import datetime
 from django.core.exceptions import ValidationError
+from urllib.parse import unquote
 import json
 
 
@@ -94,10 +95,13 @@ class OrganizationPublicKeysView(APIView):
 
 class OrganizationPublicKeyDetailView(APIView):
     """Delete a specific public key by key_id."""
-    permission_classes = [permissions.IsAuthenticated, IsOrganizationAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsOrganizationAdminFromMembership]
 
     def delete(self, request, key_id, *args, **kwargs):
         try:
+            # Decode the URL-encoded key_id
+            decoded_key_id = unquote(key_id)
+            
             # Get the user's organization from their membership
             org_member = OrganizationMember.objects.select_related('organization').get(
                 user=request.user, 
@@ -105,8 +109,8 @@ class OrganizationPublicKeyDetailView(APIView):
             )
             org = org_member.organization
             
-            # Find the public key
-            public_key = PublicKey.objects.get(key_id=key_id, organization=org)
+            # Find the public key using the decoded key_id
+            public_key = PublicKey.objects.get(key_id=decoded_key_id, organization=org)
             
             # Delete the public key
             public_key.delete()
@@ -514,10 +518,13 @@ class OrganizationRevokedVCUpsertView(APIView):
 
 class OrganizationRevokedVCDetailView(APIView):
     """Delete a specific revoked VC by vc_id."""
-    permission_classes = [permissions.IsAuthenticated, IsOrganizationAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsOrganizationAdminFromMembership]
 
     def delete(self, request, vc_id, *args, **kwargs):
         try:
+            # URL decode the vc_id parameter
+            decoded_vc_id = unquote(vc_id)
+            
             # Get the user's organization from their membership
             org_member = OrganizationMember.objects.select_related('organization').get(
                 user=request.user, 
@@ -526,7 +533,7 @@ class OrganizationRevokedVCDetailView(APIView):
             org = org_member.organization
             
             # Find the revoked VC
-            revoked_vc = RevokedVC.objects.get(vc_id=vc_id, organization=org)
+            revoked_vc = RevokedVC.objects.get(vc_id=decoded_vc_id, organization=org)
             
             # Delete the revoked VC
             revoked_vc.delete()

@@ -13,6 +13,8 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 import { styled } from '@mui/material/styles';
 import ForgotPassword from '@inji-offline-verify/shared-ui/src/components/ForgotPassword';
 import { AppTheme, ColorModeSelect } from '@inji-offline-verify/shared-ui/src/theme';
@@ -82,6 +84,9 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
   const [passwordErrorMessage, setPasswordErrorMessage] = React.useState('');
   const [open, setOpen] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [toastOpen, setToastOpen] = React.useState(false);
+  const [toastMessage, setToastMessage] = React.useState('');
+  const [toastSeverity, setToastSeverity] = React.useState<'error' | 'success' | 'info' | 'warning'>('error');
   const { signIn } = useAuth();
 
   const handleClickOpen = () => {
@@ -90,6 +95,19 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
 
   const handleClose = () => {
     setOpen(false);
+  };
+
+  const handleToastClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setToastOpen(false);
+  };
+
+  const showToast = (message: string, severity: 'error' | 'success' | 'info' | 'warning' = 'error') => {
+    setToastMessage(message);
+    setToastSeverity(severity);
+    setToastOpen(true);
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -118,10 +136,79 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
       
       // Redirect to dashboard after successful login
       navigate('/dashboard');
-    } catch (error) {
+      showToast('Successfully signed in!', 'success');
+    } catch (error: any) {
       console.error('Organization sign in failed:', error);
-      setPasswordError(true);
-      setPasswordErrorMessage(`Login failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.log('Organization error response data:', error?.response?.data);
+      
+      // Extract error message from server response
+      let errorMessage = 'Invalid credentials';
+      
+      // First, try to extract the actual server error message
+      if (error?.response?.data) {
+        const responseData = error.response.data;
+        
+        // Handle non_field_errors array format: {"non_field_errors":["Invalid credentials"]}
+        if (responseData.non_field_errors && Array.isArray(responseData.non_field_errors) && responseData.non_field_errors.length > 0) {
+          errorMessage = responseData.non_field_errors[0];
+        }
+        // Handle other common error field formats
+        else if (responseData.message) {
+          errorMessage = responseData.message;
+        }
+        else if (responseData.error) {
+          errorMessage = responseData.error;
+        }
+        else if (responseData.detail) {
+          errorMessage = responseData.detail;
+        }
+        // Handle other field error formats
+        else if (typeof responseData === 'object') {
+          const keys = Object.keys(responseData);
+          if (keys.length > 0) {
+            const firstKey = keys[0];
+            const firstValue = responseData[firstKey];
+            if (Array.isArray(firstValue) && firstValue.length > 0) {
+              errorMessage = firstValue[0];
+            } else if (typeof firstValue === 'string') {
+              errorMessage = firstValue;
+            }
+          }
+        }
+        else if (typeof responseData === 'string') {
+          errorMessage = responseData;
+        }
+      }
+      // Fallback to status code specific messages if no server message available
+      else if (error?.response?.status) {
+        switch (error.response.status) {
+          case 400:
+            errorMessage = 'Invalid credentials';
+            break;
+          case 401:
+            errorMessage = 'Invalid username or password';
+            break;
+          case 403:
+            errorMessage = 'Access denied';
+            break;
+          case 404:
+            errorMessage = 'Organization not found';
+            break;
+          case 500:
+            errorMessage = 'Server error. Please try again later';
+            break;
+          default:
+            errorMessage = 'Authentication failed';
+            break;
+        }
+      }
+      // Final fallback if no response at all
+      else if (error?.message && !error.message.includes('Login failed:')) {
+        errorMessage = error.message;
+      }
+      
+      showToast(`Login failed: ${errorMessage}`, 'error');
+      // Don't set field errors since we're using toast notifications
     } finally {
       setIsLoading(false);
     }
@@ -209,7 +296,7 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
                 id="organization"
                 type="text"
                 name="organization"
-                placeholder="Acme Corp1"
+                placeholder="Organization Name"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
                 autoComplete="organization"
@@ -217,6 +304,29 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
                 fullWidth
                 variant="outlined"
                 color={orgError ? 'error' : 'primary'}
+                sx={() => ({
+                  '& input:-webkit-autofill': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    transition: 'background-color 5000s ease-in-out 0s !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:hover': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:focus': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:active': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  }
+                })}
               />
             </FormControl>
             <FormControl>
@@ -227,7 +337,7 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
                 id="username"
                 type="text"
                 name="username"
-                placeholder="alice1"
+                placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
@@ -236,6 +346,29 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
                 fullWidth
                 variant="outlined"
                 color={usernameError ? 'error' : 'primary'}
+                sx={() => ({
+                  '& input:-webkit-autofill': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    transition: 'background-color 5000s ease-in-out 0s !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:hover': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:focus': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:active': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  }
+                })}
               />
             </FormControl>
             <FormControl>
@@ -244,7 +377,7 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
                 error={passwordError}
                 helperText={passwordErrorMessage}
                 name="password"
-                placeholder="••••••"
+                placeholder="Password"
                 type="password"
                 id="password"
                 value={password}
@@ -254,6 +387,29 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
                 fullWidth
                 variant="outlined"
                 color={passwordError ? 'error' : 'primary'}
+                sx={() => ({
+                  '& input:-webkit-autofill': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    transition: 'background-color 5000s ease-in-out 0s !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:hover': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:focus': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:active': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  }
+                })}
               />
             </FormControl>
             <FormControlLabel
@@ -324,6 +480,24 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
             </Typography> */}
           </Box>
         </Card>
+        
+        {/* Toast Notification */}
+        <Snackbar
+          open={toastOpen}
+          autoHideDuration={6000}
+          onClose={handleToastClose}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          sx={{ mt: 8 }}
+        >
+          <Alert
+            onClose={handleToastClose}
+            severity={toastSeverity}
+            variant="filled"
+            sx={{ width: '100%' }}
+          >
+            {toastMessage}
+          </Alert>
+        </Snackbar>
       </SignInContainer>
     </AppTheme>
   );

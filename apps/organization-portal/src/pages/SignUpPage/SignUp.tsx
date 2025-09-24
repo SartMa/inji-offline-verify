@@ -346,7 +346,7 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
                 id="organization"
                 type="text"
                 name="organization"
-                placeholder="Acme Corp"
+                placeholder="Organization Name"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
                 autoComplete="organization"
@@ -354,6 +354,29 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
                 fullWidth
                 variant="outlined"
                 color={orgError ? 'error' : 'primary'}
+                sx={() => ({
+                  '& input:-webkit-autofill': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    transition: 'background-color 5000s ease-in-out 0s !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:hover': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:focus': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:active': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  }
+                })}
               />
             </FormControl>
             <FormControl>
@@ -364,7 +387,7 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
                 id="username"
                 type="text"
                 name="username"
-                placeholder="johndoe"
+                placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
@@ -372,6 +395,29 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
                 fullWidth
                 variant="outlined"
                 color={usernameError ? 'error' : 'primary'}
+                sx={() => ({
+                  '& input:-webkit-autofill': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    transition: 'background-color 5000s ease-in-out 0s !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:hover': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:focus': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:active': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  }
+                })}
               />
             </FormControl>
             <FormControl>
@@ -382,7 +428,7 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
                 id="email"
                 type="email"
                 name="email"
-                placeholder="admin@acme.example"
+                placeholder="Email Address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
@@ -391,6 +437,29 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
                 fullWidth
                 variant="outlined"
                 color={emailError ? 'error' : 'primary'}
+                sx={() => ({
+                  '& input:-webkit-autofill': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    transition: 'background-color 5000s ease-in-out 0s !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:hover': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:focus': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:active': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  }
+                })}
               />
             </FormControl>
             <FormControl>
@@ -399,7 +468,7 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
                 error={passwordError}
                 helperText={passwordErrorMessage}
                 name="password"
-                placeholder="••••••"
+                placeholder="Password"
                 type="password"
                 id="password"
                 value={password}
@@ -409,6 +478,29 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
                 fullWidth
                 variant="outlined"
                 color={passwordError ? 'error' : 'primary'}
+                sx={() => ({
+                  '& input:-webkit-autofill': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    transition: 'background-color 5000s ease-in-out 0s !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:hover': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:focus': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:active': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  }
+                })}
               />
             </FormControl>
             <FormControl>
@@ -417,7 +509,7 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
                 error={confirmPasswordError}
                 helperText={confirmPasswordErrorMessage}
                 name="confirmPassword"
-                placeholder="••••••"
+                placeholder="Confirm Password"
                 type="password"
                 id="confirmPassword"
                 value={confirmPassword}
@@ -427,6 +519,29 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
                 fullWidth
                 variant="outlined"
                 color={confirmPasswordError ? 'error' : 'primary'}
+                sx={() => ({
+                  '& input:-webkit-autofill': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    transition: 'background-color 5000s ease-in-out 0s !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:hover': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:focus': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& input:-webkit-autofill:active': {
+                    WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+                    WebkitTextFillColor: 'inherit !important',
+                    backgroundColor: 'transparent !important',
+                  }
+                })}
               />
             </FormControl>
             <FormControlLabel

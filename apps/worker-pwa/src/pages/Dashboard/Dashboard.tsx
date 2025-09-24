@@ -11,12 +11,10 @@ import Header from '../../components/dash_comp/Header';
 import SideMenu from '../../components/dash_comp/SideMenu';
 import { SidebarProvider } from '../../components/dash_comp/SidebarContext';
 import AppTheme from '../../theme/dash_theme/AppTheme';
-import Copyright from '../../internals/components/Copyright';
 
 // Worker-specific components
 import SystemStatus from '../../components/SystemStatus';
 import Statistics from '../../components/Statistics.tsx';
-import TestInterface from '../../components/TestInterface';
 import StorageLogs from '../../components/StorageLogs.tsx';
 import VerificationActions from '../../components/VerificationActions';
 import OfflineIndicator from '../../components/OfflineIndicator';
@@ -73,29 +71,31 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
               </Box>
               
               <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
-                {/* Main section title */}
-                <Typography 
-                  component="h2" 
-                  variant="h6" 
-                  sx={{ 
-                    mb: 3,
-                    fontWeight: 600,
-                    color: 'text.primary'
-                  }}
-                >
-                  Worker VC Verification
-                </Typography>
-                
-                {/* Verification Actions - Now using its own styling */}
-                <Box sx={{ mb: 4 }}>
-                  <VerificationActions 
-                    onScanComplete={(data) => console.log('Scan result:', data)}
-                    onUploadComplete={(file) => console.log('File uploaded:', file.name)}
-                  />
+                {/* VC Verification Section */}
+                <Box id="vc-verification" sx={{ scrollMarginTop: '20px' }}>
+                  <Typography 
+                    component="h2" 
+                    variant="h6" 
+                    sx={{ 
+                      mb: 3,
+                      fontWeight: 600,
+                      color: 'text.primary'
+                    }}
+                  >
+                    Worker VC Verification
+                  </Typography>
+                  
+                  {/* Verification Actions - Now using its own styling */}
+                  <Box sx={{ mb: 4 }}>
+                    <VerificationActions 
+                      onScanComplete={(data) => console.log('Scan result:', data)}
+                      onUploadComplete={(file) => console.log('File uploaded:', file.name)}
+                    />
+                  </Box>
                 </Box>
                 
                 {/* Statistics Section */}
-                <Box sx={{ mb: 4 }}>
+                <Box id="statistics" sx={{ mb: 4, scrollMarginTop: '20px' }}>
                   <Typography 
                     variant="h6" 
                     gutterBottom 
@@ -111,7 +111,7 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
                 </Box>
                 
                 {/* Storage Logs Section */}
-                <Box sx={{ mb: 4 }}>
+                <Box id="sync-status" sx={{ mb: 4, scrollMarginTop: '20px' }}>
                   <Typography 
                     variant="h6" 
                     gutterBottom 
@@ -127,7 +127,7 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
                 </Box>
                 
                 {/* Test Interface Section */}
-                <Box 
+                {/* <Box 
                   sx={{ 
                     mb: 4,
                     p: 3,
@@ -149,9 +149,9 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
                     Test Interface
                   </Typography>
                   <TestInterface />
-                </Box>
+                </Box> */}
                 
-                <Copyright sx={{ my: 4 }} />
+                {/* <Copyright sx={{ my: 4 }} /> */}
               </Box>
             </Stack>
           </Box>

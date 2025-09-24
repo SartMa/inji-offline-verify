@@ -37,7 +37,7 @@ const Drawer = styled(MuiDrawer, {
       easing: theme.transitions.easing.easeInOut,
       duration: theme.transitions.duration.standard,
     }),
-    overflowX: 'hidden',
+    overflowX: 'visible', // Allow overflow for dropdown menus
     borderRight: `1px solid ${theme.palette.divider}`,
   },
 }));
@@ -131,11 +131,15 @@ export default function SideMenu() {
         direction="row"
         sx={{
           p: 2,
+          pr: 1, // Reduce right padding to give OptionsMenu more space
           gap: 1,
-          alignItems: 'center',
+          alignItems: 'flex-start', // Align to top to handle multi-line emails
           borderTop: '1px solid',
           borderColor: 'divider',
           justifyContent: isCollapsed ? 'center' : 'flex-start',
+          minHeight: 60, // Ensure minimum height for wrapped text
+          width: '100%',
+          overflow: 'hidden', // Prevent horizontal overflow
         }}
       >
         <Avatar
@@ -154,11 +158,35 @@ export default function SideMenu() {
         />
         {!isCollapsed && (
           <>
-            <Box sx={{ mr: 'auto' }}>
-              <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: '16px' }}>
+            <Box sx={{ 
+              mr: 'auto',
+              minWidth: 0, // Allow box to shrink
+              flex: 1, // Take available space
+              overflow: 'hidden' // Prevent overflow
+            }}>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  fontWeight: 500, 
+                  lineHeight: '16px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+              >
                 {loading ? 'Loading...' : displayName}
               </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  color: 'text.secondary',
+                  display: 'block',
+                  wordBreak: 'break-all', // Break long emails
+                  whiteSpace: 'normal', // Allow wrapping
+                  lineHeight: 1.2,
+                  maxWidth: '100%'
+                }}
+              >
                 {loading ? 'Loading...' : displayEmail}
               </Typography>
             </Box>

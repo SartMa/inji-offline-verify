@@ -25,9 +25,12 @@ function ButtonField(props: ButtonFieldProps) {
       ? parsedFormat
       : pickerContext.value.format(pickerContext.fieldFormat);
 
+  // Filter out props that shouldn't be passed to DOM elements
+  // const { slotProps: _, inputRef: __, ...cleanProps } = forwardedProps;
+
   return (
     <Button
-      {...forwardedProps}
+      // {...cleanProps}
       variant="outlined"
       ref={handleRef}
       size="small"

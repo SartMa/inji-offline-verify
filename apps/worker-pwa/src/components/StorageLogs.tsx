@@ -8,8 +8,17 @@ import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import Button from '@mui/material/Button';
 import Menu from '@mui/material/Menu';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Slider from '@mui/material/Slider';
+import CircularProgress from '@mui/material/CircularProgress';
+import Tooltip from '@mui/material/Tooltip';
 import SearchIcon from '@mui/icons-material/Search';
 import DownloadIcon from '@mui/icons-material/Download';
+import SettingsIcon from '@mui/icons-material/Settings';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useVCStorage } from '../context/VCStorageContext';
 import './styles/StorageLogs.css';
 
@@ -58,14 +67,26 @@ const formatTimestamp = (timestamp: number | undefined) => {
 const StorageLogs = () => {
     const ctx = useVCStorage();
     const logs = ctx?.logs || [];
+    const isLoadingHistoricalLogs = ctx?.isLoadingHistoricalLogs || false;
+    const historicalLogsDays = ctx?.historicalLogsDays || 3;
+    const setHistoricalLogsDays = ctx?.setHistoricalLogsDays;
+    const refreshHistoricalLogs = ctx?.refreshHistoricalLogs;
+    const isOnline = ctx?.isOnline || navigator.onLine;
     
     const [filter, setFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage] = useState(5);
+    const [itemsPerPage] = useState(10);
     const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
     const [sortField, setSortField] = useState<keyof Log | null>('timestamp');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+    const [showHistoricalSettings, setShowHistoricalSettings] = useState(false);
+    const [tempHistoricalDays, setTempHistoricalDays] = useState(historicalLogsDays);
+
+    // Sync temp state when dialog opens or historicalLogsDays changes
+    useMemo(() => {
+        setTempHistoricalDays(historicalLogsDays);
+    }, [historicalLogsDays]);
 
     // Filter and search logs
     const filteredLogs = useMemo(() => {
@@ -219,6 +240,21 @@ const StorageLogs = () => {
         handleExportClose();
     };
 
+    // Handle manual refresh of historical logs
+    const handleRefreshHistoricalLogs = async () => {
+        if (refreshHistoricalLogs) {
+            await refreshHistoricalLogs();
+        }
+    };
+
+    // Handle historical days change
+    const handleHistoricalDaysChange = (newDays: number) => {
+        if (setHistoricalLogsDays) {
+            setHistoricalLogsDays(newDays);
+        }
+        setShowHistoricalSettings(false);
+    };
+
     return (
         <Box className="storage-logs-container">
             {/* Statistics chips and controls in one row */}
@@ -233,6 +269,17 @@ const StorageLogs = () => {
                     <span className="stat-chip showing">
                         {filteredLogs.length} Showing
                     </span>
+                    {isLoadingHistoricalLogs && (
+                        <span className="stat-chip neutral" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <CircularProgress size={12} sx={{ color: 'var(--text-secondary)' }} />
+                            Loading history...
+                        </span>
+                    )}
+                    {!isOnline && (
+                        <span className="stat-chip neutral" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            📱 Offline (cached data)
+                        </span>
+                    )}
                 </div>
 
                 {/* Search and filter controls on the right */}
@@ -350,6 +397,60 @@ const StorageLogs = () => {
                     >
                         Export
                     </Button>
+
+                    {/* Refresh Historical Logs Button */}
+                    <Tooltip title={`Refresh historical logs (${historicalLogsDays} days)`}>
+                        <Button 
+                            onClick={handleRefreshHistoricalLogs}
+                            variant="outlined"
+                            size="small"
+                            disabled={isLoadingHistoricalLogs}
+                            startIcon={
+                                isLoadingHistoricalLogs ? 
+                                <CircularProgress size={14} sx={{ color: 'var(--text-secondary)' }} /> : 
+                                <RefreshIcon />
+                            }
+                            sx={{
+                                borderColor: 'var(--table-border)',
+                                color: 'var(--text-secondary)',
+                                backgroundColor: 'var(--table-background)',
+                                '&:hover': {
+                                    borderColor: 'var(--chip-color)',
+                                    backgroundColor: 'var(--chip-hover-bg)',
+                                    color: 'var(--chip-color)',
+                                },
+                                '&:disabled': {
+                                    borderColor: 'var(--table-border)',
+                                    color: 'var(--text-secondary)',
+                                    opacity: 0.5,
+                                },
+                            }}
+                        >
+                            Refresh
+                        </Button>
+                    </Tooltip>
+
+                    {/* Historical Settings Button */}
+                    <Tooltip title="Configure historical logs">
+                        <Button 
+                            onClick={() => setShowHistoricalSettings(true)}
+                            variant="outlined"
+                            size="small"
+                            startIcon={<SettingsIcon />}
+                            sx={{
+                                borderColor: 'var(--table-border)',
+                                color: 'var(--text-secondary)',
+                                backgroundColor: 'var(--table-background)',
+                                '&:hover': {
+                                    borderColor: 'var(--chip-color)',
+                                    backgroundColor: 'var(--chip-hover-bg)',
+                                    color: 'var(--chip-color)',
+                                },
+                            }}
+                        >
+                            History
+                        </Button>
+                    </Tooltip>
 
                     <Menu
                         anchorEl={exportMenuAnchor}
@@ -551,6 +652,122 @@ const StorageLogs = () => {
                     )}
                 </div>
             )}
+
+            {/* Historical Settings Dialog */}
+            <Dialog 
+                open={showHistoricalSettings} 
+                onClose={() => setShowHistoricalSettings(false)}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        backgroundColor: 'var(--table-background)',
+                        border: '1px solid var(--table-border)',
+                        borderRadius: '8px',
+                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+                    }
+                }}
+            >
+                <DialogTitle 
+                    sx={{ 
+                        color: 'var(--text-primary)',
+                        fontSize: '1.125rem',
+                        fontWeight: 600,
+                        pb: 2,
+                        px: 3,
+                        pt: 3
+                    }}
+                >
+                    Historical Logs Configuration
+                </DialogTitle>
+                <DialogContent sx={{ px: 3, py: 0 }}>
+                    <Box sx={{ py: 2 }}>
+                        <Typography 
+                            variant="body2" 
+                            sx={{ mb: 3, color: 'var(--text-secondary)' }}
+                        >
+                            Configure how many days of historical verification logs to fetch from the server. 
+                            This supplements your local cache with older logs.
+                        </Typography>
+                        
+                        <Typography 
+                            variant="subtitle2" 
+                            sx={{ mb: 2, color: 'var(--text-primary)', fontWeight: 600 }}
+                        >
+                            Historical Days: {tempHistoricalDays} day{tempHistoricalDays !== 1 ? 's' : ''}
+                        </Typography>
+                        
+                        <Slider
+                            value={tempHistoricalDays}
+                            onChange={(_, newValue) => {
+                                setTempHistoricalDays(newValue as number);
+                            }}
+                            min={1}
+                            max={14}
+                            step={1}
+                            marks={[
+                                { value: 1, label: '1d' },
+                                { value: 3, label: '3d' },
+                                { value: 7, label: '7d' },
+                                { value: 14, label: '14d' },
+                            ]}
+                            sx={{
+                                color: 'var(--chip-color)',
+                                '& .MuiSlider-mark': {
+                                    backgroundColor: 'var(--text-secondary)',
+                                },
+                                '& .MuiSlider-markLabel': {
+                                    color: 'var(--text-secondary)',
+                                    fontSize: '0.75rem',
+                                },
+                                '& .MuiSlider-thumb': {
+                                    backgroundColor: 'var(--chip-color)',
+                                },
+                                '& .MuiSlider-track': {
+                                    backgroundColor: 'var(--chip-color)',
+                                },
+                                '& .MuiSlider-rail': {
+                                    backgroundColor: 'var(--table-border)',
+                                },
+                            }}
+                        />
+                        
+                        {/* <Typography 
+                            variant="caption" 
+                            sx={{ mt: 2, color: 'var(--text-secondary)', display: 'block' }}
+                        >
+                            Note: Longer periods may increase loading time and data usage. 
+                            Historical data is cached locally for offline access and expires after 10 minutes of online cache.
+                        </Typography> */}
+                    </Box>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 3, pt: 0, gap: 1.5 }}>
+                    <Button 
+                        onClick={() => setShowHistoricalSettings(false)}
+                        sx={{ 
+                            color: 'var(--text-secondary)',
+                            '&:hover': {
+                                backgroundColor: 'var(--table-hover)',
+                            }
+                        }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button 
+                        onClick={() => handleHistoricalDaysChange(tempHistoricalDays)}
+                        variant="contained"
+                        sx={{
+                            backgroundColor: 'var(--chip-color)',
+                            color: 'white',
+                            '&:hover': {
+                                backgroundColor: 'var(--chip-hover-bg)',
+                            },
+                        }}
+                    >
+                        Apply
+                    </Button>
+                </DialogActions>
+</Dialog>
         </Box>
     );
 };

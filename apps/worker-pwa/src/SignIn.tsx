@@ -479,6 +479,18 @@ export default function SignIn(props: {
               variant="contained"
               disabled={isLoading}
               onClick={validateInputs}
+              sx={(theme) => ({
+                // Default styles (for light mode)
+                '&:disabled': {
+                  color: '#fff', // White text for light mode
+                },
+                // Use the theme's custom helper for dark mode styles
+                ...theme.applyStyles('dark', {
+                  '&:disabled': {
+                    color: '#000', // Black text for dark mode
+                  },
+                }),
+              })}
             >
               {isLoading ? 'Signing in...' : 'Sign in'}
             </Button>

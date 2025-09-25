@@ -27,10 +27,16 @@ export default function OptionsMenu() {
     setAnchorEl(null);
   };
   
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     setAnchorEl(null);
-    signOut();
-    window.location.href = '/';
+    try {
+      await signOut(); // Now async - will clear all data including IndexedDB
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Even if cleanup fails, redirect anyway for security
+      window.location.href = '/';
+    }
   };
   return (
     <>

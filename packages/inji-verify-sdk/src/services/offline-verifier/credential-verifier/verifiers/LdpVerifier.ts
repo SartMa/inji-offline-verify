@@ -326,6 +326,7 @@
 import * as jsigs from 'jsonld-signatures';
 import { Ed25519Signature2020 } from '@digitalbazaar/ed25519-signature-2020';
 import { Ed25519VerificationKey2020 } from '@digitalbazaar/ed25519-verification-key-2020';
+import * as forge from 'node-forge';
 
 // Import SDK-internal utilities and exceptions
 import { UnknownException } from '../../exception/index.js';
@@ -436,9 +437,10 @@ export class LdpVerifier {
       case 'Ed25519Signature2018': // Handle as 2020 for compatibility
         return this.verifyWithSuite(vcObject, proof, Ed25519Signature2020, Ed25519VerificationKey2020);
 
-      // --- PLACEHOLDERS FOR FUTURE SUPPORT ---
-      // case 'RsaSignature2018':
-      //   return this.verifyWithSuite(vcObject, proof, RsaSignature2018, RsaVerificationKey2018);
+      case 'RsaSignature2018':
+        return this.verifyRsaSignature2018(vcObject, proof);
+
+      // --- PLACEHOLDER FOR FUTURE SUPPORT ---
       // case 'EcdsaSecp256k1Signature2019':
       //   return this.verifyWithSuite(vcObject, proof, EcdsaSecp256k1Signature2019, EcdsaSecp256k1VerificationKey2019);
 
@@ -541,6 +543,138 @@ export class LdpVerifier {
         throw error;
       }
       return false;
+    }
+  }
+
+  /**
+   * RSA SIGNATURE 2018 VERIFICATION using Node-Forge
+   * 
+   * This method verifies RSA signatures using the node-forge library,
+   * providing a robust alternative to Digital Bazaar's RSA implementation.
+   * 
+   * @param vcObject - Credential content (without proof)
+   * @param proof - RSA proof object containing signature and metadata
+   * @returns Promise<boolean> - true if RSA signature is valid
+   */
+  private async verifyRsaSignature2018(vcObject: any, proof: any): Promise<boolean> {
+    try {
+      this.logger.info('🔐 [RSA] Starting RSA signature verification');
+      this.logger.info('📝 [RSA] Proof:', JSON.stringify(proof, null, 2));
+
+      // 1) Resolve public key from local cache
+      const publicKey = await this.publicKeyService.getPublicKey(proof.verificationMethod);
+      if (!publicKey) {
+        this.logger.error(`❌ Could not resolve public key for: ${proof.verificationMethod}`);
+        return false;
+      }
+      this.logger.info('🔑 [RSA] Public key info:', JSON.stringify(publicKey, null, 2));
+
+      // 2) Extract signature from proof (base64url encoded)
+      const signatureBase64url = proof.jws.split('.')[2]; // JWS format: header.payload.signature
+      const signatureBytes = this.base64urlToBytes(signatureBase64url);
+
+      // 3) Create the message to verify (JSON-LD canonicalized form)
+      const messageToVerify = await this.createCanonicalizedMessage(vcObject, proof);
+
+      // 4) Convert public key to forge format
+      const forgePublicKey = this.convertToForgePublicKey(publicKey);
+
+      // 5) Verify signature using node-forge
+      const md = forge.md.sha256.create();
+      md.update(messageToVerify, 'utf8');
+      
+      const isValid = forgePublicKey.verify(md.digest().bytes(), signatureBytes);
+
+      if (isValid) {
+        this.logger.info("✅ RSA signature verification successful!");
+        return true;
+      } else {
+        this.logger.error('❌ RSA signature verification failed');
+        return false;
+      }
+
+    } catch (error: any) {
+      this.logger.error('💥 RSA verification error:', error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Convert base64url encoded string to bytes
+   */
+  private base64urlToBytes(base64url: string): string {
+    // Convert base64url to base64
+    const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+    // Pad if necessary
+    const padded = base64 + '=='.substring(0, (4 - base64.length % 4) % 4);
+    
+    // Convert base64 to bytes using forge
+    return forge.util.decode64(padded);
+  }
+
+  /**
+   * Create canonicalized message for signature verification
+   */
+  private async createCanonicalizedMessage(vcObject: any, proof: any): Promise<string> {
+    // For RSA Signature 2018, we need to create the message that was originally signed
+    // This typically involves JSON-LD canonicalization
+    
+    // Remove proof from the credential for canonicalization
+    const vcCopy = { ...vcObject };
+    delete vcCopy.proof;
+
+    // Create the proof options (proof without jws and proofValue)
+    const proofOptions = { ...proof };
+    delete proofOptions.jws;
+    delete proofOptions.proofValue;
+
+    // Use jsonld library for canonicalization (you already have it as dependency)
+    const jsonld = require('jsonld');
+    
+    // Canonicalize the credential
+    const canonicalizedVc = await jsonld.canonize(vcCopy, {
+      algorithm: 'URDNA2015',
+      format: 'application/n-quads',
+      documentLoader: OfflineDocumentLoader.getDocumentLoader()
+    });
+
+    // Canonicalize the proof options
+    const canonicalizedProof = await jsonld.canonize(proofOptions, {
+      algorithm: 'URDNA2015',
+      format: 'application/n-quads',
+      documentLoader: OfflineDocumentLoader.getDocumentLoader()
+    });
+
+    // Combine them according to the RSA Signature 2018 specification
+    return canonicalizedVc + canonicalizedProof;
+  }
+
+  /**
+   * Convert public key data to node-forge RSA public key
+   */
+  private convertToForgePublicKey(publicKeyData: any): any {
+    try {
+      // Handle different public key formats
+      if (publicKeyData.publicKeyPem) {
+        // PEM format
+        return forge.pki.publicKeyFromPem(publicKeyData.publicKeyPem);
+      } else if (publicKeyData.publicKeyJwk) {
+        // JWK format
+        const jwk = publicKeyData.publicKeyJwk;
+        const nBytes = forge.util.decode64(jwk.n + '=='.substring(0, (4 - jwk.n.length % 4) % 4));
+        const eBytes = forge.util.decode64(jwk.e + '=='.substring(0, (4 - jwk.e.length % 4) % 4));
+        
+        // Convert to BigInteger
+        const n = new forge.jsbn.BigInteger(forge.util.createBuffer(nBytes).toHex(), 16);
+        const e = new forge.jsbn.BigInteger(forge.util.createBuffer(eBytes).toHex(), 16);
+        
+        return forge.pki.setRsaPublicKey(n, e);
+      } else {
+        throw new Error('Unsupported public key format');
+      }
+    } catch (error: any) {
+      this.logger.error('Error converting public key to forge format:', error.message);
+      throw error;
     }
   }
 }

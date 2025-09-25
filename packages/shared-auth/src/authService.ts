@@ -190,6 +190,57 @@ export function clearTokens() {
   } catch {}
 }
 
+// Enhanced clear function that also clears IndexedDB data
+export async function clearAllUserData() {
+  // Clear localStorage tokens
+  clearTokens();
+  
+  // Clear additional localStorage items
+  try {
+    localStorage.removeItem('deviceId');
+    localStorage.removeItem('organization');
+    localStorage.removeItem('organizationId');
+    localStorage.removeItem('org_id');
+    localStorage.removeItem('current_org_id');
+  } catch {}
+  
+  // Clear IndexedDB databases
+  try {
+    // Clear VCVerifierDB (verification logs)
+    await clearIndexedDB('VCVerifierDB');
+    
+    // Clear VCVerifierCache (keys and contexts)
+    await clearIndexedDB('VCVerifierCache');
+    
+    console.log('All user data cleared successfully');
+  } catch (error) {
+    console.error('Error clearing IndexedDB data:', error);
+  }
+}
+
+// Helper function to clear an IndexedDB database
+async function clearIndexedDB(dbName: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const deleteRequest = indexedDB.deleteDatabase(dbName);
+    
+    deleteRequest.onsuccess = () => {
+      console.log(`IndexedDB ${dbName} cleared successfully`);
+      resolve();
+    };
+    
+    deleteRequest.onerror = () => {
+      console.error(`Failed to clear IndexedDB ${dbName}:`, deleteRequest.error);
+      reject(deleteRequest.error);
+    };
+    
+    deleteRequest.onblocked = () => {
+      console.warn(`IndexedDB ${dbName} deletion blocked - may need to close other tabs`);
+      // Still resolve as it will be cleared when other connections close
+      resolve();
+    };
+  });
+}
+
 // Cache user data for offline use
 export function cacheUserData(userData: UserProfileResponse) {
   try {

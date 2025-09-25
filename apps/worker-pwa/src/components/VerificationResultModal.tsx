@@ -146,15 +146,15 @@ export default function VerificationResultModal({ open, onClose, result }: Props
   
   if (!result) return null;
 
-  // Check if VC is expired based on error codes or message
-  const isExpired: boolean = 
-    result.verificationErrorCode === 'VC_EXPIRED' || 
-    result.verificationErrorCode === 'EXPIRED' ||
-    result.verificationErrorCode === 'ERR_VC_EXPIRED' ||
-    !!(result.verificationMessage && result.verificationMessage.toLowerCase().includes('expired'));
+  // Treat both VC_EXPIRED and EXPIRED as "valid but expired" - only if verification status is true
+  const isExpired: boolean =
+    !!result.verificationStatus &&
+    (result.verificationErrorCode === 'VC_EXPIRED' || 
+     result.verificationErrorCode === 'EXPIRED' ||
+     result.verificationErrorCode === 'ERR_VC_EXPIRED');
 
-  // A VC is considered "verified" if it has a valid status OR if it's expired (valid signature but expired)
-  const isVerified: boolean = !!result.verificationStatus || isExpired;
+  // A VC is considered "verified" if it has a valid status
+  const isVerified: boolean = !!result.verificationStatus;
 
   const isOfflineDepsMissing = result.verificationErrorCode === 'ERR_OFFLINE_DEPENDENCIES_MISSING';
 
@@ -364,7 +364,7 @@ export default function VerificationResultModal({ open, onClose, result }: Props
                     color: statusColors.primary,
                     mt: 0.5
                   }}>
-                    {isVerified ? 'Valid Signature' : 'Invalid Signature'}
+                    {isVerified ? 'Valid signature' : (isOfflineDepsMissing ? 'Cannot verify offline' : 'Invalid signature')}
                   </Typography>
                 </CardContent>
               </Card>
@@ -392,7 +392,7 @@ export default function VerificationResultModal({ open, onClose, result }: Props
                       color: 'var(--template-palette-text-primary)',
                       mt: 0.5
                     }}>
-                      {result.verificationMessage}
+                      {isOfflineDepsMissing ? 'Required contexts or public keys are not in the local cache. Connect to the internet to seed the cache and try again.' : result.verificationMessage}
                     </Typography>
                   </CardContent>
                 </Card>

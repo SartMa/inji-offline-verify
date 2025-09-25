@@ -76,12 +76,12 @@ export default function OptionsMenu() {
           },
         }}
       >
-        <MenuItem onClick={handleClose}>
+        {/* <MenuItem onClick={handleClose}>
           <ListItemIcon>
             <PersonIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText>Profile</ListItemText>
-        </MenuItem>
+        </MenuItem> */}
         <MenuItem onClick={handleMyAccount}>
           <ListItemIcon>
             <AccountCircleIcon fontSize="small" />

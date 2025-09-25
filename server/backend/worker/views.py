@@ -710,6 +710,116 @@ def get_log_detail(request, log_id):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_worker_historical_logs(request):
+    """
+    Get historical verification logs for the authenticated worker user
+    Supports date range filtering (default: last 3 days)
+    Returns logs that may not be in local IndexedDB cache
+    """
+    try:
+        from api.models import VerificationLog
+        from api.serializers import VerificationLogSerializer
+        from datetime import datetime, timedelta
+        from django.utils import timezone
+        
+        # Get the authenticated user
+        user = request.user
+        
+        # Get user's organization membership to determine which logs they can access
+        membership = OrganizationMember.objects.select_related('organization').filter(
+            user=user
+        ).first()
+        
+        if not membership:
+            return Response({
+                'success': False,
+                'error': 'User is not associated with any organization'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get query parameters for filtering
+        days_back = int(request.GET.get('days', 3))  # Default to 3 days
+        max_days = 14  # Security limit - don't allow fetching too far back
+        if days_back > max_days:
+            days_back = max_days
+        
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 100))  # Higher default for historical data
+        
+        # Calculate date range
+        end_date = timezone.now()
+        start_date = end_date - timedelta(days=days_back)
+        
+        # Build the queryset - get logs for this worker's organization within the date range
+        # Only include logs verified by this specific user to maintain data privacy
+        queryset = VerificationLog.objects.filter(
+            organization=membership.organization,
+            verified_by=user,  # Only this worker's own logs
+            verified_at__gte=start_date,
+            verified_at__lte=end_date
+        ).select_related('verified_by').order_by('-verified_at')
+        
+        # Pagination
+        paginator = Paginator(queryset, page_size)
+        page_obj = paginator.get_page(page)
+        
+        # Serialize the data
+        serializer = VerificationLogSerializer(page_obj, many=True)
+        
+        # Calculate stats for the time period
+        total_logs = queryset.count()
+        success_count = queryset.filter(verification_status='SUCCESS').count()
+        failed_count = queryset.filter(verification_status='FAILED').count()
+        
+        # Response data
+        response_data = {
+            'success': True,
+            'organization': {
+                'id': str(membership.organization.id),
+                'name': getattr(membership.organization, 'name', 'Unknown'),
+            },
+            'user': {
+                'id': user.id,
+                'username': user.username,
+            },
+            'logs': serializer.data,
+            'pagination': {
+                'current_page': page,
+                'total_pages': paginator.num_pages,
+                'total_count': paginator.count,
+                'page_size': page_size,
+                'has_next': page_obj.has_next(),
+                'has_previous': page_obj.has_previous(),
+            },
+            'time_range': {
+                'days_back': days_back,
+                'start_date': start_date.isoformat(),
+                'end_date': end_date.isoformat(),
+            },
+            'stats': {
+                'total_logs': total_logs,
+                'success_count': success_count,
+                'failed_count': failed_count,
+                'success_rate': round((success_count / total_logs * 100) if total_logs > 0 else 0, 2),
+            }
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+        
+    except ValueError as e:
+        return Response({
+            'success': False,
+            'error': f'Invalid parameter: {str(e)}'
+        }, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 def get_tokens_for_user(user):  # add helper if not already defined
     refresh = RefreshToken.for_user(user)
     return {"refresh": str(refresh), "access": str(refresh.access_token)}

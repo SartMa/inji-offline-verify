@@ -79,6 +79,61 @@ export async function storeVerificationResult(jsonData: Omit<VerificationRecord,
   });
 }
 
+// Store or update historical verification records (for offline access)
+export async function storeHistoricalVerifications(historicalLogs: Omit<VerificationRecord, 'sno'>[]): Promise<void> {
+  const db = await getDb(); // Get the stable connection
+  const transaction = db.transaction([STORE_NAME], 'readwrite');
+  const store = transaction.objectStore(STORE_NAME);
+  const uuidIndex = store.index('uuid');
+
+  // Process each historical log
+  for (const logData of historicalLogs) {
+    try {
+      // Check if this record already exists by UUID
+      const existingRequest = uuidIndex.get(logData.uuid);
+      
+      await new Promise<void>((resolve, reject) => {
+        existingRequest.onsuccess = () => {
+          const existingRecord = existingRequest.result as VerificationRecord | undefined;
+          
+          if (existingRecord) {
+            // Record exists, update it with historical data but preserve local changes
+            const updatedRecord: VerificationRecord = {
+              ...existingRecord,
+              // Only update fields that might come from server but preserve local state
+              credential_subject: logData.credential_subject || existingRecord.credential_subject,
+              error_message: logData.error_message || existingRecord.error_message,
+              // Don't override synced status or other local state
+            };
+            
+            const updateRequest = store.put(updatedRecord);
+            updateRequest.onsuccess = () => resolve();
+            updateRequest.onerror = () => reject(updateRequest.error);
+          } else {
+            // Record doesn't exist, add it as historical data
+            const addRequest = store.add(logData);
+            addRequest.onsuccess = () => resolve();
+            addRequest.onerror = () => reject(addRequest.error);
+          }
+        };
+        
+        existingRequest.onerror = () => reject(existingRequest.error);
+      });
+    } catch (error) {
+      console.warn('Failed to store historical log:', logData.uuid, error);
+      // Continue with other logs even if one fails
+    }
+  }
+
+  return new Promise<void>((resolve, reject) => {
+    transaction.oncomplete = () => {
+      console.log('Historical logs stored successfully:', historicalLogs.length);
+      resolve();
+    };
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
 // Get all stored verifications
 export async function getAllVerifications(): Promise<VerificationRecord[]> {
   const db = await getDb(); // Get the stable connection

@@ -28,4 +28,5 @@ urlpatterns = [
     path('api/organizations/<uuid:org_id>/logs/', views.get_organization_logs, name='organization-logs'),
     path('api/organizations/<uuid:org_id>/logs/stats/', views.get_organization_logs_stats, name='organization-logs-stats'),
     path('api/logs/<uuid:log_id>/', views.get_log_detail, name='log-detail'),
+    path('api/historical-logs/', views.get_worker_historical_logs, name='worker-historical-logs'),
 ]

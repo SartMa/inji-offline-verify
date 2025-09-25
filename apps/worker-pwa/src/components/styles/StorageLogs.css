@@ -53,7 +53,7 @@
   --neutral-bg: rgba(107, 114, 128, 0.1);
   --neutral-color: #9ca3af;
   --neutral-border: rgba(107, 114, 128, 0.2);
-  --table-background: rgba(17, 24, 39, 0.5);
+  --table-background: rgba(17, 24, 39, 1);
   --container-bg: transparent;
 }
 

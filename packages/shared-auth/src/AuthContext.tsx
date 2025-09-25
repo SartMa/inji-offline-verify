@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { getAccessToken, clearTokens, getCurrentUser, getCachedUserData } from './authService';
+import { getAccessToken, clearTokens, clearAllUserData, getCurrentUser, getCachedUserData } from './authService';
 
 interface User {
   id: number;
@@ -26,7 +26,7 @@ interface AuthContextType {
   user: User | null;
   organization: Organization | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signOut: () => void;
+  signOut: () => Promise<void>;
   isLoading: boolean;
   refreshUserData: () => Promise<void>;
 }
@@ -143,9 +143,9 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
     return Promise.resolve();
   };
 
-  const signOut = (): void => {
-    // Clear tokens from localStorage
-    clearTokens();
+  const signOut = async (): Promise<void> => {
+    // Clear all user data including IndexedDB
+    await clearAllUserData();
     setUser(null);
     setOrganization(null);
     setIsAuthenticated(false);

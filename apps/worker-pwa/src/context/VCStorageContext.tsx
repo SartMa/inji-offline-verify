@@ -1,12 +1,18 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { syncToServer as syncToServerService } from '../services/syncService';
+import { 
+  fetchHistoricalLogsWithCache, 
+  convertHistoricalLogToVerificationRecord,
+  clearHistoricalLogsCache 
+} from '../services/historicalLogsService';
 // Import the dbService functions
 import {
   storeVerificationResult as storeInDb,
   getAllVerifications as getAllFromDb,
   getUnsyncedVerifications as getUnsyncedFromDb,
   markAsSynced as markAsSyncedInDb,
-  clearAllData as clearAllFromDb
+  clearAllData as clearAllFromDb,
+  storeHistoricalVerifications as storeHistoricalInDb
 } from '../services/dbService';
 import type { VerificationRecord } from '../services/dbService';
 
@@ -32,6 +38,9 @@ type VCStorageContextValue = {
     stats: Stats;
     historicalStats: HistoricalStats[];
     logs: LogItem[];
+    isLoadingHistoricalLogs: boolean;
+    historicalLogsDays: number;
+    setHistoricalLogsDays: (days: number) => void;
     storeVerificationResult: (jsonData: any) => Promise<number | undefined>;
     getAllVerifications: () => Promise<any[]>;
     getUnsyncedVerifications: () => Promise<any[]>;
@@ -39,6 +48,7 @@ type VCStorageContextValue = {
     clearAllData: () => Promise<void>;
     exportData: () => Promise<void>;
     clearPendingSync: () => Promise<void>;
+    refreshHistoricalLogs: () => Promise<void>;
 };
 
 const defaultContextValue: VCStorageContextValue = {
@@ -47,13 +57,17 @@ const defaultContextValue: VCStorageContextValue = {
   stats: { totalStored: 0, pendingSyncCount: 0, syncedCount: 0, failedCount: 0 },
   historicalStats: [],
   logs: [],
+  isLoadingHistoricalLogs: false,
+  historicalLogsDays: 3,
+  setHistoricalLogsDays: () => {},
     storeVerificationResult: async (_json: any) => undefined,
     getAllVerifications: async () => [],
     getUnsyncedVerifications: async () => [],
     syncToServer: async () => ({}),
     clearAllData: async () => {},
     exportData: async () => {},
-    clearPendingSync: async () => {}
+    clearPendingSync: async () => {},
+    refreshHistoricalLogs: async () => {}
 };
 const VCStorageContext = createContext<VCStorageContextValue>(defaultContextValue);
 
@@ -82,11 +96,140 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
     const [historicalStats, setHistoricalStats] = useState<HistoricalStats[]>([]);
     const [logs, setLogs] = useState<LogItem[]>([]);
     const [serviceWorkerActive, setServiceWorkerActive] = useState(false);
+    
+    // New state for historical logs
+    const [isLoadingHistoricalLogs, setIsLoadingHistoricalLogs] = useState(false);
+    const [historicalLogsDays, setHistoricalLogsDaysState] = useState(() => {
+        try {
+            const saved = localStorage.getItem('historicalLogsDays');
+            return saved ? parseInt(saved, 10) : 3;
+        } catch {
+            return 3;
+        }
+    });
+
+    // Function to update historical logs days setting
+    const setHistoricalLogsDays = (days: number) => {
+        const validDays = Math.max(1, Math.min(14, days)); // Ensure between 1-14 days
+        setHistoricalLogsDaysState(validDays);
+        try {
+            localStorage.setItem('historicalLogsDays', validDays.toString());
+        } catch (error) {
+            console.warn('Failed to save historical logs days setting:', error);
+        }
+        // Clear cache when days change and refresh logs
+        clearHistoricalLogsCache();
+        
+        // If online, immediately refresh with new setting
+        if (navigator.onLine) {
+            refreshHistoricalLogs();
+        } else {
+            // If offline, just refresh from IndexedDB with current data
+            loadHybridLogs();
+        }
+    };
+
+    // Fetch and merge historical logs with local logs
+    const loadHybridLogs = async () => {
+        try {
+            // Get local logs first (these are the most recent)
+            const localLogs = await getAllFromDb();
+            
+            const localLogItems: LogItem[] = localLogs
+                .slice(-50) // Keep reasonable recent window
+                .reverse()
+                .map((rec: any, idx: number) => ({
+                    id: typeof rec.sno === 'number' ? rec.sno : idx + 1,
+                    status: rec.verification_status === 'SUCCESS' ? 'success' : 'failure',
+                    synced: !!rec.synced,
+                    timestamp: rec.verified_at ? Date.parse(rec.verified_at) : Date.now(),
+                    hash: rec.vc_hash || '-',
+                }));
+            
+            // If offline, use only local logs from IndexedDB (includes previously cached historical logs)
+            if (!navigator.onLine) {
+                console.log('Offline: Using IndexedDB logs only (includes cached historical data)');
+                setLogs(localLogItems);
+                return;
+            }
+            
+            // Fetch historical logs from server
+            setIsLoadingHistoricalLogs(true);
+            const historicalResponse = await fetchHistoricalLogsWithCache({
+                days: historicalLogsDays,
+                pageSize: 200 // Fetch more historical data
+            });
+            
+            if (historicalResponse.success && historicalResponse.logs.length > 0) {
+                // Convert historical logs to VerificationRecord format and store in IndexedDB
+                const historicalRecords = historicalResponse.logs.map(log => 
+                    convertHistoricalLogToVerificationRecord(log)
+                );
+                
+                // Store historical logs in IndexedDB for offline access
+                try {
+                    console.log('Storing historical logs in IndexedDB:', historicalRecords.length, 'records');
+                    await storeHistoricalInDb(historicalRecords);
+                    console.log('Historical logs successfully cached in IndexedDB for offline access');
+                } catch (error) {
+                    console.warn('Failed to cache historical logs in IndexedDB:', error);
+                }
+                
+                // Refresh local logs after storing historical data
+                const updatedLocalLogs = await getAllFromDb();
+                const updatedLogItems: LogItem[] = updatedLocalLogs
+                    .slice(-200) // Increase window to include historical logs
+                    .reverse()
+                    .map((rec: any, idx: number) => ({
+                        id: typeof rec.sno === 'number' ? rec.sno : idx + 1,
+                        status: rec.verification_status === 'SUCCESS' ? 'success' : 'failure',
+                        synced: !!rec.synced,
+                        timestamp: rec.verified_at ? Date.parse(rec.verified_at) : Date.now(),
+                        hash: rec.vc_hash || '-',
+                    }));
+                
+                setLogs(updatedLogItems);
+            } else {
+                console.warn('Failed to fetch historical logs:', historicalResponse.error);
+                // Fall back to local logs only
+                setLogs(localLogItems);
+            }
+        } catch (error) {
+            console.error('Error loading hybrid logs:', error);
+            // Fall back to local logs
+            const localLogs = await getAllFromDb();
+            const localLogItems: LogItem[] = localLogs
+                .slice(-50)
+                .reverse()
+                .map((rec: any, idx: number) => ({
+                    id: typeof rec.sno === 'number' ? rec.sno : idx + 1,
+                    status: rec.verification_status === 'SUCCESS' ? 'success' : 'failure',
+                    synced: !!rec.synced,
+                    timestamp: rec.verified_at ? Date.parse(rec.verified_at) : Date.now(),
+                    hash: rec.vc_hash || '-',
+                }));
+            setLogs(localLogItems);
+        } finally {
+            setIsLoadingHistoricalLogs(false);
+        }
+    };
+    
+    // Helper function to merge and deduplicate logs
+    // Note: This function is no longer used as we store historical logs directly in IndexedDB
+    // const mergeLogs = (localLogs: LogItem[], historicalLogs: LogItem[]): LogItem[] => {
+    //     // Implementation moved to IndexedDB storage approach
+    // };
+    
+    // Public function to refresh historical logs
+    const refreshHistoricalLogs = async () => {
+        await loadHybridLogs();
+    };
 
     // Initialize (no explicit initDB needed; dbService opens lazily)
     useEffect(() => {
         const loadData = async () => {
             await updateStats(); // Initial stats load
+            await loadHybridLogs(); // Load hybrid logs
         };
         loadData();
 
@@ -191,25 +334,27 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
             setHistoricalStats(existingHistorical);
         }
 
-        // Map recent entries to the UI LogItem shape used by StorageLogs
-        const recentLogs: LogItem[] = all
-            .slice(-50) // keep a larger recent window; pagination will handle display
-            .reverse()
-            .map((rec: any, idx: number) => ({
-                id: typeof rec.sno === 'number' ? rec.sno : idx + 1,
-                status: rec.verification_status === 'SUCCESS' ? 'success' : 'failure',
-                synced: !!rec.synced,
-                timestamp: rec.verified_at ? Date.parse(rec.verified_at) : Date.now(),
-                hash: rec.vc_hash || '-',
-            }));
-
-        setLogs(recentLogs);
+        // Note: Logs are now handled by loadHybridLogs function
+        // This function only updates stats, not logs
     };
 
     useEffect(() => {
-        const interval = setInterval(updateStats, 5000);
-        return () => clearInterval(interval);
-    }, []); // REMOVED: db from dependency array
+        const interval = setInterval(() => {
+            updateStats(); // Update stats every 5 seconds
+        }, 5000);
+        
+        // Refresh hybrid logs every 30 seconds when online
+        const logsInterval = setInterval(() => {
+            if (navigator.onLine && !isLoadingHistoricalLogs) {
+                loadHybridLogs();
+            }
+        }, 30000);
+        
+        return () => {
+            clearInterval(interval);
+            clearInterval(logsInterval);
+        };
+    }, [isLoadingHistoricalLogs, historicalLogsDays]); // Re-setup intervals when loading state or days change
 
     // Core storage functions now use dbService
     const storeVerificationResult = async (jsonData: any): Promise<number | undefined> => {
@@ -226,8 +371,9 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
 
         const storedId = await storeInDb(rec);
 
-        // Refresh stats quickly after write
+        // Refresh stats and logs quickly after write
         updateStats().catch(() => {});
+        loadHybridLogs().catch(() => {}); // Refresh hybrid logs to show new entry
 
         // If online, trigger an immediate sync (fire-and-forget)
         if (navigator.onLine) {
@@ -282,6 +428,8 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         console.log('All data cleared');
         localStorage.removeItem('historicalStats');
         setHistoricalStats([]);
+        clearHistoricalLogsCache(); // Clear historical logs cache
+        setLogs([]); // Clear current logs display
     };
 
     // Export data
@@ -313,13 +461,17 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         stats,
         historicalStats,
         logs,
+        isLoadingHistoricalLogs,
+        historicalLogsDays,
+        setHistoricalLogsDays,
         storeVerificationResult,
         getAllVerifications,
         getUnsyncedVerifications,
         syncToServer,
         clearAllData,
         exportData,
-        clearPendingSync
+        clearPendingSync,
+        refreshHistoricalLogs
     };
 
     // Guard: if no children passed, avoid runtime crash and still mount provider

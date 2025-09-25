@@ -27,7 +27,7 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import WarningIcon from '@mui/icons-material/Warning';
 import { authenticatedFetch } from '@inji-offline-verify/shared-auth';
 
-// Styled Components - Theme Aware with CSS Variables
+// Styled Components - Matching AddWorker.tsx exactly
 const StyledTextField = styled(TextField)(({ theme, error }) => ({
   '& .MuiOutlinedInput-root': {
     borderRadius: '16px',
@@ -124,22 +124,35 @@ const StyledTextField = styled(TextField)(({ theme, error }) => ({
       },
     },
     
-    '&:hover': {
-      borderColor: error ? 'var(--template-palette-error-main)' : 'var(--template-palette-primary-main)',
+    '& input::placeholder, & textarea::placeholder': {
+      color: 'var(--template-palette-text-secondary)',
+      opacity: 1,
       '[data-mui-color-scheme="dark"] &': {
-        borderColor: error ? '#e53e3e' : '#4299e1',
+        color: '#a0aec0',
+      },
+    },
+    
+    '&:hover': {
+      border: `2px solid ${error ? 'var(--template-palette-error-main)' : 'var(--template-palette-primary-main)'}`,
+      backgroundColor: 'var(--template-palette-grey-50)',
+      transform: 'translateY(-2px)',
+      boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.08)}`,
+      '[data-mui-color-scheme="dark"] &': {
+        border: `2px solid ${error ? '#e53e3e' : '#4299e1'}`,
+        backgroundColor: '#3c4758',
+        boxShadow: `0 8px 25px ${alpha('#4299e1', 0.08)}`,
       },
     },
     
     '&.Mui-focused': {
-      borderColor: error ? 'var(--template-palette-error-main)' : 'var(--template-palette-primary-main)',
-      borderWidth: '2px',
+      border: `2px solid ${error ? 'var(--template-palette-error-main)' : 'var(--template-palette-primary-main)'}`,
+      backgroundColor: 'var(--template-palette-grey-50)',
+      transform: 'translateY(-2px)',
+      boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.12)}`,
       '[data-mui-color-scheme="dark"] &': {
-        borderColor: error ? '#e53e3e' : '#4299e1',
-      },
-      '&:hover': {
-        borderColor: error ? 'var(--template-palette-error-main)' : 'var(--template-palette-primary-main)',
-        boxShadow: `0 8px 25px ${alpha('#4299e1', 0.25)}`,
+        border: `2px solid ${error ? '#e53e3e' : '#4299e1'}`,
+        backgroundColor: '#3c4758',
+        boxShadow: `0 8px 25px ${alpha('#4299e1', 0.12)}`,
       },
     },
     
@@ -171,37 +184,45 @@ const StyledTextField = styled(TextField)(({ theme, error }) => ({
   },
 }));
 
-const FormCard = styled(Paper)(({ theme }) => ({
-  padding: '32px',
+// Main card matching AddWorker exactly
+const StepCard = styled(Box)(({ theme }) => ({
   borderRadius: '24px',
-  backgroundColor: 'var(--template-palette-background-paper)',
+  padding: '40px',
+  background: 'var(--template-palette-background-paper)',
   border: '1px solid var(--template-palette-divider)',
-  boxShadow: '0 8px 40px rgba(0, 0, 0, 0.12)',
+  boxShadow: 'var(--template-shadows-1)',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   
+  // Explicit dark mode styling
   '[data-mui-color-scheme="dark"] &': {
+    background: '#1a202c',
     backgroundColor: '#1a202c',
-    borderColor: '#2d3748',
-    boxShadow: '0 8px 40px rgba(0, 0, 0, 0.3)',
+    borderColor: 'rgba(45, 55, 72, 0.8)',
+    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.8)',
   },
 }));
 
+// Feature cards matching AddWorker pattern
 const FeatureCard = styled(Paper)(({ theme }) => ({
-  padding: '24px',
+  padding: '20px 16px',
   borderRadius: '16px',
   backgroundColor: 'var(--template-palette-background-paper)',
   border: '1px solid var(--template-palette-divider)',
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  height: '100%',
   
   '[data-mui-color-scheme="dark"] &': {
-    backgroundColor: '#2d3748',
-    borderColor: '#4a5568',
+    backgroundColor: '#1a202c',
+    borderColor: 'rgba(45, 55, 72, 0.8)',
   },
   
   '&:hover': {
     transform: 'translateY(-4px)',
-    boxShadow: `0 12px 30px ${alpha(theme.palette.primary.main, 0.1)}`,
+    boxShadow: `0 12px 30px ${alpha(theme.palette.primary.main, 0.08)}`,
+    borderColor: 'var(--template-palette-primary-main)',
     '[data-mui-color-scheme="dark"] &': {
-      boxShadow: '0 12px 30px rgba(66, 153, 225, 0.2)',
+      boxShadow: '0 12px 30px rgba(66, 153, 225, 0.15)',
+      borderColor: '#4299e1',
     },
   },
 }));
@@ -471,10 +492,11 @@ export default function AddRevokedVC() {
                     </Grid>
                   </Grid>
 
-                  {/* Form Container */}
-                  <FormCard>
+                  {/* Form Container - Matching AddWorker exactly */}
+                  <StepCard>
                     <Stack spacing={4}>
                       <Box sx={{ textAlign: 'center', mb: 3 }}>
+                        <BlockIcon sx={{ fontSize: 48, color: isDark ? '#e53e3e' : 'error.main', mb: 2 }} />
                         <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, color: isDark ? '#ffffff' : 'text.primary' }}>
                           Enter VC Information
                         </Typography>
@@ -489,7 +511,7 @@ export default function AddRevokedVC() {
                             required
                             fullWidth
                             multiline
-                            rows={10}
+                            rows={1}
                             value={vcJson}
                             onChange={onChangeVc}
                             onKeyDown={handleKeyDown}
@@ -498,48 +520,126 @@ export default function AddRevokedVC() {
                             helperText={fieldError || 'Paste the entire VC JSON object. The system will extract the VC ID and issuer information.'}
                             InputProps={{
                               startAdornment: (
-                                <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 2 }}>
-                                  <BlockIcon />
+                                <InputAdornment position="start">
+                                  <IconButton
+                                    edge="end"
+                                    sx={{ 
+                                      color: isDark ? '#a0aec0' : 'text.secondary',
+                                      backgroundColor: 'transparent !important',
+                                      border: 'none !important',
+                                      boxShadow: 'none !important',
+                                      padding: '8px',
+                                      margin: 0,
+                                      '&:hover': { 
+                                        color: isDark ? '#e53e3e' : 'error.main',
+                                        backgroundColor: 'transparent !important',
+                                        boxShadow: 'none !important',
+                                      },
+                                      '&:focus': {
+                                        backgroundColor: 'transparent !important',
+                                        boxShadow: 'none !important',
+                                        outline: 'none',
+                                      },
+                                      '&:active': {
+                                        backgroundColor: 'transparent !important',
+                                        boxShadow: 'none !important',
+                                      },
+                                      '& .MuiTouchRipple-root': {
+                                        display: 'none',
+                                      }
+                                    }}
+                                  >
+                                    <BlockIcon />
+                                  </IconButton>
                                 </InputAdornment>
                               ),
                               endAdornment: vcJson && (
-                                <InputAdornment position="end" sx={{ alignSelf: 'flex-start', mt: 1 }}>
-                                  <Stack direction="row" spacing={1}>
-                                    <IconButton
-                                      onClick={handleCopyVc}
-                                      edge="end"
-                                      size="small"
-                                      sx={{ 
-                                        color: isDark ? '#90cdf4' : 'text.secondary',
-                                        backgroundColor: isDark ? 'rgba(66, 153, 225, 0.1)' : 'rgba(0, 0, 0, 0.04)',
-                                        border: isDark ? '1px solid rgba(66, 153, 225, 0.3)' : '1px solid rgba(0, 0, 0, 0.1)',
-                                        borderRadius: '6px',
-                                        '&:hover': { 
-                                          color: isDark ? '#4299e1' : 'primary.main',
-                                          backgroundColor: isDark ? 'rgba(66, 153, 225, 0.2)' : 'rgba(25, 118, 210, 0.1)',
-                                          transform: 'scale(1.1)',
-                                        },
-                                        '&:active': {
-                                          transform: 'scale(0.95)',
-                                        }
-                                      }}
-                                    >
-                                      <ContentCopyIcon />
-                                    </IconButton>
-                                  </Stack>
+                                <InputAdornment position="end">
+                                  <IconButton
+                                    onClick={handleCopyVc}
+                                    edge="end"
+                                    sx={{ 
+                                      color: isDark ? '#a0aec0' : 'text.secondary',
+                                      backgroundColor: 'transparent !important',
+                                      border: 'none !important',
+                                      boxShadow: 'none !important',
+                                      padding: '8px',
+                                      margin: 0,
+                                      '&:hover': { 
+                                        color: isDark ? '#4299e1' : 'primary.main',
+                                        backgroundColor: 'transparent !important',
+                                        boxShadow: 'none !important',
+                                      },
+                                      '&:focus': {
+                                        backgroundColor: 'transparent !important',
+                                        boxShadow: 'none !important',
+                                        outline: 'none',
+                                      },
+                                      '&:active': {
+                                        backgroundColor: 'transparent !important',
+                                        boxShadow: 'none !important',
+                                      },
+                                      '& .MuiTouchRipple-root': {
+                                        display: 'none',
+                                      }
+                                    }}
+                                  >
+                                    <ContentCopyIcon />
+                                  </IconButton>
                                 </InputAdornment>
                               ),
                             }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                minHeight: '300px',
+                                minHeight: '260px',
+                                maxHeight: '400px',
+                                alignItems: 'flex-start',
+                                position: 'relative',
+                                
+                                // Better adornment positioning
+                                '& .MuiInputAdornment-positionStart': {
+                                  position: 'absolute',
+                                  top: '16px',
+                                  left: '14px',
+                                  zIndex: 1,
+                                  margin: 0,
+                                },
+                                '& .MuiInputAdornment-positionEnd': {
+                                  position: 'absolute',
+                                  top: '16px',
+                                  right: '14px',
+                                  zIndex: 1,
+                                  margin: 0,
+                                },
+                                
                                 '& textarea': {
-                                  fontFamily: 'monospace',
+                                  fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
                                   fontSize: '0.875rem',
                                   lineHeight: 1.6,
-                                  color: isDark ? '#ffffff !important' : 'inherit',
-                                  resize: 'none',
-                                  padding: '16px',
+                                  color: isDark ? '#e2e8f0 !important' : 'inherit',
+                                  resize: 'vertical',
+                                  minHeight: '220px',
+                                  maxHeight: '360px',
+                                  width: '100% !important',
+                                  maxWidth: '100% !important',
+                                  boxSizing: 'border-box !important',
+                                  padding: '16px 50px 6px 50px !important', // Reserve space for icons
+                                  border: 'none',
+                                  outline: 'none',
+                                  overflowY: 'auto',
+                                  overflowX: 'hidden',
+                                  wordWrap: 'break-word',
+                                  wordBreak: 'break-word',
+                                  whiteSpace: 'pre-wrap',
+                                  
+                                  // Hide scrollbar completely but keep scroll functionality
+                                  scrollbarWidth: 'none', // Firefox
+                                  msOverflowStyle: 'none', // IE and Edge
+                                  
+                                  '&::-webkit-scrollbar': {
+                                    display: 'none', // Chrome, Safari, Opera
+                                  },
+                                  
                                   '&::placeholder': {
                                     color: isDark ? '#a0aec0 !important' : 'inherit',
                                     opacity: 1,
@@ -567,18 +667,13 @@ export default function AddRevokedVC() {
                         </Grid>
                       </Grid>
 
+                      {/* Submit Button - Matching AddWorker exactly */}
                       <Box sx={{ 
                         display: 'flex', 
-                        justifyContent: 'center',
-                        pt: 4, 
-                        borderTop: `2px solid ${isDark ? '#4a5568' : theme.palette.divider}`,
-                        background: isDark 
-                          ? 'linear-gradient(to bottom, transparent, rgba(229, 62, 62, 0.05))'
-                          : 'linear-gradient(to bottom, transparent, rgba(211, 47, 47, 0.02))',
-                        borderRadius: '0 0 24px 24px',
-                        mx: -5,
-                        px: 5,
-                        pb: 2,
+                        justifyContent: 'center', 
+                        mt: 4, 
+                        pt: 3, 
+                        borderTop: `1px solid ${isDark ? '#4a5568' : theme.palette.divider}` 
                       }}>
                         <Button
                           onClick={handleSubmit}
@@ -587,48 +682,38 @@ export default function AddRevokedVC() {
                           startIcon={<BlockIcon />}
                           sx={{
                             borderRadius: '12px',
-                            px: 6,
+                            px: 4,
                             py: 1.5,
                             textTransform: 'none',
                             fontWeight: 600,
-                            fontSize: '1.1rem',
-                            minWidth: '200px',
-                            background: isDark ? '#e53e3e' : theme.palette.error.main,
+                            fontSize: '1rem',
+                            background: isDark 
+                              ? 'linear-gradient(135deg, #e53e3e 0%, #c53030 100%)'
+                              : `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
                             color: '#ffffff',
-                            boxShadow: `0 4px 12px ${alpha(isDark ? '#e53e3e' : theme.palette.error.main, 0.25)}`,
+                            boxShadow: `0 8px 25px ${alpha(isDark ? '#e53e3e' : theme.palette.error.main, 0.25)}`,
                             outline: 'none',
                             border: 'none',
                             '&:hover': {
-                              background: isDark ? '#c53030' : theme.palette.error.dark,
-                              color: '#ffffff',
-                              transform: 'translateY(-1px)',
-                              boxShadow: `0 6px 20px ${alpha(isDark ? '#c53030' : theme.palette.error.main, 0.3)}`,
-                              outline: 'none',
-                              border: 'none',
+                              background: isDark
+                                ? 'linear-gradient(135deg, #c53030 0%, #9b2c2c 100%)'
+                                : `linear-gradient(135deg, ${theme.palette.error.dark} 0%, ${theme.palette.error.main} 100%)`,
+                              transform: 'translateY(-2px)',
+                              boxShadow: `0 12px 35px ${alpha(isDark ? '#c53030' : theme.palette.error.main, 0.35)}`,
                             },
-                            '&:focus': {
-                              outline: 'none',
-                              border: 'none',
-                              boxShadow: `0 6px 20px ${alpha(isDark ? '#c53030' : theme.palette.error.main, 0.3)}`,
-                            },
-                            '&:active': {
-                              outline: 'none',
-                              border: 'none',
-                            },
-                            '&.Mui-disabled': {
-                              background: isDark ? '#4a5568' : theme.palette.action.disabled,
-                              color: isDark ? '#718096' : theme.palette.action.disabled,
+                            '&:disabled': {
+                              background: isDark ? '#4a5568' : theme.palette.grey[300],
+                              color: isDark ? '#a0aec0' : theme.palette.grey[500],
                               boxShadow: 'none',
-                              outline: 'none',
-                              border: 'none',
-                            }
+                              transform: 'none',
+                            },
                           }}
                         >
                           {submitting ? 'Adding to Revocation List...' : 'Add to Revocation List'}
                         </Button>
                       </Box>
                     </Stack>
-                  </FormCard>
+                  </StepCard>
                 </Stack>
               </Box>
             </Stack>

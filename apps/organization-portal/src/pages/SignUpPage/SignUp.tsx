@@ -554,6 +554,18 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
               variant="contained"
               disabled={isLoading}
               onClick={validateInputs}
+              sx={(theme) => ({
+                // Default styles (for light mode)
+                '&:disabled': {
+                  color: '#fff', // White text for light mode
+                },
+                // Use the theme's custom helper for dark mode styles
+                ...theme.applyStyles('dark', {
+                  '&:disabled': {
+                    color: '#000', // Black text for dark mode
+                  },
+                }),
+              })}
             >
               {isLoading ? 'Creating account...' : 'Sign up'}
             </Button>

@@ -23,10 +23,13 @@ import { SidebarProvider } from '../../components/dash_comp/SidebarContext';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import SecurityIcon from '@mui/icons-material/Security';
+import LinkIcon from '@mui/icons-material/Link';
+import VerifiedIcon from '@mui/icons-material/Verified';
 import { OrgResolver } from '@mosip/react-inji-verify-sdk';
 import { getApiBaseUrl, getAccessToken, authenticatedFetch } from '@inji-offline-verify/shared-auth';
 
-// Styled Components - Theme Aware with CSS Variables
+// Styled Components - Matching AddWorker.tsx exactly
 const StyledTextField = styled(TextField)(({ theme, error }) => ({
   '& .MuiOutlinedInput-root': {
     borderRadius: '16px',
@@ -135,11 +138,11 @@ const StyledTextField = styled(TextField)(({ theme, error }) => ({
       border: `2px solid ${error ? 'var(--template-palette-error-main)' : 'var(--template-palette-primary-main)'}`,
       backgroundColor: 'var(--template-palette-grey-50)',
       transform: 'translateY(-2px)',
-      boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.15)}`,
+      boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.08)}`,
       '[data-mui-color-scheme="dark"] &': {
         border: `2px solid ${error ? '#e53e3e' : '#4299e1'}`,
-        backgroundColor: '#4a5568',
-        boxShadow: `0 8px 25px ${alpha('#4299e1', 0.15)}`,
+        backgroundColor: '#3c4758',
+        boxShadow: `0 8px 25px ${alpha('#4299e1', 0.08)}`,
       },
     },
     
@@ -147,11 +150,11 @@ const StyledTextField = styled(TextField)(({ theme, error }) => ({
       border: `2px solid ${error ? 'var(--template-palette-error-main)' : 'var(--template-palette-primary-main)'}`,
       backgroundColor: 'var(--template-palette-grey-50)',
       transform: 'translateY(-2px)',
-      boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.25)}`,
+      boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.12)}`,
       '[data-mui-color-scheme="dark"] &': {
         border: `2px solid ${error ? '#e53e3e' : '#4299e1'}`,
-        backgroundColor: '#4a5568',
-        boxShadow: `0 8px 25px ${alpha('#4299e1', 0.25)}`,
+        backgroundColor: '#3c4758',
+        boxShadow: `0 8px 25px ${alpha('#4299e1', 0.12)}`,
       },
     },
     
@@ -183,7 +186,8 @@ const StyledTextField = styled(TextField)(({ theme, error }) => ({
   },
 }));
 
-const FormCard = styled(Box)(({ theme }) => ({
+// Main card matching AddWorker exactly
+const StepCard = styled(Box)(({ theme }) => ({
   borderRadius: '24px',
   padding: '40px',
   background: 'var(--template-palette-background-paper)',
@@ -193,31 +197,34 @@ const FormCard = styled(Box)(({ theme }) => ({
   
   // Explicit dark mode styling
   '[data-mui-color-scheme="dark"] &': {
-    background: '#2d3748',
-    backgroundColor: '#2d3748',
-    borderColor: '#4a5568',
-    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(66, 153, 225, 0.1)',
-    border: '1px solid rgba(66, 153, 225, 0.2)',
+    background: '#1a202c',
+    backgroundColor: '#1a202c',
+    borderColor: 'rgba(45, 55, 72, 0.8)',
+    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.8)',
   },
 }));
 
+// Feature cards matching AddWorker pattern
 const FeatureCard = styled(Paper)(({ theme }) => ({
-  padding: '24px',
+  padding: '20px 16px',
   borderRadius: '16px',
   backgroundColor: 'var(--template-palette-background-paper)',
   border: '1px solid var(--template-palette-divider)',
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  height: '100%',
   
   '[data-mui-color-scheme="dark"] &': {
-    backgroundColor: '#2d3748',
-    borderColor: '#4a5568',
+    backgroundColor: '#1a202c',
+    borderColor: 'rgba(45, 55, 72, 0.8)',
   },
   
   '&:hover': {
     transform: 'translateY(-4px)',
-    boxShadow: `0 12px 30px ${alpha(theme.palette.primary.main, 0.1)}`,
+    boxShadow: `0 12px 30px ${alpha(theme.palette.primary.main, 0.08)}`,
+    borderColor: 'var(--template-palette-primary-main)',
     '[data-mui-color-scheme="dark"] &': {
-      boxShadow: '0 12px 30px rgba(66, 153, 225, 0.2)',
+      boxShadow: '0 12px 30px rgba(66, 153, 225, 0.15)',
+      borderColor: '#4299e1',
     },
   },
 }));
@@ -378,7 +385,7 @@ const getOrganizationId = () => {
         }
       }
 
-      showToast(`Stored keys: ${keys.length}, contexts: ${contexts.length}`, 'success');
+      showToast(`Successfully stored ${keys.length} keys and ${contexts.length} contexts`, 'success');
       setVcJson('');
     } catch (e: any) {
       console.error('AddDID submission error:', e);
@@ -403,7 +410,6 @@ const getOrganizationId = () => {
               backgroundColor: theme.vars
                 ? `rgba(${theme.vars.palette.background.defaultChannel} / 1)`
                 : alpha(theme.palette.background.default, 1),
-              overflow: 'auto',
               minHeight: '100vh',
             })}
           >
@@ -414,50 +420,49 @@ const getOrganizationId = () => {
                 mx: 3,
                 pb: 5,
                 mt: { xs: 8, md: 0 },
+                maxWidth: '100%',
+                overflow: 'hidden',
               }}
             >
               <Header />
               
               {/* Page Content */}
-              <Box sx={{ width: '100%', maxWidth: 900 }}>
+              <Box sx={{ width: '100%', maxWidth: 900, overflow: 'hidden' }}>
                 <Stack spacing={4}>
-                  {/* Page Header */}
+                  {/* Page Header - Matching AddWorker exactly */}
                   <Box sx={{ textAlign: 'center', py: 2 }}>
                     <Box sx={{ mb: 2 }}>
-                      <FingerprintIcon sx={{ 
-                        fontSize: 64, 
-                        color: isDark ? '#4299e1' : 'primary.main', 
-                        mb: 2,
-                        animation: 'pulse 2s infinite',
-                        '@keyframes pulse': {
-                          '0%, 100%': {
-                            opacity: 1,
-                          },
-                          '50%': {
-                            opacity: 0.7,
-                          },
-                        },
-                      }} />
                       <Typography variant="h3" sx={{ fontWeight: 800, color: isDark ? '#ffffff' : 'text.primary', mb: 1 }}>
-                        ADD SAMPLE VC DATA
+                        Add Sample VC Data
                       </Typography>
                       <Typography variant="h6" sx={{ color: isDark ? '#a0aec0' : 'text.secondary', fontWeight: 400 }}>
-                        Register a new Verifiable Credential (VC) to the system
+                        Register verifiable credential data to enable verification services
                       </Typography>
                     </Box>
                   </Box>
 
-                  {/* Info Cards */}
-                  <Grid container spacing={3} sx={{ mb: 4 }}>
+                  {/* Feature Cards - Improved layout matching AddWorker */}
+                  <Grid container spacing={3} sx={{ mb: 2 }}>
                     <Grid size={{ xs: 12, md: 4 }}>
                       <FeatureCard>
                         <Box sx={{ textAlign: 'center' }}>
-                          <FingerprintIcon sx={{ fontSize: 40, color: isDark ? '#4299e1' : 'primary.main', mb: 2 }} />
-                          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, color: isDark ? '#ffffff' : 'text.primary' }}>
-                            Secure Identity
+                          <Box sx={{ 
+                            width: 48, 
+                            height: 48, 
+                            borderRadius: '12px',
+                            backgroundColor: isDark ? 'rgba(66, 153, 225, 0.1)' : alpha(theme.palette.primary.main, 0.1),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 12px auto',
+                          }}>
+                            <SecurityIcon sx={{ fontSize: 28, color: isDark ? '#4299e1' : 'primary.main' }} />
+                          </Box>
+                          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5, color: isDark ? '#ffffff' : 'text.primary' }}>
+                            Secure Verification
                           </Typography>
-                          <Typography variant="body2" sx={{ color: isDark ? '#a0aec0' : 'text.secondary' }}>
-                            Decentralized identifiers provide cryptographically verifiable identity
+                          <Typography variant="body2" sx={{ color: isDark ? '#a0aec0' : 'text.secondary', lineHeight: 1.6 }}>
+                            Cryptographically secure verification using decentralized identifiers and digital signatures
                           </Typography>
                         </Box>
                       </FeatureCard>
@@ -465,12 +470,23 @@ const getOrganizationId = () => {
                     <Grid size={{ xs: 12, md: 4 }}>
                       <FeatureCard>
                         <Box sx={{ textAlign: 'center' }}>
-                          <CheckCircleIcon sx={{ fontSize: 40, color: isDark ? '#48bb78' : 'success.main', mb: 2 }} />
-                          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, color: isDark ? '#ffffff' : 'text.primary' }}>
+                          <Box sx={{ 
+                            width: 64, 
+                            height: 64, 
+                            borderRadius: '16px',
+                            backgroundColor: isDark ? 'rgba(72, 187, 120, 0.1)' : alpha(theme.palette.success.main, 0.1),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 16px auto',
+                          }}>
+                            <LinkIcon sx={{ fontSize: 32, color: isDark ? '#48bb78' : 'success.main' }} />
+                          </Box>
+                          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5, color: isDark ? '#ffffff' : 'text.primary' }}>
                             Interoperable
                           </Typography>
-                          <Typography variant="body2" sx={{ color: isDark ? '#a0aec0' : 'text.secondary' }}>
-                            Works across different platforms and blockchain networks
+                          <Typography variant="body2" sx={{ color: isDark ? '#a0aec0' : 'text.secondary', lineHeight: 1.6 }}>
+                            Standards-compliant implementation that works across different platforms and ecosystems
                           </Typography>
                         </Box>
                       </FeatureCard>
@@ -478,27 +494,39 @@ const getOrganizationId = () => {
                     <Grid size={{ xs: 12, md: 4 }}>
                       <FeatureCard>
                         <Box sx={{ textAlign: 'center' }}>
-                          <ContentCopyIcon sx={{ fontSize: 40, color: isDark ? '#ed8936' : 'warning.main', mb: 2 }} />
-                          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, color: isDark ? '#ffffff' : 'text.primary' }}>
-                            Persistent
+                          <Box sx={{ 
+                            width: 64, 
+                            height: 64, 
+                            borderRadius: '16px',
+                            backgroundColor: isDark ? 'rgba(237, 137, 54, 0.1)' : alpha(theme.palette.warning.main, 0.1),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 16px auto',
+                          }}>
+                            <VerifiedIcon sx={{ fontSize: 32, color: isDark ? '#ed8936' : 'warning.main' }} />
+                          </Box>
+                          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5, color: isDark ? '#ffffff' : 'text.primary' }}>
+                            Persistent Identity
                           </Typography>
-                          <Typography variant="body2" sx={{ color: isDark ? '#a0aec0' : 'text.secondary' }}>
-                            DIDs remain valid and resolvable over long periods of time
+                          <Typography variant="body2" sx={{ color: isDark ? '#a0aec0' : 'text.secondary', lineHeight: 1.6 }}>
+                            Long-lasting digital identities that remain valid and resolvable over extended periods
                           </Typography>
                         </Box>
                       </FeatureCard>
                     </Grid>
                   </Grid>
 
-                  {/* Form Container */}
-                  <FormCard>
+                  {/* Form Container - Matching AddWorker exactly */}
+                  <StepCard>
                     <Stack spacing={4}>
                       <Box sx={{ textAlign: 'center', mb: 3 }}>
+                        <FingerprintIcon sx={{ fontSize: 48, color: isDark ? '#4299e1' : 'primary.main', mb: 2 }} />
                         <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, color: isDark ? '#ffffff' : 'text.primary' }}>
-                          Enter VC Information
+                          Verifiable Credential Data
                         </Typography>
                         <Typography variant="body1" sx={{ color: isDark ? '#a0aec0' : 'text.secondary' }}>
-                          Paste the complete VC JSON to extract issuer keys and contexts
+                          Paste the complete VC JSON to extract and register issuer keys and contexts
                         </Typography>
                       </Box>
 
@@ -508,57 +536,136 @@ const getOrganizationId = () => {
                             required
                             fullWidth
                             multiline
-                            rows={10}
+                            rows={1}
                             value={vcJson}
                             onChange={onChangeVc}
                             onKeyDown={handleKeyDown}
                             placeholder='Paste complete VC JSON starting with {"credential": {...}} *'
                             error={!!fieldError}
-                            helperText={fieldError || 'Paste the entire VC JSON object. Must include credential, @context, issuer, and proof fields.'}
+                            // helperText={fieldError || 'Enter the entire VC JSON object including credential, @context, issuer, and proof fields for automatic key and context extraction.'}
                             InputProps={{
                               startAdornment: (
-                                <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 2 }}>
-                                  <FingerprintIcon />
+                                <InputAdornment position="start">
+                                  <IconButton
+                                    edge="end"
+                                    sx={{ 
+                                      color: isDark ? '#a0aec0' : 'text.secondary',
+                                      backgroundColor: 'transparent !important',
+                                      border: 'none !important',
+                                      boxShadow: 'none !important',
+                                      padding: '8px',
+                                      margin: 0,
+                                      '&:hover': { 
+                                        color: isDark ? '#4299e1' : 'primary.main',
+                                        backgroundColor: 'transparent !important',
+                                        boxShadow: 'none !important',
+                                      },
+                                      '&:focus': {
+                                        backgroundColor: 'transparent !important',
+                                        boxShadow: 'none !important',
+                                        outline: 'none',
+                                      },
+                                      '&:active': {
+                                        backgroundColor: 'transparent !important',
+                                        boxShadow: 'none !important',
+                                      },
+                                      '& .MuiTouchRipple-root': {
+                                        display: 'none',
+                                      }
+                                    }}
+                                  >
+                                    <FingerprintIcon />
+                                  </IconButton>
                                 </InputAdornment>
                               ),
                               endAdornment: vcJson && (
-                                <InputAdornment position="end" sx={{ alignSelf: 'flex-start', mt: 1 }}>
-                                  <Stack direction="row" spacing={1}>
-                                    <IconButton
-                                      onClick={handleCopyVc}
-                                      edge="end"
-                                      size="small"
-                                      sx={{ 
-                                        color: isDark ? '#90cdf4' : 'text.secondary',
-                                        backgroundColor: isDark ? 'rgba(66, 153, 225, 0.1)' : 'rgba(0, 0, 0, 0.04)',
-                                        border: isDark ? '1px solid rgba(66, 153, 225, 0.3)' : '1px solid rgba(0, 0, 0, 0.1)',
-                                        borderRadius: '6px',
-                                        '&:hover': { 
-                                          color: isDark ? '#4299e1' : 'primary.main',
-                                          backgroundColor: isDark ? 'rgba(66, 153, 225, 0.2)' : 'rgba(25, 118, 210, 0.1)',
-                                          transform: 'scale(1.1)',
-                                        },
-                                        '&:active': {
-                                          transform: 'scale(0.95)',
-                                        }
-                                      }}
-                                    >
-                                      <ContentCopyIcon />
-                                    </IconButton>
-                                  </Stack>
+                                <InputAdornment position="end">
+                                  <IconButton
+                                    onClick={handleCopyVc}
+                                    edge="end"
+                                    sx={{ 
+                                      color: isDark ? '#a0aec0' : 'text.secondary',
+                                      backgroundColor: 'transparent !important',
+                                      border: 'none !important',
+                                      boxShadow: 'none !important',
+                                      padding: '8px',
+                                      margin: 0,
+                                      '&:hover': { 
+                                        color: isDark ? '#4299e1' : 'primary.main',
+                                        backgroundColor: 'transparent !important',
+                                        boxShadow: 'none !important',
+                                      },
+                                      '&:focus': {
+                                        backgroundColor: 'transparent !important',
+                                        boxShadow: 'none !important',
+                                        outline: 'none',
+                                      },
+                                      '&:active': {
+                                        backgroundColor: 'transparent !important',
+                                        boxShadow: 'none !important',
+                                      },
+                                      '& .MuiTouchRipple-root': {
+                                        display: 'none',
+                                      }
+                                    }}
+                                  >
+                                    <ContentCopyIcon />
+                                  </IconButton>
                                 </InputAdornment>
                               ),
                             }}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                minHeight: '300px',
+                                minHeight: '260px',
+                                maxHeight: '400px',
+                                alignItems: 'flex-start',
+                                position: 'relative',
+                                
+                                // Better adornment positioning
+                                '& .MuiInputAdornment-positionStart': {
+                                  position: 'absolute',
+                                  top: '16px',
+                                  left: '14px',
+                                  zIndex: 1,
+                                  margin: 0,
+                                },
+                                '& .MuiInputAdornment-positionEnd': {
+                                  position: 'absolute',
+                                  top: '16px',
+                                  right: '14px',
+                                  zIndex: 1,
+                                  margin: 0,
+                                },
+                                
                                 '& textarea': {
-                                  fontFamily: 'monospace',
+                                  fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
                                   fontSize: '0.875rem',
                                   lineHeight: 1.6,
-                                  color: isDark ? '#ffffff !important' : 'inherit',
-                                  resize: 'none',
-                                  padding: '16px',
+                                  color: isDark ? '#e2e8f0 !important' : 'inherit',
+                                  resize: 'vertical',
+                                  minHeight: '220px',
+                                  maxHeight: '360px',
+                                  width: '100% !important',
+                                  maxWidth: '100% !important',
+                                  boxSizing: 'border-box !important',
+                                  padding: '12px 50px 12px 50px !important', // Reserve space for icons
+                                  // marginBottom: '3px !important',
+                                  border: 'none',
+                                  outline: 'none',
+                                  overflowY: 'auto',
+                                  overflowX: 'hidden',
+                                  wordWrap: 'break-word',
+                                  wordBreak: 'break-word',
+                                  whiteSpace: 'pre-wrap',
+                                  
+                                  // Hide scrollbar completely but keep scroll functionality
+                                  scrollbarWidth: 'none', // Firefox
+                                  msOverflowStyle: 'none', // IE and Edge
+                                  
+                                  '&::-webkit-scrollbar': {
+                                    display: 'none', // Chrome, Safari, Opera
+                                  },
+                                  
                                   '&::placeholder': {
                                     color: isDark ? '#a0aec0 !important' : 'inherit',
                                     opacity: 1,
@@ -570,92 +677,115 @@ const getOrganizationId = () => {
                         </Grid>
                       </Grid>
 
+                      {/* Summary Card - Matching AddWorker pattern */}
+                      { /* {vcJson && (
+                        <Paper sx={{ 
+                          p: 3, 
+                          borderRadius: 3, 
+                          bgcolor: '#f8fdf8',
+                          border: `1px solid var(--template-palette-success-main)`,
+                          boxShadow: `0 0 20px ${alpha(theme.palette.success.main, 0.1)}`,
+                          '[data-mui-color-scheme="dark"] &': {
+                            bgcolor: '#1a202c',
+                            backgroundColor: '#1a202c',
+                            border: '1px solid #48bb78',
+                            boxShadow: '0 0 20px rgba(72, 187, 120, 0.2)',
+                          }
+                        }}>
+                          <Typography variant="h6" sx={{ 
+                            fontWeight: 600, 
+                            mb: 2, 
+                            color: 'var(--template-palette-success-main)',
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            '[data-mui-color-scheme="dark"] &': {
+                              color: '#48bb78',
+                            }
+                          }}>
+                            <CheckCircleIcon />
+                            Ready for Processing
+                          </Typography>
+                          <Typography variant="body2" sx={{ 
+                            color: 'var(--template-palette-text-secondary)',
+                            lineHeight: 1.6,
+                            '[data-mui-color-scheme="dark"] &': {
+                              color: '#a0aec0',
+                            }
+                          }}>
+                            Your VC JSON will be processed to extract issuer public keys and JSON-LD contexts. 
+                            These will be stored securely in your organization's registry for verification purposes.
+                          </Typography>
+                        </Paper>
+                      )} */}
+
+                      {/* Submit Button - Matching AddWorker exactly */}
                       <Box sx={{ 
                         display: 'flex', 
-                        justifyContent: 'center',
-                        pt: 4, 
-                        borderTop: `2px solid ${isDark ? '#4a5568' : theme.palette.divider}`,
-                        background: isDark 
-                          ? 'linear-gradient(to bottom, transparent, rgba(66, 153, 225, 0.05))'
-                          : 'linear-gradient(to bottom, transparent, rgba(25, 118, 210, 0.02))',
-                        borderRadius: '0 0 24px 24px',
-                        mx: -5,
-                        px: 5,
-                        pb: 2,
+                        justifyContent: 'center', 
+                        mt: 4, 
+                        pt: 3, 
+                        borderTop: `1px solid ${isDark ? '#4a5568' : theme.palette.divider}` 
                       }}>
                         <Button
                           onClick={handleSubmit}
                           variant="contained"
                           disabled={submitting || !vcJson.trim()}
-                          startIcon={<CheckCircleIcon />}
+                          endIcon={<CheckCircleIcon />}
                           sx={{
                             borderRadius: '12px',
-                            px: 6,
+                            px: 4,
                             py: 1.5,
                             textTransform: 'none',
                             fontWeight: 600,
-                            fontSize: '1.1rem',
-                            minWidth: '200px',
-                            background: isDark ? '#ffffff' : theme.palette.primary.main,
-                            color: isDark ? '#1a202c' : '#ffffff',
-                            boxShadow: `0 4px 12px ${alpha(isDark ? '#ffffff' : theme.palette.primary.main, 0.25)}`,
+                            fontSize: '1rem',
+                            background: isDark 
+                              ? 'linear-gradient(135deg, #4299e1 0%, #3182ce 100%)'
+                              : `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                            color: '#ffffff',
+                            boxShadow: `0 8px 25px ${alpha(isDark ? '#4299e1' : theme.palette.primary.main, 0.25)}`,
                             outline: 'none',
                             border: 'none',
                             '&:hover': {
-                              background: isDark ? '#90cdf4' : theme.palette.primary.dark,
-                              color: isDark ? '#1a202c' : '#ffffff',
-                              transform: 'translateY(-1px)',
-                              boxShadow: `0 6px 20px ${alpha(isDark ? '#90cdf4' : theme.palette.primary.main, 0.3)}`,
-                              outline: 'none',
-                              border: 'none',
+                              background: isDark
+                                ? 'linear-gradient(135deg, #3182ce 0%, #2c5282 100%)'
+                                : `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+                              transform: 'translateY(-2px)',
+                              boxShadow: `0 12px 35px ${alpha(isDark ? '#4299e1' : theme.palette.primary.main, 0.35)}`,
+                              borderColor: isDark ? '#4299e1' : theme.palette.primary.dark,
                             },
-                            '&:focus': {
-                              outline: 'none',
-                              border: 'none',
-                              boxShadow: `0 6px 20px ${alpha(isDark ? '#90cdf4' : theme.palette.primary.main, 0.3)}`,
-                            },
-                            '&:active': {
-                              outline: 'none',
-                              border: 'none',
-                            },
-                            '&.Mui-disabled': {
-                              background: isDark ? '#4a5568' : theme.palette.action.disabled,
-                              color: isDark ? '#718096' : theme.palette.action.disabled,
+                            '&:disabled': {
+                              background: isDark ? '#4a5568' : theme.palette.grey[300],
+                              color: isDark ? '#a0aec0' : theme.palette.grey[500],
                               boxShadow: 'none',
-                              outline: 'none',
-                              border: 'none',
-                            }
+                              transform: 'none',
+                            },
                           }}
                         >
-                          {submitting ? 'Adding DID...' : 'Add DID'}
+                          {submitting ? 'Processing VC...' : 'Add VC Data'}
                         </Button>
                       </Box>
                     </Stack>
-                  </FormCard>
+                  </StepCard>
                 </Stack>
               </Box>
             </Stack>
           </Box>
         </Box>
 
-        {/* Toast Notifications */}
+        {/* Toast Notification - Matching AddWorker exactly */}
         <Snackbar
           open={toast.open}
           autoHideDuration={6000}
           onClose={handleToastClose}
           anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          sx={{ mt: 8 }}
         >
           <Alert
             onClose={handleToastClose}
             severity={toast.severity}
             variant="filled"
-            sx={{
-              width: '100%',
-              borderRadius: '12px',
-              fontWeight: 600,
-              fontSize: '1rem',
-              boxShadow: '0 8px 25px rgba(0, 0, 0, 0.15)',
-            }}
+            sx={{ width: '100%' }}
           >
             {toast.message}
           </Alert>

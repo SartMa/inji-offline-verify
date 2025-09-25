@@ -1,5 +1,5 @@
 // Logout service to handle complete logout functionality
-import { clearTokens } from '@inji-offline-verify/shared-auth';
+import { clearAllUserData } from '@inji-offline-verify/shared-auth';
 
 export interface LogoutOptions {
   redirect?: boolean;
@@ -14,36 +14,13 @@ export class LogoutService {
     const { redirect = true, redirectPath = '/signin' } = options;
 
     try {
-      // Clear authentication tokens
-      clearTokens();
+      // Clear all user data including tokens and IndexedDB
+      await clearAllUserData();
 
-      // Clear organization data from localStorage
+      // Clear organization data from localStorage (additional cleanup)
       localStorage.removeItem('organizationId');
       localStorage.removeItem('organizationName');
       localStorage.removeItem('userRole');
-
-      // Clear API base URL
-      localStorage.removeItem('api.baseUrl');
-
-      // Clear any other application-specific cached data
-      const keysToRemove = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (
-          key.startsWith('auth.') ||
-          key.startsWith('user.') ||
-          key.startsWith('org.') ||
-          key.includes('token') ||
-          key.includes('Token')
-        )) {
-          keysToRemove.push(key);
-        }
-      }
-
-      // Remove identified keys
-      keysToRemove.forEach(key => {
-        localStorage.removeItem(key);
-      });
 
       // Clear session storage as well
       sessionStorage.clear();
@@ -55,7 +32,7 @@ export class LogoutService {
         document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
       });
 
-      console.log('Logout completed successfully');
+      console.log('Logout completed successfully - all data cleared');
 
       // Redirect if requested
       if (redirect && typeof window !== 'undefined') {

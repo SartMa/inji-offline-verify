@@ -11,7 +11,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       }
-    }
+    },
+    host: true, 
+    allowedHosts: [
+      'nimbused-faith-gracile.ngrok-free.dev'
+    ]
   },
   plugins: [
     react(),

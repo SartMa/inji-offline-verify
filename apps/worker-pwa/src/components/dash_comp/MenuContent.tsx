@@ -11,12 +11,14 @@ import SyncIcon from '@mui/icons-material/Sync';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
+import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 
 const mainListItems = [
   { text: 'Dashboard', icon: <HomeRoundedIcon />, path: '/dashboard', clickable: true, scrollTo: 'top' },
   { text: 'VC Verification', icon: <VerifiedUserIcon />, path: null, clickable: true, scrollTo: 'vc-verification' },
+  { text: 'VP Verification', icon: <QrCodeScannerIcon />, path: '/vp-verification', clickable: true, scrollTo: null },
   { text: 'Sync Status', icon: <SyncIcon />, path: null, clickable: true, scrollTo: 'statistics' },
   { text: 'Statistics', icon: <AssessmentIcon />, path: null, clickable: true, scrollTo: 'sync-status' },
 ];

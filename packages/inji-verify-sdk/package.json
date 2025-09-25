@@ -66,7 +66,9 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.0",
+    "@digitalbazaar/ed25519-signature-2018": "^4.1.0",
     "@digitalbazaar/ed25519-signature-2020": "^5.4.0",
+    "@digitalbazaar/ed25519-verification-key-2018": "^3.2.0",
     "@digitalbazaar/ed25519-verification-key-2020": "^4.2.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",

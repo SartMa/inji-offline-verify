@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './context/AuthContext.tsx';
 import CacheSyncProvider from './context/CacheSyncContext';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Settings from './pages/Settings/Settings';
+import VPVerification from './pages/VPVerification';
 import SignIn from './SignIn.tsx';
 import './App.css';
 
@@ -95,6 +96,14 @@ function AppContent() {
         element={
           <ProtectedRoute>
             <WorkerSettings />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/vp-verification" 
+        element={
+          <ProtectedRoute>
+            <VPVerification />
           </ProtectedRoute>
         } 
       />

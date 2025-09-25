@@ -1,6 +1,8 @@
 import * as jsigs from 'jsonld-signatures';
 import { Ed25519Signature2020 } from '@digitalbazaar/ed25519-signature-2020';
 import { Ed25519VerificationKey2020 } from '@digitalbazaar/ed25519-verification-key-2020';
+import { Ed25519Signature2018 } from '@digitalbazaar/ed25519-signature-2018';
+import { Ed25519VerificationKey2018 } from '@digitalbazaar/ed25519-verification-key-2018';
 
 import { CredentialsVerifier } from './CredentialsVerifier.js';
 import { CredentialFormat } from './constants/CredentialFormat.js';
@@ -9,6 +11,7 @@ import { CredentialVerifierConstants } from './constants/CredentialVerifierConst
 import { Shared } from './constants/Shared.js';
 import { OfflineDocumentLoader } from './utils/OfflineDocumentLoader.js';
 import { PublicKeyService } from './publicKey/PublicKeyService.js';
+import { normalizeVerificationMethodForProof } from './utils/VerificationMethodUtils.js';
 import {
   PresentationVerificationResult,
   VCResult,
@@ -102,8 +105,9 @@ export class PresentationVerifier {
   private async verifySingleVpProof(vpObject: any, proof: any): Promise<boolean> {
     switch (proof?.type) {
       case 'Ed25519Signature2020':
-      case 'Ed25519Signature2018':
         return this.verifyWithSuite(vpObject, proof, Ed25519Signature2020, Ed25519VerificationKey2020);
+      case 'Ed25519Signature2018':
+        return this.verifyWithSuite(vpObject, proof, Ed25519Signature2018, Ed25519VerificationKey2018);
       case 'JsonWebSignature2020':
         // Not implemented without additional dependencies; treat as invalid for now
         this.logger.warn('[PresentationVerifier] JsonWebSignature2020 not supported without extra deps');
@@ -125,14 +129,16 @@ export class PresentationVerifier {
       return false;
     }
 
-    const keyPair = await VerificationKey.from(publicKeyData);
-    const suite = new Suite({ key: keyPair, verificationMethod: vm });
+    // Normalize for suite expectations (2018 expects Base58, 2020 expects Multibase)
+  const normalizedVm = normalizeVerificationMethodForProof(publicKeyData, proof.type, vm);
+    const keyPair = await VerificationKey.from(normalizedVm);
+    const suite = new Suite({ key: keyPair, verificationMethod: normalizedVm.id });
 
     // For VP, the common proofPurpose is 'authentication'; build minimal controller doc accordingly
     const controllerDoc = {
       '@context': 'https://w3id.org/security/v2',
-      id: publicKeyData.controller,
-      authentication: [vm],
+      id: normalizedVm.controller || publicKeyData.controller,
+      authentication: [normalizedVm.id],
     };
 
     const result = await jsigs.verify(
@@ -163,4 +169,5 @@ export class PresentationVerifier {
     this.logger.error('[PresentationVerifier] VP proof verification failed:', result.error);
     return false;
   }
+
 }

@@ -326,6 +326,8 @@
 import * as jsigs from 'jsonld-signatures';
 import { Ed25519Signature2020 } from '@digitalbazaar/ed25519-signature-2020';
 import { Ed25519VerificationKey2020 } from '@digitalbazaar/ed25519-verification-key-2020';
+import { Ed25519Signature2018 } from '@digitalbazaar/ed25519-signature-2018';
+import { Ed25519VerificationKey2018 } from '@digitalbazaar/ed25519-verification-key-2018';
 
 // Import SDK-internal utilities and exceptions
 import { UnknownException } from '../../exception/index.js';
@@ -333,6 +335,7 @@ import { CredentialVerifierConstants } from '../../constants/CredentialVerifierC
 import { PublicKeyService } from '../../publicKey/PublicKeyService.js'; // This service should live inside the SDK
 import { OfflineDocumentLoader } from '../../utils/OfflineDocumentLoader.js'; // Your smart loader, also inside the SDK
 import { getContext } from '../../cache/utils/CacheHelper.js';
+import { normalizeVerificationMethodForProof } from '../../utils/VerificationMethodUtils.js';
 
 /**
  * LDP (Linked Data Proof) Verifier
@@ -433,8 +436,10 @@ export class LdpVerifier {
     // This structure makes it easy to add support for more signature types later.
     switch (proof.type) {
       case 'Ed25519Signature2020':
-      case 'Ed25519Signature2018': // Handle as 2020 for compatibility
         return this.verifyWithSuite(vcObject, proof, Ed25519Signature2020, Ed25519VerificationKey2020);
+
+      case 'Ed25519Signature2018':
+        return this.verifyWithSuite(vcObject, proof, Ed25519Signature2018, Ed25519VerificationKey2018);
 
       // --- PLACEHOLDERS FOR FUTURE SUPPORT ---
       // case 'RsaSignature2018':
@@ -475,18 +480,21 @@ export class LdpVerifier {
         return false;
       }
 
+      // STEP A.1: Normalize the verification method doc for the expected suite
+      const normalizedVm = normalizeVerificationMethodForProof(publicKeyData, proof.type, verificationMethodUrl);
+
       // STEP B: Construct the KeyPair object that the 'jsigs' library understands.
-      const keyPair = await VerificationKey.from(publicKeyData);
+      const keyPair = await VerificationKey.from(normalizedVm);
 
       // STEP C: Create an instance of the signature suite (e.g., Ed25519Signature2020).
-      const suite = new Suite({ key: keyPair });
+      const suite = new Suite({ key: keyPair, verificationMethod: normalizedVm.id });
 
       // STEP D: Construct a minimal DID Document for offline "purpose" checking.
       // This tells the library that this key is authorized for its stated purpose (e.g., "assertionMethod").
       const controllerDoc = {
         '@context': 'https://w3id.org/security/v2',
-        id: publicKeyData.controller,
-        [proof.proofPurpose]: [verificationMethodUrl] // Dynamically use the purpose from the proof
+        id: normalizedVm.controller || publicKeyData.controller || (verificationMethodUrl?.split('#')[0] || ''),
+        [proof.proofPurpose || 'assertionMethod']: [normalizedVm.id] // Use normalized VM id and dynamic purpose
       };
 
       // STEP E: Call the `jsigs.verify()` engine. This is where all the magic happens.
@@ -543,5 +551,6 @@ export class LdpVerifier {
       return false;
     }
   }
+
 }
 

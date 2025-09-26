@@ -1,0 +1,45 @@
+.git
+.gitignore
+.vscode
+.idea
+
+# Node / PNPM dependencies (exclude everywhere; install inside image)
+node_modules
+**/node_modules
+pnpm-store
+.pnpm-store
+pnpm-lock.yaml.*
+
+# Build artifacts
+dist
+dist-ssr
+**/dist
+**/build
+coverage
+.nx
+.cache
+**/.vite
+
+# Python caches
+**/__pycache__
+**/*.pyc
+.venv
+server/.venv
+
+# Logs & misc
+*.log
+*.pid
+*.seed
+*.tsbuildinfo
+
+# Env files (don’t bake secrets; supply at runtime)
+.env
+.env.*
+!.env.example
+
+# OS / Editor noise
+Thumbs.db
+*.DS_Store
+
+# Docker ignore itself safeguard
+Dockerfile.local

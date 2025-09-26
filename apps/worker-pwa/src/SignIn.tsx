@@ -20,7 +20,7 @@ import ForgotPassword from '@inji-offline-verify/shared-ui/src/components/Forgot
 import { AppTheme, ColorModeSelect } from '@inji-offline-verify/shared-ui/src/theme';
 import { GoogleIcon, FacebookIcon, SitemarkIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons.tsx';
 import { useAuth } from './context/AuthContext.tsx';
-import { login, googleLogin, setApiBaseUrl } from './services/authService';
+import { login, googleLogin } from './services/authService';
 import { WorkerCacheService } from './services/WorkerCacheService';
 import { NetworkManager } from './network/NetworkManager';
 import { useGoogleSignIn } from './hooks/useGoogleSignIn';
@@ -73,7 +73,7 @@ export default function SignIn(props: {
   onSwitchToOrgSignIn?: () => void;
 }) {
   const navigate = useNavigate();
-  const [baseUrl] = React.useState('http://127.0.0.1:8000'); // Hidden - always the same
+  // Base URL now resolved internally by shared-auth login helpers
   const [orgName, setOrgName] = React.useState('AcmeCorp10');
   const [username, setUsername] = React.useState('worker01');
   const [password, setPassword] = React.useState('12345678');
@@ -100,8 +100,7 @@ export default function SignIn(props: {
 
     setIsGoogleLoading(true);
     try {
-      setApiBaseUrl(baseUrl);
-      const res = await googleLogin(baseUrl, { 
+      const res = await googleLogin({ 
         access_token: accessToken, 
         org_name: orgName 
       });
@@ -243,8 +242,7 @@ export default function SignIn(props: {
 
     setIsLoading(true);
     try {
-      setApiBaseUrl(baseUrl);
-      const res = await login(baseUrl, { 
+      const res = await login({ 
         username, 
         password, 
         org_name: orgName 

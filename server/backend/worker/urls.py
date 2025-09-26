@@ -3,6 +3,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 
+from .views_health import health
+
 router = DefaultRouter()
 # Add worker-specific API endpoints here
 # router.register('members', views.OrganizationMemberViewSet)
@@ -29,4 +31,6 @@ urlpatterns = [
     path('api/organizations/<uuid:org_id>/logs/stats/', views.get_organization_logs_stats, name='organization-logs-stats'),
     path('api/logs/<uuid:log_id>/', views.get_log_detail, name='log-detail'),
     path('api/historical-logs/', views.get_worker_historical_logs, name='worker-historical-logs'),
+
+    path("api/health/", health),
 ]

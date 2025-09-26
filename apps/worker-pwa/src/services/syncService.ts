@@ -1,5 +1,5 @@
 import { getUnsyncedVerifications, markAsSynced, type VerificationRecord } from './dbService';
-import { getApiBaseUrl, getAccessToken, refreshAccessToken } from './authService';
+import { getApiBaseUrl, getAccessToken, refreshAccessToken } from '@inji-offline-verify/shared-auth';
 
 const SYNC_ENDPOINT = (): string | null => {
   const base = getApiBaseUrl();

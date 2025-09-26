@@ -1,6 +1,7 @@
 /**
  * NetworkService - Monitors network connectivity and triggers cache synchronization
  */
+import { getWorkerApiUrl } from "@inji-offline-verify/shared-auth"; 
 
 export interface NetworkStatusListener {
   onOnline: () => void;
@@ -51,8 +52,8 @@ export class NetworkService {
 
     try {
       // Try to fetch a small resource to verify actual connectivity
-      const response = await fetch('/worker/api/health/', {
-        method: 'HEAD',
+      const response = await fetch(getWorkerApiUrl('/health/'), {
+        method: 'GET',
         cache: 'no-cache',
         signal: AbortSignal.timeout(5000) // 5 second timeout
       });

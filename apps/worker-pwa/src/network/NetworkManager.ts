@@ -1,5 +1,5 @@
 // Minimal network manager with retry and auth header support
-import { getAccessToken, refreshAccessToken, getApiBaseUrl } from '../services/authService';
+import { getAccessToken, refreshAccessToken, getApiBaseUrl } from '@inji-offline-verify/shared-auth';
 
 export interface RequestOptions extends RequestInit {
   retry?: number;

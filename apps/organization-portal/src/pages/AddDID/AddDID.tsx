@@ -27,7 +27,7 @@ import SecurityIcon from '@mui/icons-material/Security';
 import LinkIcon from '@mui/icons-material/Link';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import { OrgResolver } from '@mosip/react-inji-verify-sdk';
-import { getApiBaseUrl, getAccessToken, authenticatedFetch } from '@inji-offline-verify/shared-auth';
+import { authenticatedFetch } from '@inji-offline-verify/shared-auth';
 
 // Styled Components - Matching AddWorker.tsx exactly
 const StyledTextField = styled(TextField)(({ theme, error }) => ({
@@ -233,7 +233,7 @@ export default function AddDID() {
   const theme = useTheme();
   const { mode } = useColorScheme();
   const isDark = mode === 'dark';
-  const [didValue, setDidValue] = useState(''); // kept for backward compatibility (unused for VC)
+  // const [didValue, setDidValue] = useState(''); // kept for backward compatibility (unused for VC)
   const [fieldError, setFieldError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({

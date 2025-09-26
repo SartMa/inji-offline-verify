@@ -8,15 +8,13 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import {
   useParsedFormat,
   usePickerContext,
-  useSplitFieldProps,
 } from '@mui/x-date-pickers';
 import dayjs, { Dayjs } from 'dayjs';
 import { useForkRef } from '@mui/material/utils';
 
 interface ButtonFieldProps extends DatePickerFieldProps {}
 
-function ButtonField(props: ButtonFieldProps) {
-  const { forwardedProps } = useSplitFieldProps(props, 'date');
+function ButtonField(_props: ButtonFieldProps) {
   const pickerContext = usePickerContext();
   const handleRef = useForkRef(pickerContext.triggerRef, pickerContext.rootRef);
   const parsedFormat = useParsedFormat();

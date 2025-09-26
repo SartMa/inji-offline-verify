@@ -1,5 +1,5 @@
 // Revoked VC service for organization revoked VC management
-import { getAccessToken, getApiBaseUrl, refreshAccessToken } from '@inji-offline-verify/shared-auth';
+import { getAccessToken, refreshAccessToken, getOrganizationApiUrl } from '@inji-offline-verify/shared-auth';
 
 export interface OrganizationRevokedVC {
   id: string;
@@ -31,7 +31,7 @@ export interface UpdateRevokedVCData {
 
 class RevokedVCService {
   private get baseUrl() {
-    return getApiBaseUrl() || 'http://127.0.0.1:8000';
+    return getOrganizationApiUrl();
   }
 
   private async getAuthHeaders() {
@@ -104,7 +104,7 @@ class RevokedVCService {
     }
     
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/organization/api/revoked-vcs/?${params.toString()}`,
+      `${this.baseUrl}/revoked-vcs/?${params.toString()}`,
       {
         method: 'GET',
       }
@@ -123,7 +123,7 @@ class RevokedVCService {
    */
   async addRevokedVC(data: CreateRevokedVCData): Promise<any> {
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/organization/api/revoked-vcs/upsert/`,
+      `${this.baseUrl}/revoked-vcs/upsert/`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -143,7 +143,7 @@ class RevokedVCService {
    */
   async updateRevokedVC(data: UpdateRevokedVCData): Promise<any> {
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/organization/api/revoked-vcs/upsert/`,
+      `${this.baseUrl}/revoked-vcs/upsert/`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -164,7 +164,7 @@ class RevokedVCService {
   async deleteRevokedVC(vcId: string): Promise<void> {
     const encodedVcId = encodeURIComponent(vcId);
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/organization/api/revoked-vcs/${encodedVcId}/`,
+      `${this.baseUrl}/revoked-vcs/${encodedVcId}/`,
       {
         method: 'DELETE',
       }

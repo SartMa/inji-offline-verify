@@ -19,8 +19,7 @@ import { styled } from '@mui/material/styles';
 import ForgotPassword from '@inji-offline-verify/shared-ui/src/components/ForgotPassword';
 import { AppTheme, ColorModeSelect } from '@inji-offline-verify/shared-ui/src/theme';
 import { GoogleIcon, FacebookIcon, SitemarkIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons';
-import { useAuth } from '@inji-offline-verify/shared-auth';
-import { loginorg, setApiBaseUrl } from '@inji-offline-verify/shared-auth';
+import { useAuth, loginorg } from '@inji-offline-verify/shared-auth';
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -72,7 +71,6 @@ interface OrgSignInProps {
 
 export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwitchToWorkerSignIn }: OrgSignInProps) {
   const navigate = useNavigate();
-  const [baseUrl] = React.useState('http://127.0.0.1:8000'); // Hidden - always the same
   const [orgName, setOrgName] = React.useState('AcmeCorp10');
   const [username, setUsername] = React.useState('org1');
   const [password, setPassword] = React.useState('12345678');
@@ -118,8 +116,6 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
 
     setIsLoading(true);
     try {
-      setApiBaseUrl(baseUrl);
-      
       // Use the exact organization login format from Postman collection
       const loginData = {
         "username": username.trim(),
@@ -128,7 +124,7 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
       };
 
       console.log('Organization login request:', loginData);
-      const res = await loginorg(baseUrl, loginData);
+      const res = await loginorg(loginData);
       console.log('Organization login successful:', res);
 
       // Use the auth context signIn method to update the global state

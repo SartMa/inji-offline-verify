@@ -1,5 +1,5 @@
 // Service to get current user's organization information
-import { getAccessToken, getApiBaseUrl, refreshAccessToken } from '@inji-offline-verify/shared-auth';
+import { getAccessToken, refreshAccessToken, getWorkerApiUrl } from '@inji-offline-verify/shared-auth';
 
 export interface UserOrganization {
   id: string;
@@ -26,7 +26,7 @@ export interface CurrentUserResponse {
 
 class UserService {
   private get baseUrl() {
-    return getApiBaseUrl() || 'http://127.0.0.1:8000';
+    return getWorkerApiUrl();
   }
 
   private async getAuthHeaders() {
@@ -90,7 +90,7 @@ class UserService {
   }
 
   async getCurrentUser(): Promise<CurrentUserResponse> {
-    const response = await this.fetchWithAuth(`${this.baseUrl}/worker/api/me/`, {
+    const response = await this.fetchWithAuth(`${this.baseUrl}/me/`, {
       method: 'GET',
     });
 

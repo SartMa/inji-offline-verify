@@ -1,4 +1,4 @@
-import { getAccessToken, getApiBaseUrl, refreshAccessToken } from '@inji-offline-verify/shared-auth';
+import { getAccessToken, refreshAccessToken, getWorkerApiUrl } from '@inji-offline-verify/shared-auth';
 
 export interface RegisterWorkerPayload {
   org_name?: string; // optional; UI shows fixed organization and service injects organization_id
@@ -14,7 +14,7 @@ export interface RegisterWorkerPayload {
 
 class WorkerService {
   private get baseUrl() {
-    return getApiBaseUrl() || 'http://127.0.0.1:8000';
+    return getWorkerApiUrl();
   }
 
   private async getAuthHeaders() {
@@ -90,7 +90,7 @@ class WorkerService {
       // ignore if userService not available
     }
 
-    const response = await this.fetchWithAuth(`${this.baseUrl}/worker/api/register/`, {
+    const response = await this.fetchWithAuth(`${this.baseUrl}/register/`, {
       method: 'POST',
       body: JSON.stringify(enriched),
     });

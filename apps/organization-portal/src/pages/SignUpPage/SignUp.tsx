@@ -17,6 +17,7 @@ import { styled } from '@mui/material/styles';
 import { AppTheme, ColorModeSelect } from '@inji-offline-verify/shared-ui/src/theme';
 import { GoogleIcon, FacebookIcon, SitemarkIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons';
 import { registerOrganization, confirmRegistration } from '../../services/registrationService';
+import { getApiHost } from '@inji-offline-verify/shared-auth';
 import OTPVerificationDialog from '../../components/OTPVerificationDialog';
 
 const Card = styled(MuiCard)(({ theme }) => ({
@@ -68,7 +69,7 @@ interface SignUpProps {
 
 export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpProps) {
   const navigate = useNavigate();
-  const [baseUrl] = React.useState('http://127.0.0.1:8000'); // Hidden - always the same
+  const [baseUrl] = React.useState(getApiHost()); // Hidden - driven by env
   const [orgName, setOrgName] = React.useState('');
   const [username, setUsername] = React.useState('');
   const [email, setEmail] = React.useState('');

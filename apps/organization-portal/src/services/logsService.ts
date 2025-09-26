@@ -1,5 +1,5 @@
 // Logs service for API calls
-import { getAccessToken, getApiBaseUrl, refreshAccessToken } from '@inji-offline-verify/shared-auth';
+import { getAccessToken, refreshAccessToken, getWorkerApiUrl } from '@inji-offline-verify/shared-auth';
 
 export interface VerificationLog {
   id: string;
@@ -64,7 +64,7 @@ export interface LogsStatsResponse {
 
 class LogsService {
   private get baseUrl() {
-    return getApiBaseUrl() || 'http://127.0.0.1:8000';
+    return getWorkerApiUrl();
   }
 
   private async getAuthHeaders() {
@@ -141,8 +141,8 @@ class LogsService {
     queryParams.append('page_size', pageSize.toString());
 
     const endpoint = orgId 
-      ? `${this.baseUrl}/worker/api/organizations/${orgId}/logs/?${queryParams}`
-      : `${this.baseUrl}/worker/api/logs/?${queryParams}`;
+      ? `${this.baseUrl}/organizations/${orgId}/logs/?${queryParams}`
+      : `${this.baseUrl}/logs/?${queryParams}`;
 
     const response = await this.fetchWithAuth(endpoint, {
       method: 'GET',
@@ -165,8 +165,8 @@ class LogsService {
     if (userId) queryParams.append('user_id', userId);
     
     const endpoint = orgId 
-      ? `${this.baseUrl}/worker/api/organizations/${orgId}/logs/stats/?${queryParams}`
-      : `${this.baseUrl}/worker/api/logs/stats/?${queryParams}`;
+      ? `${this.baseUrl}/organizations/${orgId}/logs/stats/?${queryParams}`
+      : `${this.baseUrl}/logs/stats/?${queryParams}`;
 
     const response = await this.fetchWithAuth(endpoint, {
       method: 'GET',
@@ -182,7 +182,7 @@ class LogsService {
 
   async getLogDetail(logId: string): Promise<{success: boolean; log: VerificationLog}> {
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/worker/api/logs/${logId}/`,
+      `${this.baseUrl}/logs/${logId}/`,
       {
         method: 'GET',
       }

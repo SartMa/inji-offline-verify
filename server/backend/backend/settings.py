@@ -24,8 +24,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-
-SECRET_KEY = config('SECRET_KEY')
+# Prefer SECRET_KEY; fall back to DJANGO_SECRET_KEY for docker-compose compatibility; final dev fallback.
+SECRET_KEY = config('SECRET_KEY', default=config('DJANGO_SECRET_KEY', default='dev-insecure-key-change-me'))
 DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOW_CONTEXT_UPSERT_FOR_AUTHENTICATED = config(
@@ -232,17 +232,19 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=2),
 }
 
-# CORS / CSRF for Vite (5173) and development
+# CORS configuration
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
+_base_cors = [
     'http://127.0.0.1:5173',
     'http://localhost:5173',
     'http://localhost:4173',
     'http://localhost:4200',
+    'http://localhost:3011',
+    'http://localhost:3017',
+    'http://127.0.0.1:3011',
+    'http://127.0.0.1:3017',
 ]
-CSRF_TRUSTED_ORIGINS = [
-    'http://127.0.0.1:5173',
-    'http://localhost:5173',
-    'http://localhost:4173',
-    'http://localhost:4200',
-]
+_extra_cors = [o.strip() for o in config('EXTRA_CORS_ORIGINS', default='', cast=str).split(',') if o.strip()]
+CORS_ALLOWED_ORIGINS = sorted(set(_base_cors + _extra_cors))
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True

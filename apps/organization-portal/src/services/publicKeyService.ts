@@ -1,5 +1,5 @@
 // Public Key service for organization public key management
-import { getAccessToken, getApiBaseUrl, refreshAccessToken } from '@inji-offline-verify/shared-auth';
+import { getAccessToken, refreshAccessToken, getOrganizationApiUrl } from '@inji-offline-verify/shared-auth';
 
 export interface OrganizationPublicKey {
   id: string;
@@ -49,7 +49,7 @@ export interface UpdatePublicKeyData {
 
 class PublicKeyService {
   private get baseUrl() {
-    return getApiBaseUrl() || 'http://127.0.0.1:8000';
+    return getOrganizationApiUrl();
   }
 
   private async getAuthHeaders() {
@@ -117,7 +117,7 @@ class PublicKeyService {
    */
   async getOrganizationPublicKeys(): Promise<OrganizationPublicKeysResponse> {
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/organization/api/public-keys/`,
+      `${this.baseUrl}/public-keys/`,
       {
         method: 'GET',
       }
@@ -136,7 +136,7 @@ class PublicKeyService {
    */
   async createPublicKey(data: CreatePublicKeyData): Promise<any> {
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/organization/api/public-keys/upsert/`,
+      `${this.baseUrl}/public-keys/upsert/`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -156,7 +156,7 @@ class PublicKeyService {
    */
   async updatePublicKey(data: UpdatePublicKeyData): Promise<any> {
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/organization/api/public-keys/upsert/`,
+      `${this.baseUrl}/public-keys/upsert/`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -177,7 +177,7 @@ class PublicKeyService {
   async deletePublicKey(keyId: string): Promise<void> {
     const encodedKeyId = encodeURIComponent(keyId);
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/organization/api/public-keys/${encodedKeyId}/`,
+      `${this.baseUrl}/public-keys/${encodedKeyId}/`,
       {
         method: 'DELETE',
       }

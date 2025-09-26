@@ -58,8 +58,10 @@ export interface UpdateMemberData {
   dob?: string;
 }
 
+import { getWorkerApiUrl } from '@inji-offline-verify/shared-auth';
+
 class OrganizationService {
-  private baseUrl = 'http://127.0.0.1:8000/worker/api';
+  private baseUrl = getWorkerApiUrl();
 
   private async getAuthHeaders() {
     const token = localStorage.getItem('authToken');

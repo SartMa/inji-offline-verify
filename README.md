@@ -69,3 +69,50 @@ EMAIL_USE_TLS=True
 DEFAULT_FROM_EMAIL=Your App <no-reply@yourdomain.com>
 ```
 If not set, the console backend is used (OTP appears in server logs). Ensure DEBUG=False in production.
+
+## Docker Quick Start
+
+Prerequisites: Docker & Docker Compose v2.
+
+1. Ensure required env vars in `.env`:
+```
+BACKEND_PORT=8012
+ORGANIZATION_PORTAL_PORT=3011
+WORKER_PWA_PORT=3017
+VITE_API_HOST=http://localhost:8012
+VITE_ORGANIZATION_PREFIX=/organization/api
+VITE_WORKER_PREFIX=/worker/api
+VITE_SHARED_PREFIX=/api
+```
+2. Build & start all services:
+```
+docker compose up --build -d
+```
+3. Access:
+```
+Backend:            http://localhost:8012
+Organization Portal: http://localhost:3011
+Worker PWA:          http://localhost:3017
+```
+4. Logs (example backend):
+```
+docker compose logs -f backend
+```
+5. Rebuild only frontends after changing VITE_*:
+```
+docker compose build organization-portal worker-pwa
+docker compose up -d
+```
+6. Stop (keep data):
+```
+docker compose down
+```
+7. Full reset (drop db):
+```
+docker compose down -v
+```
+Notes:
+* Backend auto-runs migrations.
+* Frontends are static builds served by nginx.
+* Change `VITE_API_HOST` for production domain then rebuild affected images.
+* Add reverse proxy / TLS later if needed.

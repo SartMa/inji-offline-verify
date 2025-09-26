@@ -1,5 +1,5 @@
 // Organization service for API calls
-import { getAccessToken, getApiBaseUrl, refreshAccessToken } from '@inji-offline-verify/shared-auth';
+import { getAccessToken, refreshAccessToken, getWorkerApiUrl } from '@inji-offline-verify/shared-auth';
 
 export interface OrganizationMember {
   id: string;
@@ -62,7 +62,7 @@ export interface UpdateMemberData {
 
 class OrganizationService {
   private get baseUrl() {
-    return getApiBaseUrl() || 'http://127.0.0.1:8000';
+    return getWorkerApiUrl();
   }
 
   private async getAuthHeaders() {
@@ -136,7 +136,7 @@ class OrganizationService {
     queryParams.append('page_size', pageSize.toString());
 
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/worker/api/organizations/${orgId}/users/?${queryParams}`,
+      `${this.baseUrl}/organizations/${orgId}/users/?${queryParams}`,
       {
         method: 'GET',
       }
@@ -152,7 +152,7 @@ class OrganizationService {
 
   async getOrganizationUserDetail(orgId: string, memberId: string): Promise<{success: boolean; member: OrganizationMember}> {
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/worker/api/organizations/${orgId}/users/${memberId}/`,
+      `${this.baseUrl}/organizations/${orgId}/users/${memberId}/`,
       {
         method: 'GET',
       }
@@ -172,7 +172,7 @@ class OrganizationService {
     data: UpdateMemberData
   ): Promise<{success: boolean; member: OrganizationMember}> {
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/worker/api/organizations/${orgId}/users/${memberId}/update/`,
+      `${this.baseUrl}/organizations/${orgId}/users/${memberId}/update/`,
       {
         method: 'PUT',
         body: JSON.stringify(data),
@@ -189,7 +189,7 @@ class OrganizationService {
 
   async deleteOrganizationUser(orgId: string, memberId: string): Promise<{success: boolean; message: string}> {
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/worker/api/organizations/${orgId}/users/${memberId}/delete/`,
+      `${this.baseUrl}/organizations/${orgId}/users/${memberId}/delete/`,
       {
         method: 'DELETE',
       }

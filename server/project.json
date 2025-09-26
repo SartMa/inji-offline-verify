@@ -16,7 +16,7 @@
     "serve": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "uv run uvicorn backend.asgi:application --reload",
+        "command": "uv run python run.py",
         "cwd": "server/backend"
       }
     },

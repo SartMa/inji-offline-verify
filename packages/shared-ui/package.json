@@ -2,6 +2,9 @@
   "name": "@inji-offline-verify/shared-ui",
   "version": "0.0.1",
   "type": "commonjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
   "peerDependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",

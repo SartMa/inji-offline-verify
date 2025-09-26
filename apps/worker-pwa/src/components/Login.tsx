@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { login, setApiBaseUrl } from '../services/authService';
+import { login } from '../services/authService';
 import { WorkerCacheService } from '../services/WorkerCacheService';
 import { NetworkManager } from '../network/NetworkManager';
 
 export default function Login() {
-  const [baseUrl, setBaseUrlState] = useState('http://127.0.0.1:8000');
   const [orgName, setOrgName] = useState('Acme Corp1');
   const [username, setUsername] = useState('sunsun');
   const [password, setPassword] = useState('sunhith123');
@@ -14,8 +13,7 @@ export default function Login() {
   const doLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      setApiBaseUrl(baseUrl);
-      const res: any = await login(baseUrl, { username, password, org_name: orgName });
+  const res: any = await login({ username, password, org_name: orgName });
       // Prime SDK cache from server responses (org-scoped contexts and public keys)
       const orgId = res?.organization?.id;
       if (orgId) {
@@ -37,10 +35,7 @@ export default function Login() {
     <div style={{ border: '1px solid #ddd', padding: 16, borderRadius: 8, marginBottom: 16 }}>
       <h2>Minimal Login</h2>
       <form onSubmit={doLogin} style={{ display: 'grid', gap: 8 }}>
-        <label>
-          Base URL
-          <input value={baseUrl} onChange={(e) => setBaseUrlState(e.target.value)} placeholder="http://127.0.0.1:8000" />
-        </label>
+        {/* Base URL input removed: host is derived from environment configuration */}
         <label>
           Organization
           <input value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder="Acme Corp1" />

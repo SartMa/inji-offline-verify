@@ -1,0 +1,79 @@
+version: "3.9"
+
+services:
+  database:
+    image: postgres:15-alpine
+    container_name: inji-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: inji-backend
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      DEBUG: ${DEBUG}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS}
+      EMAIL_BACKEND: ${EMAIL_BACKEND}
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS}
+    ports:
+      - "${BACKEND_PORT}:8000"
+    restart: unless-stopped
+
+  organization-portal:
+    build:
+      context: .
+      dockerfile: apps/organization-portal/Dockerfile
+      args:
+        VITE_API_HOST: http://localhost:${BACKEND_PORT}
+        VITE_ORGANIZATION_PREFIX: ${VITE_ORGANIZATION_PREFIX}
+        VITE_WORKER_PREFIX: ${VITE_WORKER_PREFIX}
+        VITE_SHARED_PREFIX: ${VITE_SHARED_PREFIX}
+    container_name: inji-org-portal
+    depends_on:
+      - backend
+    ports:
+      - "${ORGANIZATION_PORTAL_PORT:-3011}:80"
+    restart: unless-stopped
+
+  worker-pwa:
+    build:
+      context: .
+      dockerfile: apps/worker-pwa/Dockerfile
+      args:
+        VITE_API_HOST: http://localhost:${BACKEND_PORT}
+        VITE_ORGANIZATION_PREFIX: ${VITE_ORGANIZATION_PREFIX}
+        VITE_WORKER_PREFIX: ${VITE_WORKER_PREFIX}
+        VITE_SHARED_PREFIX: ${VITE_SHARED_PREFIX}
+    container_name: inji-worker-pwa
+    depends_on:
+      - backend
+    ports:
+      - "${WORKER_PWA_PORT:-3017}:80"
+    restart: unless-stopped
+
+volumes:
+  db_data:

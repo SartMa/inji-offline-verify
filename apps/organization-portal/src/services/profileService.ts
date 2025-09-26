@@ -1,5 +1,5 @@
 // Profile service for API calls
-import { getAccessToken, getApiBaseUrl, refreshAccessToken } from '@inji-offline-verify/shared-auth';
+import { getAccessToken, refreshAccessToken, getWorkerApiUrl } from '@inji-offline-verify/shared-auth';
 
 export interface UpdateProfileData {
   first_name?: string;
@@ -33,7 +33,7 @@ export interface UpdateProfileResponse {
 
 class ProfileService {
   private get baseUrl() {
-    return getApiBaseUrl() || 'http://127.0.0.1:8000';
+    return getWorkerApiUrl();
   }
 
   private async getAuthHeaders() {
@@ -94,7 +94,7 @@ class ProfileService {
   }
 
   async updateProfile(data: UpdateProfileData): Promise<UpdateProfileResponse> {
-    const response = await this.fetchWithAuth(`${this.baseUrl}/worker/api/profile/update/`, {
+    const response = await this.fetchWithAuth(`${this.baseUrl}/profile/update/`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -114,7 +114,7 @@ class ProfileService {
     const formData = new FormData();
     formData.append('photo', file);
 
-    const response = await this.fetchWithAuth(`${this.baseUrl}/worker/api/profile/photo/`, {
+    const response = await this.fetchWithAuth(`${this.baseUrl}/profile/photo/`, {
       method: 'POST',
       body: formData,
     });
@@ -129,7 +129,7 @@ class ProfileService {
 
   async getProfilePhoto(): Promise<string | null> {
     try {
-      const response = await this.fetchWithAuth(`${this.baseUrl}/worker/api/profile/photo/`, {
+      const response = await this.fetchWithAuth(`${this.baseUrl}/profile/photo/`, {
         method: 'GET',
       });
 
@@ -146,7 +146,7 @@ class ProfileService {
   }
 
   async deleteProfilePhoto(): Promise<ProfilePhotoResponse> {
-    const response = await this.fetchWithAuth(`${this.baseUrl}/worker/api/profile/photo/`, {
+    const response = await this.fetchWithAuth(`${this.baseUrl}/profile/photo/`, {
       method: 'DELETE',
     });
 

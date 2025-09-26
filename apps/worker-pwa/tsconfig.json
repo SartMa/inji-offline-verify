@@ -2,6 +2,9 @@
   "files": [],
   "references": [
     {
+      "path": "../../packages/inji-verify-sdk"
+    },
+    {
       "path": "../../packages/shared-ui"
     },
     {

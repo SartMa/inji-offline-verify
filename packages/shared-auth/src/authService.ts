@@ -35,8 +35,10 @@ interface UserProfileResponse {
   error?: string;
 }
 
-export async function login(baseUrl: string, payload: { username: string; password: string; org_name: string }): Promise<LoginResponse> {
-  const res = await fetch(`${baseUrl}/worker/api/login/`, {
+import { getWorkerApiUrl, getOrganizationApiUrl } from './config';
+
+export async function login(payload: { username: string; password: string; org_name: string }): Promise<LoginResponse> {
+  const res = await fetch(getWorkerApiUrl('/login/'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -47,15 +49,15 @@ export async function login(baseUrl: string, payload: { username: string; passwo
     throw new Error(errorMessage);
   }
   const data: LoginResponse = await res.json();
-  setApiBaseUrl(baseUrl);
+  setApiBaseUrl(getApiBaseUrl() || '');
   if (data?.access || data?.refresh || data?.token) {
     saveTokens({ access: data.access, refresh: data.refresh, legacyToken: data.token });
   }
   return data;
 }
 
-export async function loginorg(baseUrl: string, payload: { username: string; password: string; org_name: string }): Promise<LoginResponse> {
-  const res = await fetch(`${baseUrl}/organization/api/login/`, {
+export async function loginorg(payload: { username: string; password: string; org_name: string }): Promise<LoginResponse> {
+  const res = await fetch(getOrganizationApiUrl('/login/'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -66,15 +68,15 @@ export async function loginorg(baseUrl: string, payload: { username: string; pas
     throw new Error(errorMessage);
   }
   const data: LoginResponse = await res.json();
-  setApiBaseUrl(baseUrl);
+  setApiBaseUrl(getApiBaseUrl() || '');
   if (data?.access || data?.refresh || data?.token) {
     saveTokens({ access: data.access, refresh: data.refresh, legacyToken: data.token });
   }
   return data;
 }
 
-export async function googleLogin(baseUrl: string, payload: { access_token: string; org_name: string }): Promise<LoginResponse> {
-  const res = await fetch(`${baseUrl}/worker/api/google-login/`, {
+export async function googleLogin(payload: { access_token: string; org_name: string }): Promise<LoginResponse> {
+  const res = await fetch(getWorkerApiUrl('/google-login/'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -84,15 +86,15 @@ export async function googleLogin(baseUrl: string, payload: { access_token: stri
     throw new Error(errorData.non_field_errors?.[0] || `Google login failed: ${res.status}`);
   }
   const data: LoginResponse = await res.json();
-  setApiBaseUrl(baseUrl);
+  setApiBaseUrl(getApiBaseUrl() || '');
   if (data?.access || data?.refresh || data?.token) {
     saveTokens({ access: data.access, refresh: data.refresh, legacyToken: data.token });
   }
   return data;
 }
 
-export async function organizationLogin(baseUrl: string, payload: { username: string; password: string; org_name: string }): Promise<LoginResponse> {
-  const res = await fetch(`${baseUrl}/organization/api/login/`, {
+export async function organizationLogin(payload: { username: string; password: string; org_name: string }): Promise<LoginResponse> {
+  const res = await fetch(getOrganizationApiUrl('/login/'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -103,7 +105,7 @@ export async function organizationLogin(baseUrl: string, payload: { username: st
     throw new Error(errorMessage);
   }
   const data: LoginResponse = await res.json();
-  setApiBaseUrl(baseUrl);
+  setApiBaseUrl(getApiBaseUrl() || '');
   if (data?.access || data?.refresh || data?.token) {
     saveTokens({ access: data.access, refresh: data.refresh, legacyToken: data.token });
   }
@@ -117,12 +119,16 @@ const LEGACY_KEY = 'auth.legacyToken';
 const BASE_URL_KEY = 'api.baseUrl';
 const USER_CACHE_KEY = 'auth.userCache'; // Cache user data for offline use
 
-export function setApiBaseUrl(baseUrl: string) {
-  try { localStorage.setItem(BASE_URL_KEY, baseUrl.replace(/\/$/, '')); } catch {}
+// Centralized host comes from config now; keep functions for backward compatibility
+import { getApiHost } from './config';
+
+export function setApiBaseUrl(_baseUrl: string) {
+  // Intentionally no-op to avoid persisting stale hosts like :4200
+  try { localStorage.removeItem(BASE_URL_KEY); } catch {}
 }
 
 export function getApiBaseUrl(): string | null {
-  try { return localStorage.getItem(BASE_URL_KEY); } catch { return null; }
+  return getApiHost();
 }
 
 export function saveTokens(opts: { access?: string; refresh?: string; legacyToken?: string }) {

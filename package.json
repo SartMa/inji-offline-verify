@@ -1,10 +1,11 @@
 {
   "name": "inji-offline-platform",
+  "packageManager": "pnpm@10.15.1",
   "private": true,
   "scripts": {
     "dev:worker": "pnpm --filter worker-pwa dev",
     "dev:admin": "pnpm --filter admin-portal dev",
-    "build": "pnpm -r build"
+    "build": "nx run-many --target=build --all"
   },
   "devDependencies": {
     "@eslint/js": "^9.8.0",

@@ -5,6 +5,7 @@ pnpm install
 # Run Frontend
 ## Dev Mode
 npx nx dev worker-pwa   
+npx nx dev organization-portal
 ## Prod Mode
 pnpm nx build worker-pwa
 pnpm nx preview worker-pwa

@@ -187,12 +187,22 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
             refreshHistoricalLogs();
         } else {
             // If offline, just refresh from IndexedDB with current data
-            loadHybridLogs();
+            loadHybridLogs('historical-days-change-offline');
         }
     };
 
     // Fetch and merge historical logs with local logs
-    const loadHybridLogs = async () => {
+    const loadHybridLogs = async (reason: string = 'load-hybrid-logs') => {
+        const startTime = performance.now();
+        const logPrefix = `[Performance] Hybrid logs refresh (${reason})`;
+        console.log(`${logPrefix} started at`, new Date().toISOString());
+        let finished = false;
+        const finish = (detail: string) => {
+            if (finished) return;
+            finished = true;
+            const durationMs = performance.now() - startTime;
+            console.log(`${logPrefix} ${detail} in ${durationMs.toFixed(2)}ms`);
+        };
         try {
             const localRecords = await getAllFromDb();
             const allLocalLogItems = convertRecordsToLogItems(localRecords);
@@ -202,6 +212,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
                 console.log('Offline: Using IndexedDB logs only (includes cached historical data)');
                 setLogs(latestLocalLogItems);
                 setDailyStats(processLogsForDailyStats(allLocalLogItems, historicalLogsDays));
+                finish('completed using offline cache');
                 return;
             }
 
@@ -227,10 +238,12 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
                 const displayLogItems = updatedAllLogItems.slice(-200).reverse();
                 setLogs(displayLogItems);
                 setDailyStats(processLogsForDailyStats(updatedAllLogItems, historicalLogsDays));
+                finish('completed with remote fetch');
             } else {
                 console.warn('Failed to fetch historical logs:', historicalResponse.error);
                 setLogs(latestLocalLogItems);
                 setDailyStats(processLogsForDailyStats(allLocalLogItems, historicalLogsDays));
+                finish('completed with local fallback after remote error');
             }
         } catch (error) {
             console.error('Error loading hybrid logs:', error);
@@ -239,8 +252,10 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
             const fallbackDisplayItems = fallbackAllLogItems.slice(-50).reverse();
             setLogs(fallbackDisplayItems);
             setDailyStats(processLogsForDailyStats(fallbackAllLogItems, historicalLogsDays));
+            finish('completed after error using fallback');
         } finally {
             setIsLoadingHistoricalLogs(false);
+            finish('finalized');
         }
     };
     
@@ -252,14 +267,14 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
     
     // Public function to refresh historical logs
     const refreshHistoricalLogs = async () => {
-        await loadHybridLogs();
+        await loadHybridLogs('manual-refresh');
     };
 
     // Initialize (no explicit initDB needed; dbService opens lazily)
     useEffect(() => {
         const loadData = async () => {
             await updateStats(); // Initial stats load
-            await loadHybridLogs(); // Load hybrid logs
+            await loadHybridLogs('initial-load'); // Load hybrid logs
         };
         loadData();
 
@@ -376,7 +391,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         // Refresh hybrid logs periodically when online to keep aggregates in sync
         const logsInterval = setInterval(() => {
             if (navigator.onLine && !isLoadingHistoricalLogs) {
-                loadHybridLogs();
+                loadHybridLogs('periodic-refresh');
             }
         }, 300000);
         
@@ -399,11 +414,23 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
             error_message: jsonData.error_message ?? null
         };
 
+        const storeStart = performance.now();
+        console.log('[Performance] Storing verification result started at', new Date().toISOString(), {
+            uuid: rec.uuid,
+            status: rec.verification_status
+        });
+
         const storedId = await storeInDb(rec);
+
+        const storeDuration = performance.now() - storeStart;
+        console.log('[Performance] Verification result stored', `${storeDuration.toFixed(2)}ms`, {
+            uuid: rec.uuid,
+            storedId
+        });
 
         // Refresh stats and logs quickly after write
         updateStats().catch(() => {});
-        loadHybridLogs().catch(() => {}); // Refresh hybrid logs to show new entry
+        loadHybridLogs('post-store-refresh').catch(() => {}); // Refresh hybrid logs to show new entry
 
         // If online, trigger an immediate sync (fire-and-forget)
         if (navigator.onLine) {

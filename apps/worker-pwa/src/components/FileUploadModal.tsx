@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
 	Dialog,
 	DialogContent,
@@ -48,6 +48,7 @@ export default function FileUploadModal({ open, onClose, onResult }: FileUploadM
 	const [selectedVCForView, setSelectedVCForView] = useState<VerificationResult | null>(null);
 
 	const { storeVerificationResult } = useVCStorage();
+	const verificationStartRef = useRef<number | null>(null);
 
 	// Check cache status when modal opens
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -67,7 +68,51 @@ export default function FileUploadModal({ open, onClose, onResult }: FileUploadM
 		})();
 	}, [open]);
 
+	useEffect(() => {
+		if (!open) {
+			return;
+		}
+
+		let cleanupTimer: number | null = null;
+		const attachListener = () => {
+			const input = document.getElementById('file-upload-modal-input') as HTMLInputElement | null;
+			if (!input) {
+				cleanupTimer = window.setTimeout(attachListener, 100);
+				return;
+			}
+
+			const handleInputChange = () => {
+				verificationStartRef.current = performance.now();
+				console.log('[Performance] QR upload verification started at', new Date().toISOString());
+			};
+
+			input.addEventListener('change', handleInputChange, { once: false });
+
+			return () => {
+				input.removeEventListener('change', handleInputChange);
+			};
+		};
+
+		const detach = attachListener();
+
+		return () => {
+			if (typeof detach === 'function') {
+				detach();
+			}
+			if (cleanupTimer) {
+				window.clearTimeout(cleanupTimer);
+			}
+		};
+	}, [open]);
+
 	const handleVerificationResult = async (result: VerificationResult) => {
+		const start = verificationStartRef.current;
+		if (typeof start === 'number') {
+			const durationMs = performance.now() - start;
+			console.log('[Performance] QR upload verification completed in', `${durationMs.toFixed(2)}ms`);
+			verificationStartRef.current = null;
+		}
+
 		try {
 			// Persist to local DB logs similar to QRScannerModal
 			const payload = (result as any).payload || {};

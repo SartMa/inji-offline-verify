@@ -3,8 +3,16 @@ ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential curl && rm -rf /var/lib/apt/lists/*
 RUN pip install uv
 WORKDIR /app
-COPY pyproject.toml uv.lock* ./
-RUN uv sync --frozen
+# Copy project metadata and (optionally) lockfile for better caching
+COPY pyproject.toml ./
+COPY uv.lock* ./
+# Install dependencies; if no lockfile present, create it first
+RUN if [ -f uv.lock ]; then \
+			uv sync --frozen; \
+		else \
+			echo "No uv.lock found; generating lock and installing"; \
+			uv lock && uv sync; \
+		fi
 COPY . .
 # Collect static files (ignore errors if no static apps yet)
 RUN uv run python manage.py collectstatic --noinput || true

@@ -36,9 +36,12 @@ ALLOW_CONTEXT_UPSERT_FOR_AUTHENTICATED = config(
 
 
 
+# Hosts allowed to serve this Django app
+# Read from env (comma-separated); default to localhost for safety
 ALLOWED_HOSTS = [
-    '127.0.0.1',
-    'localhost',
+    h.strip()
+    for h in config('ALLOWED_HOSTS', default='127.0.0.1,localhost').split(',')
+    if h.strip()
 ]
 
 
@@ -219,7 +222,7 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,                   # Generate new refresh token on each refresh
     'BLACKLIST_AFTER_ROTATION': True,               # Blacklist old refresh tokens
     'ALGORITHM': 'HS256',
-    'SIGNING_KEY': SECRET_KEY,
+    'SIGNING_KEY': config('JWT_SECRET_KEY', default=SECRET_KEY),
     'VERIFYING_KEY': None,
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
@@ -244,7 +247,21 @@ _base_cors = [
     'http://127.0.0.1:3011',
     'http://127.0.0.1:3017',
 ]
+# Accept both legacy EXTRA_CORS_ORIGINS and CORS_ALLOWED_ORIGINS from env (comma-separated)
 _extra_cors = [o.strip() for o in config('EXTRA_CORS_ORIGINS', default='', cast=str).split(',') if o.strip()]
-CORS_ALLOWED_ORIGINS = sorted(set(_base_cors + _extra_cors))
+_env_cors = [o.strip() for o in config('CORS_ALLOWED_ORIGINS', default='', cast=str).split(',') if o.strip()]
+CORS_ALLOWED_ORIGINS = sorted(set(_base_cors + _extra_cors + _env_cors))
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
+
+# CSRF trusted origins must include scheme and no trailing slash
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in config('CSRF_TRUSTED_ORIGINS', default='', cast=str).split(',') if o.strip()
+]
+
+# Security and proxy settings (Render/other PaaS pass X-Forwarded-Proto)
+SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=not DEBUG, cast=bool)
+CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=not DEBUG, cast=bool)
+CSRF_COOKIE_SAMESITE = config('CSRF_COOKIE_SAMESITE', default='Lax')
+SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=(not DEBUG), cast=bool)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

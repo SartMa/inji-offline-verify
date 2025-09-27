@@ -15,7 +15,7 @@ dist/
 *.egg
 
 # uv and poetry lock files (optional, keep if you want reproducible builds)
-uv.lock
+# uv.lock
 
 # IDE & editor settings
 .vscode/

@@ -33,5 +33,6 @@ PY
 echo "[backend] Applying migrations..."
 python backend/manage.py migrate --noinput || { echo "Migration failed"; exit 1; }
 
-echo "[backend] Starting Uvicorn on 0.0.0.0:8000..."
-exec uvicorn backend.asgi:application --host 0.0.0.0 --port 8000
+PORT="${PORT:-8000}"
+echo "[backend] Starting Uvicorn on 0.0.0.0:${PORT}..."
+exec uvicorn backend.asgi:application --host 0.0.0.0 --port "${PORT}"

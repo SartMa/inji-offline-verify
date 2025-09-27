@@ -1,5 +1,6 @@
 {
   "name": "inji-offline-platform",
+  "packageManager": "pnpm@10.15.1",
   "private": true,
   "scripts": {
     "dev:worker": "pnpm --filter worker-pwa dev",

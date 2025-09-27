@@ -48,6 +48,7 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = [
+    'anymail',
     'api',
     'organization',  # organization app
     'worker',        # worker app
@@ -88,7 +89,9 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 """Email configuration: defaults to console backend if SMTP vars not provided."""
-EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+
+# And REPLACE it with this:
+EMAIL_BACKEND = "anymail.backends.sendgrid.EmailBackend"
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='no-reply@example.com')
 EMAIL_HOST = config('EMAIL_HOST', default='')
 EMAIL_PORT = config('EMAIL_PORT', cast=int, default=587)
@@ -265,3 +268,8 @@ CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=not DEBUG, cast=bool)
 CSRF_COOKIE_SAMESITE = config('CSRF_COOKIE_SAMESITE', default='Lax')
 SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=(not DEBUG), cast=bool)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+
+ANYMAIL = {
+    "SENDGRID_API_KEY": config("SENDGRID_API_KEY"),
+}

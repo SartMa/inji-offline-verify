@@ -5,7 +5,6 @@ import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import CssBaseline from '@mui/material/CssBaseline';
 import FormControlLabel from '@mui/material/FormControlLabel';
-import Divider from '@mui/material/Divider';
 import FormLabel from '@mui/material/FormLabel';
 import FormControl from '@mui/material/FormControl';
 import Link from '@mui/material/Link';
@@ -18,12 +17,10 @@ import Alert from '@mui/material/Alert';
 import { styled } from '@mui/material/styles';
 import ForgotPassword from '@inji-offline-verify/shared-ui/src/components/ForgotPassword';
 import { AppTheme, ColorModeSelect } from '@inji-offline-verify/shared-ui/src/theme';
-import { GoogleIcon, FacebookIcon, SitemarkIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons.tsx';
 import { useAuth } from './context/AuthContext.tsx';
-import { login, googleLogin } from './services/authService';
+import { login } from './services/authService';
 import { WorkerCacheService } from './services/WorkerCacheService';
 import { NetworkManager } from './network/NetworkManager';
-import { useGoogleSignIn } from './hooks/useGoogleSignIn';
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -74,9 +71,9 @@ export default function SignIn(props: {
 }) {
   const navigate = useNavigate();
   // Base URL now resolved internally by shared-auth login helpers
-  const [orgName, setOrgName] = React.useState('AcmeCorp10');
-  const [username, setUsername] = React.useState('worker01');
-  const [password, setPassword] = React.useState('12345678');
+  const [orgName, setOrgName] = React.useState('');
+  const [username, setUsername] = React.useState('');
+  const [password, setPassword] = React.useState('');
   const [emailError, setEmailError] = React.useState(false);
   const [emailErrorMessage, setEmailErrorMessage] = React.useState('');
   const [passwordError, setPasswordError] = React.useState(false);
@@ -85,133 +82,10 @@ export default function SignIn(props: {
   const [orgErrorMessage, setOrgErrorMessage] = React.useState('');
   const [open, setOpen] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = React.useState(false);
   const [toastOpen, setToastOpen] = React.useState(false);
   const [toastMessage, setToastMessage] = React.useState('');
   const [toastSeverity, setToastSeverity] = React.useState<'error' | 'success' | 'info' | 'warning'>('error');
   const { signIn } = useAuth();
-
-  const handleGoogleSuccess = async (accessToken: string) => {
-    if (!orgName.trim()) {
-      setOrgError(true);
-      setOrgErrorMessage('Please enter organization name for Google sign-in.');
-      return;
-    }
-
-    setIsGoogleLoading(true);
-    try {
-      const res = await googleLogin({ 
-        access_token: accessToken, 
-        org_name: orgName 
-      });
-      // Prime SDK cache from server responses (org-scoped contexts and public keys)
-      const orgId = res?.organization?.id;
-      if (orgId) {
-        try {
-          const bundle = await buildServerCacheBundle(orgId);
-          await WorkerCacheService.primeFromServer(bundle);
-          console.log('SDK cache primed for organization:', orgId);
-        } catch (e) {
-          console.warn('Priming SDK cache failed:', e);
-        }
-      }
-
-      // Use the auth context signIn method to update the global state
-      // For Google login, we'll use the email as username if available
-      await signIn(res.email || res.username || 'google-user', '');
-      
-      // Redirect to dashboard after successful login
-      navigate('/dashboard');
-      showToast('Successfully signed in with Google!', 'success');
-    } catch (error: any) {
-      console.error('Google sign in failed:', error);
-      console.log('Google error response data:', error?.response?.data);
-      
-      // Extract error message from server response
-      let errorMessage = 'Invalid credentials or access token';
-      
-      // First, try to extract the actual server error message
-      if (error?.response?.data) {
-        const responseData = error.response.data;
-        
-        // Handle non_field_errors array format: {"non_field_errors":["Invalid credentials"]}
-        if (responseData.non_field_errors && Array.isArray(responseData.non_field_errors) && responseData.non_field_errors.length > 0) {
-          errorMessage = responseData.non_field_errors[0];
-        }
-        // Handle other common error field formats
-        else if (responseData.message) {
-          errorMessage = responseData.message;
-        }
-        else if (responseData.error) {
-          errorMessage = responseData.error;
-        }
-        else if (responseData.detail) {
-          errorMessage = responseData.detail;
-        }
-        // Handle other field error formats
-        else if (typeof responseData === 'object') {
-          const keys = Object.keys(responseData);
-          if (keys.length > 0) {
-            const firstKey = keys[0];
-            const firstValue = responseData[firstKey];
-            if (Array.isArray(firstValue) && firstValue.length > 0) {
-              errorMessage = firstValue[0];
-            } else if (typeof firstValue === 'string') {
-              errorMessage = firstValue;
-            }
-          }
-        }
-        else if (typeof responseData === 'string') {
-          errorMessage = responseData;
-        }
-      }
-      // Fallback to status code specific messages if no server message available
-      else if (error?.response?.status) {
-        switch (error.response.status) {
-          case 400:
-            errorMessage = 'Invalid credentials or access token';
-            break;
-          case 401:
-            errorMessage = 'Google authentication failed';
-            break;
-          case 403:
-            errorMessage = 'Access denied';
-            break;
-          case 404:
-            errorMessage = 'Organization not found';
-            break;
-          case 500:
-            errorMessage = 'Server error. Please try again later';
-            break;
-          default:
-            errorMessage = 'Authentication failed';
-            break;
-        }
-      }
-      // Final fallback if no response at all
-      else if (error?.message && !error.message.includes('Google sign in failed:')) {
-        errorMessage = error.message;
-      }
-      
-      const fullErrorMessage = `Google sign in failed: ${errorMessage}`;
-      showToast(fullErrorMessage, 'error');
-      // Don't set field errors since we're using toast notifications
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  };
-
-  const handleGoogleError = (error: any) => {
-    console.error('Google sign in error:', error);
-    const errorMessage = 'Google sign in was cancelled or failed.';
-    showToast(errorMessage, 'error');
-    // Don't set field errors since we're using toast notifications
-  };
-
-  const { signIn: triggerGoogleSignIn, isReady: isGoogleReady } = useGoogleSignIn({
-    onSuccess: handleGoogleSuccess,
-    onError: handleGoogleError,
-  });
 
   const handleClickOpen = () => {
     setOpen(true);
@@ -323,7 +197,6 @@ export default function SignIn(props: {
       <SignInContainer direction="column" justifyContent="space-between">
         <ColorModeSelect sx={{ position: 'fixed', top: '1rem', right: '1rem' }} />
         <Card variant="outlined">
-          <SitemarkIcon />
           <Typography
             component="h1"
             variant="h4"
@@ -501,38 +374,6 @@ export default function SignIn(props: {
             >
               Forgot your password?
             </Link>
-          </Box>
-          <Divider>or</Divider>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={triggerGoogleSignIn}
-              disabled={!isGoogleReady || isGoogleLoading}
-              startIcon={<GoogleIcon />}
-            >
-              {isGoogleLoading ? 'Signing in with Google...' : 'Sign in with Google'}
-            </Button>
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={() => alert('Sign in with Facebook')}
-              startIcon={<FacebookIcon />}
-            >
-              Sign in with Facebook
-            </Button>
-            {/* <Typography sx={{ textAlign: 'center' }}>
-              Don&apos;t have an account?{' '}
-              <Link
-                component="button"
-                type="button"
-                onClick={props.onSwitchToSignUp}
-                variant="body2"
-                sx={{ alignSelf: 'center' }}
-              >
-                Sign up
-              </Link>
-            </Typography> */}
           </Box>
         </Card>
         

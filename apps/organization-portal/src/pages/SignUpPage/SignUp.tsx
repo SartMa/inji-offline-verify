@@ -15,7 +15,7 @@ import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
 import { styled } from '@mui/material/styles';
 import { AppTheme, ColorModeSelect } from '@inji-offline-verify/shared-ui/src/theme';
-import { GoogleIcon, FacebookIcon, SitemarkIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons';
+import { GoogleIcon, FacebookIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons';
 import { registerOrganization, confirmRegistration } from '../../services/registrationService';
 import { getApiHost } from '@inji-offline-verify/shared-auth';
 import OTPVerificationDialog from '../../components/OTPVerificationDialog';
@@ -173,9 +173,7 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
         admin_email: email.trim(),
       };
 
-      console.log('Registration request:', registrationData);
       const response = await registerOrganization(baseUrl, registrationData);
-      console.log('Registration response:', response);
 
       // Store the pending ID and show OTP dialog
       if (response.pending_id) {
@@ -225,7 +223,6 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
       let currentPendingId = pendingId;
       
       if (!currentPendingId) {
-        console.log('No pending ID, attempting to get it...');
         try {
           const registrationData = {
             org_name: orgName.trim(),
@@ -240,7 +237,7 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
           }
         } catch (regError) {
           // If registration fails again, we might still be able to proceed if the user has the right OTP
-          console.log('Registration for pending_id failed, trying with empty pending_id');
+          console.warn('Unable to refresh pending ID; proceeding with existing value', regError);
         }
       }
 
@@ -320,7 +317,6 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
       <SignUpContainer direction="column" justifyContent="space-between">
         <ColorModeSelect sx={{ position: 'fixed', top: '1rem', right: '1rem' }} />
         <Card variant="outlined">
-          <SitemarkIcon />
           <Typography
             component="h1"
             variant="h4"
@@ -571,26 +567,7 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
               {isLoading ? 'Creating account...' : 'Sign up'}
             </Button>
           </Box>
-          <Divider>
-            <Typography sx={{ color: 'text.secondary' }}>or</Typography>
-          </Divider>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={() => alert('Sign up with Google')}
-              startIcon={<GoogleIcon />}
-            >
-              Sign up with Google
-            </Button>
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={() => alert('Sign up with Facebook')}
-              startIcon={<FacebookIcon />}
-            >
-              Sign up with Facebook
-            </Button>
             <Typography sx={{ textAlign: 'center' }}>
               Already have an account?{' '}
               <Link

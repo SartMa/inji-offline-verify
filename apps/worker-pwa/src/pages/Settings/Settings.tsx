@@ -15,7 +15,6 @@ import Header from '../../components/dash_comp/Header';
 import SideMenu from '../../components/dash_comp/SideMenu';
 import { SidebarProvider } from '../../components/dash_comp/SidebarContext';
 import AppTheme from '../../theme/dash_theme/AppTheme';
-import Copyright from '../../internals/components/Copyright';
 
 // Settings-specific components
 import SyncSettings from '../../components/SyncSettings';
@@ -127,7 +126,6 @@ export default function Settings(props: { disableCustomTheme?: boolean }) {
                   </Grid>
                 </Box>
                 
-                <Copyright sx={{ my: 4 }} />
               </Box>
             </Stack>
           </Box>

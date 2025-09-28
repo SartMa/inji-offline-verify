@@ -21,6 +21,10 @@ interface Organization {
   member_id: string;
 }
 
+interface RefreshOptions {
+  manageLoading?: boolean;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
@@ -28,7 +32,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   isLoading: boolean;
-  refreshUserData: () => Promise<void>;
+  refreshUserData: (options?: RefreshOptions) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -51,12 +55,24 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refreshUserData = async () => {
+  const refreshUserData = async (options?: RefreshOptions) => {
+    const shouldManageLoading = options?.manageLoading ?? false;
+    const finishLoading = () => {
+      if (shouldManageLoading) {
+        setIsLoading(false);
+      }
+    };
+
+    if (shouldManageLoading) {
+      setIsLoading(true);
+    }
+
     const token = getAccessToken();
     if (!token) {
       setUser(null);
       setOrganization(null);
       setIsAuthenticated(false);
+      finishLoading();
       return;
     }
 
@@ -70,6 +86,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
         // If we can't get user data but we're offline, keep the auth state
         if (!navigator.onLine) {
           // Keep existing auth state when offline
+          finishLoading();
           return;
         }
         // If we're online but can't get user data, clear everything
@@ -83,6 +100,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
       // If we're offline, don't clear auth state
       if (!navigator.onLine) {
         console.log('Offline mode: keeping existing auth state');
+        finishLoading();
         return;
       }
       // Only clear auth state if we're online and there's an error
@@ -91,6 +109,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
       setIsAuthenticated(false);
       clearTokens();
     }
+    finishLoading();
   };
 
   // Check for existing authentication on component mount
@@ -120,7 +139,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
     const handleOnline = () => {
       console.log('Back online - refreshing user data');
       if (isAuthenticated) {
-        refreshUserData();
+        refreshUserData({ manageLoading: true });
       }
     };
 
@@ -138,8 +157,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
   }, [isAuthenticated]);
 
   const signIn = async (_email: string, _password: string): Promise<void> => {
-    // After successful login, refresh user data
-    await refreshUserData();
+    await refreshUserData({ manageLoading: true });
     return Promise.resolve();
   };
 

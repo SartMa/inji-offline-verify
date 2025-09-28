@@ -7,6 +7,7 @@ export type CachedPublicKey = {
   public_key_multibase?: string;  // z6M...
   public_key_hex?: string;        // optional
   public_key_jwk?: any;           // optional
+  public_key_pem?: string;        // optional PEM for RSA keys
   controller: string;             // DID without fragment
   purpose?: string;
   is_active?: boolean;
@@ -81,8 +82,9 @@ export async function putPublicKeys(keys: CachedPublicKey[]): Promise<void> {
       key_id: k.key_id,
       key_type: k.key_type ?? 'Ed25519VerificationKey2020',
       public_key_multibase: k.public_key_multibase,
-      public_key_hex: k.public_key_hex,
-      public_key_jwk: k.public_key_jwk,
+  public_key_hex: k.public_key_hex,
+  public_key_jwk: k.public_key_jwk,
+  public_key_pem: k.public_key_pem,
       controller: k.controller.split('#')[0],
       purpose: k.purpose ?? 'assertion',
       is_active: k.is_active ?? true,
@@ -207,9 +209,10 @@ export async function replacePublicKeysForOrganization(organizationId: string, p
       await store3.put({
         key_id: publicKey.key_id,
         key_type: publicKey.key_type ?? 'Ed25519VerificationKey2020',
-        public_key_multibase: publicKey.public_key_multibase,
-        public_key_hex: publicKey.public_key_hex,
-        public_key_jwk: publicKey.public_key_jwk,
+          public_key_multibase: publicKey.public_key_multibase,
+          public_key_hex: publicKey.public_key_hex,
+          public_key_jwk: publicKey.public_key_jwk,
+          public_key_pem: publicKey.public_key_pem,
         controller: publicKey.controller.split('#')[0],
         purpose: publicKey.purpose ?? 'assertion',
         is_active: publicKey.is_active ?? true,

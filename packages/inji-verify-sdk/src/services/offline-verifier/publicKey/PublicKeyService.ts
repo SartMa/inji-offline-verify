@@ -33,6 +33,7 @@ export class PublicKeyService {
               let public_key_multibase: string | undefined;
               let public_key_jwk: any | undefined;
               let public_key_hex: string | undefined;
+              let public_key_pem: string | undefined;
 
               // Prefer multibase for did:key
               if (controller.startsWith('did:key:')) {
@@ -41,6 +42,7 @@ export class PublicKeyService {
               // If getter returned JWK or EC hex, capture it
               if ((pk as any).jwk) public_key_jwk = (pk as any).jwk;
               if ((pk as any).ecUncompressedHex) public_key_hex = (pk as any).ecUncompressedHex;
+              if ((pk as any).pem) public_key_pem = (pk as any).pem;
               // As a last resort, if bytes are present for EC keys, compute hex
               if (!public_key_hex && (pk as any).bytes && (pk as any).algorithm === 'secp256k1') {
                 public_key_hex = bytesToHex((pk as any).bytes as Uint8Array);
@@ -80,6 +82,7 @@ export class PublicKeyService {
                   public_key_multibase,
                   public_key_jwk,
                   public_key_hex,
+                  public_key_pem,
                   is_active: true,
                   purpose: 'assertion',
                   organization_id: null
@@ -110,6 +113,7 @@ export class PublicKeyService {
         publicKeyMultibase: record.public_key_multibase,
         publicKeyJwk: record.public_key_jwk,
         publicKeyHex: record.public_key_hex,
+        publicKeyPem: record.public_key_pem,
       };
     } catch (e: any) {
       console.error('💥 Error retrieving public key from cache:', e);

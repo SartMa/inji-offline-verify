@@ -365,36 +365,39 @@ export default function QRScannerModal({ open, onClose, onResult }: QRScannerMod
                   sx={{ 
                     borderRadius: '20px', 
                     minWidth: 120,
+                    py: 0.75,
+                    px: 2.5,
                     fontWeight: 600,
-                    color: 'white',
-                    background: (theme) => 
-                      theme.palette.mode === 'dark' 
-                        ? 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)'
-                        : 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
+                    textTransform: 'none',
+                    backgroundColor: '#000000',
+                    color: '#ffffff',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                    '[data-mui-color-scheme="dark"] &': {
+                      backgroundColor: '#ffffff',
+                      color: '#000000',
+                      boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
+                    },
                     '&:hover': {
-                      opacity: 0.9,
+                      backgroundColor: '#000000',
+                      color: '#ffffff',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
                       transform: 'translateY(-1px)',
-                      background: (theme) => 
-                        theme.palette.mode === 'dark' 
-                          ? 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)'
-                          : 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
+                      '[data-mui-color-scheme="dark"] &': {
+                        backgroundColor: '#ffffff',
+                        color: '#000000',
+                        boxShadow: '0 4px 12px rgba(255, 255, 255, 0.2)',
+                      },
                     },
                     '&:active': {
-                      background: (theme) => 
-                        theme.palette.mode === 'dark' 
-                          ? 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)'
-                          : 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
+                      transform: 'translateY(0px)',
                     },
                     '&:focus': {
-                      background: (theme) => 
-                        theme.palette.mode === 'dark' 
-                          ? 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)'
-                          : 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                      '[data-mui-color-scheme="dark"] &': {
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
+                      },
                     },
-                    boxShadow: (theme) => 
-                      theme.palette.mode === 'dark' 
-                        ? '0 4px 12px rgba(25, 118, 210, 0.3)'
-                        : '0 4px 12px rgba(55, 65, 81, 0.3)',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
                   }}
                 >
                   Start Scanning

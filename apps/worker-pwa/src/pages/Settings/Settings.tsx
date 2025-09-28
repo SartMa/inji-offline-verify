@@ -38,12 +38,7 @@ const xThemeComponents = {
 
 export default function Settings(props: { disableCustomTheme?: boolean }) {
   const { avgVerificationMs, avgStorageWriteMs } = useVCStorage();
-  const formatDuration = (value: number | null) => {
-    if (value == null || Number.isNaN(value)) {
-      return 'No samples yet';
-    }
-    return `${value.toFixed(1)} ms`;
-  };
+  
 
   return (
     <AppTheme {...props} themeComponents={xThemeComponents}>

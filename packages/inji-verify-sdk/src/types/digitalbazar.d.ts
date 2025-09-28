@@ -47,3 +47,16 @@ declare module 'jsonld' {
     xhr(): (url: string) => Promise<{ contextUrl?: string; documentUrl: string; document: any }>;
   };
 }
+
+// Additional DigitalBazaar 2018 suite declarations
+declare module '@digitalbazaar/ed25519-signature-2018' {
+  export class Ed25519Signature2018 {
+    constructor(options?: any);
+  }
+}
+
+declare module '@digitalbazaar/ed25519-verification-key-2018' {
+  export class Ed25519VerificationKey2018 {
+    static from(key: any): Promise<any>;
+  }
+}

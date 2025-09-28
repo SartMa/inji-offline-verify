@@ -7,6 +7,7 @@ import {
   VPRequestBody,
 } from "./OpenID4VPVerification.types";
 import React, { useCallback, useEffect, useState } from "react";
+import { PresentationVerifier } from "../../services/offline-verifier/PresentationVerifier";
 
 const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   triggerElement,
@@ -24,6 +25,8 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   const [reqId, setReqId] = useState<string | null>(null);
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [expiresAt, setExpiresAt] = useState<number | null>(null);
+  const expirationTimerRef = React.useRef<number | null>(null);
   const OPENID4VP_PROTOCOL = `${protocol || "openid4vp://"}authorize?`;
 
   const generateNonce = (): string => {
@@ -40,18 +43,25 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     },
   };
 
+  // Base64URL decode helper (mirrors QRCodeVerification)
+  function base64UrlDecode(base64url: string): string {
+    let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = base64.length % 4;
+    if (pad) base64 += "=".repeat(4 - pad);
+    return atob(base64);
+  }
+
   const getPresentationDefinition = useCallback(
     (data: QrData) => {
       const params = new URLSearchParams();
-      params.set("client_id", data.authorizationDetails.clientId);
+      // For client-side verification, direct wallet back to this origin via fragment
+      const origin = window.location.origin;
+      params.set("client_id", origin);
       params.set("response_type", data.authorizationDetails.responseType);
-      params.set("response_mode", "direct_post");
+      params.set("response_mode", "fragment");
+      params.set("redirect_uri", `${origin}/`);
       params.set("nonce", data.authorizationDetails.nonce);
       params.set("state", data.requestId);
-      params.set(
-        "response_uri",
-        verifyServiceUrl + data.authorizationDetails.responseUri
-      );
       if (data.authorizationDetails.presentationDefinitionUri) {
         params.set(
           "presentation_definition_uri",
@@ -72,43 +82,72 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     [verifyServiceUrl]
   );
 
-  const fetchVpResult = useCallback(async () => {
-    try {
-      if (onVPProcessed) {
-        const response = await fetch(`${verifyServiceUrl}/vp-result/${txnId}`);
-        if (response.status !== 200)
-          throw new Error("Failed to fetch VP result");
-        const VpVerificationResult = await response.json();
-        const VPResult: VerificationResults = [];
-        VpVerificationResult.vcResults.forEach(
-          (vcResult: { vc: any; verificationStatus: VerificationStatus }) => {
-            const vc = JSON.parse(vcResult.vc);
-            const verificationStatus = vcResult.verificationStatus;
-            VPResult.push({
-              vc,
-              vcStatus: verificationStatus,
-            });
+  // Handle return from wallet: verify VP locally using PresentationVerifier
+  useEffect(() => {
+    (async () => {
+      try {
+        const hash = window.location.hash;
+        if (!hash) return;
+        const params = new URLSearchParams(hash.substring(1));
+        const vpTokenParam = params.get("vp_token");
+        const presentationSubmission = params.get("presentation_submission");
+        const error = params.get("error");
+
+        if (error) {
+          onError(new Error(error));
+          return;
+        }
+
+        if (vpTokenParam && presentationSubmission) {
+          const decoded = base64UrlDecode(vpTokenParam);
+          // vpToken can be JSON string; ensure we pass a canonical string to verifier
+          const vpObj = JSON.parse(decoded);
+
+          // If consumer wants to know when VP is received, notify with txnId if available
+          if (onVPReceived && txnId) {
+            onVPReceived(txnId);
           }
-        );
-        onVPProcessed(VPResult);
-        setTxnId(null);
-        setReqId(null);
-        setQrCodeData(null);
+
+          try {
+            const verifier = new PresentationVerifier();
+            const verification = await verifier.verify(JSON.stringify(vpObj));
+            if (onVPProcessed) {
+              // Map verifier results to UI-friendly shape
+              const mapStatus = (s: any): VerificationStatus => {
+                const v = typeof s === 'string' ? s.toUpperCase() : String(s).toUpperCase();
+                if (v.includes('EXPIRED')) return 'expired';
+                if (v.includes('SUCCESS') || v.includes('VALID')) return 'valid';
+                return 'invalid';
+              };
+              const VPResult: VerificationResults = (verification.vcResults || []).map((r: any) => ({
+                vc: (() => { try { return JSON.parse(r.vc); } catch { return r.vc; } })(),
+                vcStatus: mapStatus(r.verificationStatus ?? r.status),
+              }));
+              onVPProcessed(VPResult);
+            }
+          } catch (e) {
+            onError(e as Error);
+          } finally {
+            // Clean the URL fragment
+            window.history.replaceState(null, "", window.location.pathname);
+            if (expirationTimerRef.current) {
+              window.clearTimeout(expirationTimerRef.current);
+              expirationTimerRef.current = null;
+            }
+            setTxnId(null);
+            setReqId(null);
+            setQrCodeData(null);
+            setExpiresAt(null);
+            setLoading(false);
+          }
+        }
+      } catch (e) {
+        onError(e as Error);
       }
-      if (onVPReceived && txnId) {
-        onVPReceived(txnId);
-        setTxnId(null);
-        setReqId(null);
-        setQrCodeData(null);
-      }
-    } catch (error) {
-      onError(error as Error);
-      setTxnId(null);
-      setReqId(null);
-      setQrCodeData(null);
-      setLoading(false);
-    }
-  }, [onVPProcessed, onVPReceived, onError, txnId, verifyServiceUrl]);
+    })();
+    // We intentionally exclude dependencies to run only on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const createVpRequest = useCallback(async () => {
     if (presentationDefinition?.input_descriptors.length !== 0) {
@@ -139,6 +178,21 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         setTxnId(data.transactionId);
         setReqId(data.requestId);
         setQrCodeData(qrData);
+        setExpiresAt(data.expiresAt);
+
+        // Setup local expiration timer (no server polling)
+        if (expirationTimerRef.current) {
+          window.clearTimeout(expirationTimerRef.current);
+          expirationTimerRef.current = null;
+        }
+        const ms = Math.max(0, data.expiresAt - Date.now());
+        expirationTimerRef.current = window.setTimeout(() => {
+          setTxnId(null);
+          setReqId(null);
+          setQrCodeData(null);
+          setExpiresAt(null);
+          onQrCodeExpired();
+        }, ms);
         setLoading(false);
       } catch (error) {
         setLoading(false);
@@ -154,30 +208,6 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     getPresentationDefinition,
     onError,
   ]);
-
-  const fetchStatus = useCallback(async () => {
-    try {
-      const response = await fetch(
-        `${verifyServiceUrl}/vp-request/${reqId}/status`
-      );
-      if (response.status !== 200) throw new Error("Failed to fetch status");
-      const data = await response.json();
-      if (data.status === "ACTIVE") {
-        fetchStatus();
-      }
-      if (data.status === "VP_SUBMITTED") {
-        fetchVpResult();
-      } else if (data.status === "EXPIRED") {
-        setTxnId(null);
-        setReqId(null);
-        setQrCodeData(null);
-        onQrCodeExpired();
-      }
-    } catch (error) {
-      setLoading(false);
-      onError(error as Error);
-    }
-  }, [verifyServiceUrl, reqId, onQrCodeExpired, onError, fetchVpResult]);
 
   useEffect(() => {
     if (!presentationDefinitionId && !presentationDefinition) {
@@ -220,11 +250,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     triggerElement,
   ]);
 
-  useEffect(() => {
-    if (reqId) {
-      fetchStatus();
-    }
-  }, [fetchStatus, reqId]);
+  // No polling when using client-side fragment return flow
 
   function addStylesheetRules() {
     let keyframes = `@keyframes spin {0% {transform: rotate(0deg);}100% {transform: rotate(360deg);}}`;
@@ -233,6 +259,16 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     var styleSheet = styleEl.sheet;
     styleSheet?.insertRule(keyframes, 0);
   }
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (expirationTimerRef.current) {
+        window.clearTimeout(expirationTimerRef.current);
+        expirationTimerRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <div

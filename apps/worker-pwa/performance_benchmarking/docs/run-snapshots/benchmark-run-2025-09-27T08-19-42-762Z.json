@@ -1,0 +1,220 @@
+{
+  "generatedAt": "2025-09-27T08:19:42.762Z",
+  "url": "http://localhost:5173",
+  "samples": [
+    {
+      "sample": "Image baseline",
+      "file": "../benchmark-samples/image.png",
+      "iteration": 1,
+      "verificationMs": 628.4,
+      "storageMs": 41.4,
+      "hybridRefreshMs": 527.4
+    },
+    {
+      "sample": "Image 3",
+      "file": "../benchmark-samples/image_3.png",
+      "iteration": 1,
+      "verificationMs": 0.8,
+      "storageMs": 0.8,
+      "hybridRefreshMs": 471.6
+    },
+    {
+      "sample": "Image 5",
+      "file": "../benchmark-samples/image_5.png",
+      "iteration": 1,
+      "verificationMs": 239,
+      "storageMs": 2.8,
+      "hybridRefreshMs": 496.1
+    },
+    {
+      "sample": "QR v25",
+      "file": "../benchmark-samples/QR_v25.PNG",
+      "iteration": 1,
+      "verificationMs": 137.4,
+      "storageMs": 1.8,
+      "hybridRefreshMs": 474.1
+    }
+  ],
+  "summary": {
+    "verification": {
+      "samples": 4,
+      "average": 251.4,
+      "min": 0.8,
+      "max": 628.4
+    },
+    "storage": {
+      "samples": 4,
+      "average": 11.7,
+      "min": 0.8,
+      "max": 41.4
+    },
+    "hybridRefresh": {
+      "samples": 4,
+      "average": 492.3,
+      "min": 471.6,
+      "max": 527.4
+    }
+  },
+  "logs": [
+    {
+      "time": "2025-09-27T08:19:17.022Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) started at 2025-09-27T08:19:17.017Z"
+    },
+    {
+      "time": "2025-09-27T08:19:17.128Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) started at 2025-09-27T08:19:17.127Z"
+    },
+    {
+      "time": "2025-09-27T08:19:17.143Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) completed with local fallback after remote error in 124.90ms"
+    },
+    {
+      "time": "2025-09-27T08:19:17.144Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) completed with local fallback after remote error in 16.30ms"
+    },
+    {
+      "time": "2025-09-27T08:19:22.590Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) started at 2025-09-27T08:19:22.589Z"
+    },
+    {
+      "time": "2025-09-27T08:19:22.601Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) started at 2025-09-27T08:19:22.600Z"
+    },
+    {
+      "time": "2025-09-27T08:19:22.668Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) completed with local fallback after remote error in 74.90ms"
+    },
+    {
+      "time": "2025-09-27T08:19:22.673Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) completed with local fallback after remote error in 71.90ms"
+    },
+    {
+      "time": "2025-09-27T08:19:32.273Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) started at 2025-09-27T08:19:32.272Z"
+    },
+    {
+      "time": "2025-09-27T08:19:32.286Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) started at 2025-09-27T08:19:32.285Z"
+    },
+    {
+      "time": "2025-09-27T08:19:32.308Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) started at 2025-09-27T08:19:32.306Z"
+    },
+    {
+      "time": "2025-09-27T08:19:32.462Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) started at 2025-09-27T08:19:32.461Z"
+    },
+    {
+      "time": "2025-09-27T08:19:32.643Z",
+      "text": "[Performance] QR upload verification started at 2025-09-27T08:19:32.642Z"
+    },
+    {
+      "time": "2025-09-27T08:19:32.713Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) completed with remote fetch in 439.70ms"
+    },
+    {
+      "time": "2025-09-27T08:19:32.785Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) completed with remote fetch in 322.90ms"
+    },
+    {
+      "time": "2025-09-27T08:19:32.913Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) completed with remote fetch in 627.00ms"
+    },
+    {
+      "time": "2025-09-27T08:19:33.271Z",
+      "text": "[Performance] QR upload verification completed in 628.40ms"
+    },
+    {
+      "time": "2025-09-27T08:19:33.273Z",
+      "text": "[Performance] Storing verification result started at 2025-09-27T08:19:33.271Z {uuid: 80cf9ed2-9957-40e7-b337-e2205ac7e494, status: SUCCESS}"
+    },
+    {
+      "time": "2025-09-27T08:19:33.314Z",
+      "text": "[Performance] Verification result stored 41.40ms {uuid: 80cf9ed2-9957-40e7-b337-e2205ac7e494, storedId: 80}"
+    },
+    {
+      "time": "2025-09-27T08:19:33.315Z",
+      "text": "[Performance] Hybrid logs refresh (post-store-refresh) started at 2025-09-27T08:19:33.313Z"
+    },
+    {
+      "time": "2025-09-27T08:19:33.438Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) completed with remote fetch in 1131.20ms"
+    },
+    {
+      "time": "2025-09-27T08:19:33.841Z",
+      "text": "[Performance] Hybrid logs refresh (post-store-refresh) completed with remote fetch in 527.40ms"
+    },
+    {
+      "time": "2025-09-27T08:19:35.776Z",
+      "text": "[Performance] QR upload verification started at 2025-09-27T08:19:35.776Z"
+    },
+    {
+      "time": "2025-09-27T08:19:35.777Z",
+      "text": "[Performance] QR upload verification completed in 0.80ms"
+    },
+    {
+      "time": "2025-09-27T08:19:35.780Z",
+      "text": "[Performance] Storing verification result started at 2025-09-27T08:19:35.779Z {uuid: 876a2abb-ab77-4a10-a832-40bd5b87391a, status: FAILED}"
+    },
+    {
+      "time": "2025-09-27T08:19:35.781Z",
+      "text": "[Performance] Verification result stored 0.80ms {uuid: 876a2abb-ab77-4a10-a832-40bd5b87391a, storedId: 81}"
+    },
+    {
+      "time": "2025-09-27T08:19:35.782Z",
+      "text": "[Performance] Hybrid logs refresh (post-store-refresh) started at 2025-09-27T08:19:35.780Z"
+    },
+    {
+      "time": "2025-09-27T08:19:36.252Z",
+      "text": "[Performance] Hybrid logs refresh (post-store-refresh) completed with remote fetch in 471.60ms"
+    },
+    {
+      "time": "2025-09-27T08:19:38.025Z",
+      "text": "[Performance] QR upload verification started at 2025-09-27T08:19:38.024Z"
+    },
+    {
+      "time": "2025-09-27T08:19:38.264Z",
+      "text": "[Performance] QR upload verification completed in 239.00ms"
+    },
+    {
+      "time": "2025-09-27T08:19:38.265Z",
+      "text": "[Performance] Storing verification result started at 2025-09-27T08:19:38.263Z {uuid: aa92461c-03a3-4ea2-a4ed-9fc011914436, status: FAILED}"
+    },
+    {
+      "time": "2025-09-27T08:19:38.267Z",
+      "text": "[Performance] Verification result stored 2.80ms {uuid: aa92461c-03a3-4ea2-a4ed-9fc011914436, storedId: 82}"
+    },
+    {
+      "time": "2025-09-27T08:19:38.268Z",
+      "text": "[Performance] Hybrid logs refresh (post-store-refresh) started at 2025-09-27T08:19:38.266Z"
+    },
+    {
+      "time": "2025-09-27T08:19:38.763Z",
+      "text": "[Performance] Hybrid logs refresh (post-store-refresh) completed with remote fetch in 496.10ms"
+    },
+    {
+      "time": "2025-09-27T08:19:40.483Z",
+      "text": "[Performance] QR upload verification started at 2025-09-27T08:19:40.483Z"
+    },
+    {
+      "time": "2025-09-27T08:19:40.621Z",
+      "text": "[Performance] QR upload verification completed in 137.40ms"
+    },
+    {
+      "time": "2025-09-27T08:19:40.623Z",
+      "text": "[Performance] Storing verification result started at 2025-09-27T08:19:40.622Z {uuid: 8542c478-867a-40ed-bd5f-a06a019d0059, status: FAILED}"
+    },
+    {
+      "time": "2025-09-27T08:19:40.625Z",
+      "text": "[Performance] Verification result stored 1.80ms {uuid: 8542c478-867a-40ed-bd5f-a06a019d0059, storedId: 83}"
+    },
+    {
+      "time": "2025-09-27T08:19:40.625Z",
+      "text": "[Performance] Hybrid logs refresh (post-store-refresh) started at 2025-09-27T08:19:40.624Z"
+    },
+    {
+      "time": "2025-09-27T08:19:41.099Z",
+      "text": "[Performance] Hybrid logs refresh (post-store-refresh) completed with remote fetch in 474.10ms"
+    }
+  ]
+}

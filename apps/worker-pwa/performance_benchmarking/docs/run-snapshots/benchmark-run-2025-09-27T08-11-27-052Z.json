@@ -1,0 +1,80 @@
+{
+  "generatedAt": "2025-09-27T08:11:27.052Z",
+  "url": "http://localhost:5173",
+  "samples": [
+    {
+      "sample": "Sample 1",
+      "error": "FILE_NOT_FOUND"
+    }
+  ],
+  "summary": {
+    "verification": {
+      "samples": 0,
+      "average": null,
+      "min": null,
+      "max": null
+    },
+    "storage": {
+      "samples": 0,
+      "average": null,
+      "min": null,
+      "max": null
+    },
+    "hybridRefresh": {
+      "samples": 0,
+      "average": null,
+      "min": null,
+      "max": null
+    }
+  },
+  "logs": [
+    {
+      "time": "2025-09-27T08:11:11.880Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) started at 2025-09-27T08:11:11.880Z"
+    },
+    {
+      "time": "2025-09-27T08:11:11.950Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) started at 2025-09-27T08:11:11.950Z"
+    },
+    {
+      "time": "2025-09-27T08:11:11.952Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) completed with local fallback after remote error in 71.50ms"
+    },
+    {
+      "time": "2025-09-27T08:11:11.954Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) completed with local fallback after remote error in 3.80ms"
+    },
+    {
+      "time": "2025-09-27T08:11:17.821Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) started at 2025-09-27T08:11:17.822Z"
+    },
+    {
+      "time": "2025-09-27T08:11:17.833Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) started at 2025-09-27T08:11:17.832Z"
+    },
+    {
+      "time": "2025-09-27T08:11:17.901Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) completed with local fallback after remote error in 77.90ms"
+    },
+    {
+      "time": "2025-09-27T08:11:17.907Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) completed with local fallback after remote error in 75.10ms"
+    },
+    {
+      "time": "2025-09-27T08:11:26.708Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) started at 2025-09-27T08:11:26.708Z"
+    },
+    {
+      "time": "2025-09-27T08:11:26.719Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) started at 2025-09-27T08:11:26.719Z"
+    },
+    {
+      "time": "2025-09-27T08:11:26.745Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) started at 2025-09-27T08:11:26.742Z"
+    },
+    {
+      "time": "2025-09-27T08:11:26.860Z",
+      "text": "[Performance] Hybrid logs refresh (initial-load) started at 2025-09-27T08:11:26.849Z"
+    }
+  ]
+}

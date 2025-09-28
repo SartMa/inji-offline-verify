@@ -1,0 +1,33 @@
+{
+  "url": "http://localhost:5173",
+  "iterations": 250,
+  "samples": [
+    {
+      "name": "Image baseline",
+      "file": "../benchmark-samples/image.png"
+    },
+    {
+      "name": "Image 3",
+      "file": "../benchmark-samples/image_3.png"
+    },
+    {
+      "name": "Image 5",
+      "file": "../benchmark-samples/image_5.png"
+    },
+    {
+      "name": "QR_v18",
+      "file": "../benchmark-samples/QR_v18.PNG"
+    },
+    {
+      "name": "QR_v19",
+      "file": "../benchmark-samples/QR_v19.PNG"
+    },
+    {
+      "name": "QR v25",
+      "file": "../benchmark-samples/QR_v25.PNG"
+    }
+
+  ],
+  "waitAfterUploadMs": 1500,
+  "outputDir": "../docs/run-snapshots"
+}

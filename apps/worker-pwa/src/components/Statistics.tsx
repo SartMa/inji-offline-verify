@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
@@ -30,12 +31,12 @@ function AreaGradient({ color, id }: AreaGradientProps) {
 type Trend = 'up' | 'down' | 'neutral';
 
 type StatCardProps = {
-  title: string;
-  value: string | number;
-  trend: Trend;
-  description: string;
-  color?: string; // Made color optional with '?' to fix the "missing property" error
-  data: number[];
+    title: string;
+    value: string | number;
+    trend: Trend;
+    description: string;
+    color?: string; // Made color optional with '?' to fix the "missing property" error
+    data: number[];
 };
 
 // Individual stat card component
@@ -121,36 +122,58 @@ function StatCard({ title, value, trend, description, data }: StatCardProps) {
     );
 }
 
+const LAST_SEVEN_DAYS = 7;
+
 const Statistics = () => {
     const storage = useVCStorage();
     const stats = storage?.stats || { totalStored: 0, pendingSyncCount: 0, syncedCount: 0, failedCount: 0 };
-    const historicalStats = storage?.historicalStats || [];
-    
-    // Calculate sync percentage - percentage of items that have been processed (synced or failed)
+    const dailyStats = storage?.dailyStats || [];
+
     const syncedItems = stats.totalStored - stats.pendingSyncCount;
-    const syncPercentage = stats.totalStored > 0 
-        ? Math.round((syncedItems / stats.totalStored) * 100) 
+    const syncPercentage = stats.totalStored > 0
+        ? Math.round((syncedItems / stats.totalStored) * 100)
         : 0;
-    
-    // Generate trend data from historical stats
-    const generateTrendDataFromHistory = (field: 'totalStored' | 'syncedCount' | 'failedCount' | 'pendingSyncCount') => {
-        if (historicalStats.length === 0) {
-            // If no historical data, return empty array to hide charts
-            return [];
+
+    const paddedDailyStats = useMemo(() => {
+        if (dailyStats.length === 0) {
+            return Array.from({ length: LAST_SEVEN_DAYS }, () => ({
+                totalStored: 0,
+                syncedCount: 0,
+                failedCount: 0,
+            }));
         }
-        
-        // Take last 15 data points for sparkline
-        const recentStats = historicalStats.slice(-15);
-        return recentStats.map(stat => stat[field]);
+
+        const recent = dailyStats.slice(-LAST_SEVEN_DAYS);
+        if (recent.length === LAST_SEVEN_DAYS) {
+            return recent;
+        }
+
+        const padding = Array.from({ length: LAST_SEVEN_DAYS - recent.length }, () => ({
+            totalStored: 0,
+            syncedCount: 0,
+            failedCount: 0,
+        }));
+
+        return [...padding, ...recent];
+    }, [dailyStats]);
+
+    const getSeriesFromDailyStats = (field: 'totalStored' | 'syncedCount' | 'failedCount' | 'pendingSyncCount') => {
+        if (field === 'pendingSyncCount') {
+            return paddedDailyStats.map(day => {
+                const pending = day.totalStored - day.syncedCount - day.failedCount;
+                return pending > 0 ? pending : 0;
+            });
+        }
+
+        return paddedDailyStats.map(day => day[field]);
     };
 
-    // Determine trend direction based on recent data
     const getTrend = (data: number[]): Trend => {
         if (data.length < 2) return 'neutral';
-        const recent = data.slice(-3); // Look at last 3 points
+        const recent = data.slice(-3);
         const first = recent[0];
         const last = recent[recent.length - 1];
-        
+
         if (last > first) return 'up';
         if (last < first) return 'down';
         return 'neutral';
@@ -161,51 +184,48 @@ const Statistics = () => {
             title: 'Total Stored',
             value: stats.totalStored,
             trend: (() => {
-                const data = generateTrendDataFromHistory('totalStored');
+                const data = getSeriesFromDailyStats('totalStored');
                 return data.length > 0 ? getTrend(data) : 'neutral';
             })(),
             description: 'Total verifications stored',
-            data: generateTrendDataFromHistory('totalStored')
+            data: getSeriesFromDailyStats('totalStored'),
         },
         {
             title: 'Success',
             value: stats.syncedCount,
             trend: (() => {
-                const data = generateTrendDataFromHistory('syncedCount');
+                const data = getSeriesFromDailyStats('syncedCount');
                 return data.length > 0 ? getTrend(data) : 'neutral';
             })(),
             description: 'Successfully verified & synced',
-            data: generateTrendDataFromHistory('syncedCount')
+            data: getSeriesFromDailyStats('syncedCount'),
         },
         {
             title: 'Failed',
             value: stats.failedCount,
             trend: (() => {
-                const data = generateTrendDataFromHistory('failedCount');
-                // For failures, invert the trend logic (more failures = down trend)
+                const data = getSeriesFromDailyStats('failedCount');
                 const trend = data.length > 0 ? getTrend(data) : 'neutral';
                 return trend === 'up' ? 'down' : trend === 'down' ? 'up' : 'neutral';
             })(),
             description: 'Failed verifications',
-            data: generateTrendDataFromHistory('failedCount')
+            data: getSeriesFromDailyStats('failedCount'),
         },
         {
             title: 'Pending',
             value: stats.pendingSyncCount,
             trend: (() => {
-                const data = generateTrendDataFromHistory('pendingSyncCount');
-                // For pending, neutral is good (stable queue), up is concerning
+                const data = getSeriesFromDailyStats('pendingSyncCount');
                 const trend = data.length > 0 ? getTrend(data) : 'neutral';
                 return trend === 'up' ? 'down' : trend === 'down' ? 'up' : 'neutral';
             })(),
             description: 'Waiting to sync',
-            data: generateTrendDataFromHistory('pendingSyncCount')
-        }
+            data: getSeriesFromDailyStats('pendingSyncCount'),
+        },
     ];
-    
+
     return (
         <Box sx={{ width: '100%' }}>
-            {/* Sync Progress Section */}
             <Stack spacing={1} sx={{ mb: 2 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Typography variant="body2" color="text.secondary">
@@ -215,14 +235,13 @@ const Statistics = () => {
                         {syncPercentage}%
                     </Typography>
                 </Stack>
-                <LinearProgress 
-                    variant="determinate" 
-                    value={syncPercentage} 
+                <LinearProgress
+                    variant="determinate"
+                    value={syncPercentage}
                     sx={{ height: 6, borderRadius: 3 }}
                 />
             </Stack>
-            
-            {/* Statistics Cards Grid */}
+
             <Grid container spacing={2} sx={{ mb: 2 }}>
                 {statisticsData.map((stat) => (
                     <Grid key={stat.title} size={{ xs: 6, sm: 3 }}>
@@ -230,14 +249,13 @@ const Statistics = () => {
                     </Grid>
                 ))}
             </Grid>
-            
-            {/* Empty State */}
+
             {stats.totalStored === 0 && (
-                <Box 
-                    sx={{ 
-                        textAlign: 'center', 
+                <Box
+                    sx={{
+                        textAlign: 'center',
                         py: 4,
-                        color: 'text.secondary'
+                        color: 'text.secondary',
                     }}
                 >
                     <Typography variant="h3" sx={{ fontSize: '3rem', mb: 1 }}>

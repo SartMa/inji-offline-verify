@@ -16,10 +16,10 @@ interface SideMenuMobileProps {
 }
 
 export default function SideMenuMobile({ open, toggleDrawer }: SideMenuMobileProps) {
-  const { user, organization } = useAuth();
+  // 1. Get the signOut function from your context
+  const { user, organization, signOut } = useAuth();
 
   const getDisplayName = () => {
-    // Always prefer username for display
     return user?.username || 'Worker';
   };
 
@@ -29,6 +29,8 @@ export default function SideMenuMobile({ open, toggleDrawer }: SideMenuMobilePro
     }
     return 'W';
   };
+
+
   return (
     <Drawer
       anchor="right"
@@ -79,7 +81,13 @@ export default function SideMenuMobile({ open, toggleDrawer }: SideMenuMobilePro
           <Divider />
         </Stack>
         <Stack sx={{ p: 2 }}>
-          <Button variant="outlined" fullWidth startIcon={<LogoutRoundedIcon />}>
+          {/* 3. Attach the function to the button's onClick event */}
+          <Button 
+            variant="outlined" 
+            fullWidth 
+            startIcon={<LogoutRoundedIcon />}
+            onClick={signOut}
+          >
             Logout
           </Button>
         </Stack>

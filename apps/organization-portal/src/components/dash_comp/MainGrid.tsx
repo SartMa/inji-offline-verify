@@ -4,8 +4,6 @@ import Typography from '@mui/material/Typography';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { useOrganizationUsers } from '../../hooks/useOrganizationUsers';
 import { useLogsStats } from '../../hooks/useVerificationLogs';
-import Copyright from '../../internals/components/Copyright';
-import HighlightedCard from './HighlightedCard';
 import StatCard, { StatCardProps } from './StatCard';
 import { OrganizationUsersTableSimple } from '../OrganizationUsersTableSimple';
 
@@ -191,7 +189,6 @@ export default function MainGrid({ orgId }: MainGridProps) {
           </Stack>
         </Box> */}
       </Box>
-      {/* <Copyright sx={{ my: 4 }} /> */}
     </Box>
   );
 }

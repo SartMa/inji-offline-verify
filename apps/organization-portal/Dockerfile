@@ -22,4 +22,5 @@ FROM nginx:alpine
 # Vite build outputs to the app-local ./dist (see vite.config.ts outDir './dist')
 # So we copy from /repo/apps/organization-portal/dist not /repo/dist/apps/organization-portal
 COPY --from=builder /repo/apps/organization-portal/dist /usr/share/nginx/html
+COPY apps/organization-portal/nginx/default.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

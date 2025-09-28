@@ -14,18 +14,26 @@ import { styled } from '@mui/material/styles';
 
 const OTPContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
-  gap: theme.spacing(1),
+  gap: theme.spacing(0.5),
   justifyContent: 'center',
   margin: theme.spacing(2, 0),
+  [theme.breakpoints.up('sm')]: {
+    gap: theme.spacing(1),
+  },
 }));
 
 const OTPInput = styled(TextField)(({ theme }) => ({
   '& .MuiInputBase-input': {
     textAlign: 'center',
-    fontSize: '1.5rem',
+    fontSize: '1.2rem',
     fontWeight: 'bold',
-    width: '40px',
-    padding: theme.spacing(1),
+    width: '32px',
+    padding: theme.spacing(0.5),
+    [theme.breakpoints.up('sm')]: {
+      fontSize: '1.5rem',
+      width: '40px',
+      padding: theme.spacing(1),
+    },
   },
 }));
 
@@ -199,7 +207,18 @@ export default function OTPVerificationDialog({
           onClick={handleSubmit}
           variant="contained"
           disabled={!isOTPComplete || isLoading}
-          sx={{ minWidth: 100, position: 'relative' }}
+          sx={(theme) => ({
+            minWidth: 100,
+            position: 'relative',
+            '&:disabled': {
+              color: '#fff',
+            },
+            ...theme.applyStyles('dark', {
+              '&:disabled': {
+                color: '#000',
+              },
+            }),
+          })}
         >
           {isLoading && (
             <CircularProgress

@@ -45,23 +45,40 @@ export default function VerificationActions({ onScanComplete, onUploadComplete }
               sx={{
                 mt: 2, 
                 borderRadius: '20px',
-                color: 'white',
-                background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
-                boxShadow: 'none',
-                '&:hover': { 
-                  opacity: 0.9,
+                minWidth: 120,
+                py: 0.75,
+                px: 2.5,
+                fontWeight: 600,
+                textTransform: 'none',
+                backgroundColor: '#000000',
+                color: '#ffffff',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                '[data-mui-color-scheme="dark"] &': {
+                  backgroundColor: '#ffffff',
+                  color: '#000000',
+                  boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
+                },
+                '&:hover': {
+                  backgroundColor: '#000000',
+                  color: '#ffffff',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
                   transform: 'translateY(-1px)',
-                  background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
-                  boxShadow: 'none',
+                  '[data-mui-color-scheme="dark"] &': {
+                    backgroundColor: '#ffffff',
+                    color: '#000000',
+                    boxShadow: '0 4px 12px rgba(255, 255, 255, 0.2)',
+                  },
                 },
                 '&:active': {
-                  background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
-                  boxShadow: 'none',
+                  transform: 'translateY(0px)',
                 },
                 '&:focus': {
-                  background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
-                  boxShadow: 'none',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                  '[data-mui-color-scheme="dark"] &': {
+                    boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
+                  },
                 },
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
               }}
             >
               Start Scan

@@ -151,7 +151,6 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
                   <TestInterface />
                 </Box> */}
                 
-                {/* <Copyright sx={{ my: 4 }} /> */}
               </Box>
             </Stack>
           </Box>

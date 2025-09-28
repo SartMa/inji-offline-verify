@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
+import { useAuth } from './AuthContext';
 import { syncToServer as syncToServerService } from '../services/syncService';
 import { 
   fetchHistoricalLogsWithCache, 
@@ -105,10 +106,12 @@ type VCStorageContextValue = {
     recordVerificationDuration: (durationMs: number) => void;
 };
 
+const EMPTY_STATS: Stats = { totalStored: 0, pendingSyncCount: 0, syncedCount: 0, failedCount: 0 };
+
 const defaultContextValue: VCStorageContextValue = {
   isOnline: false,
   serviceWorkerActive: false,
-  stats: { totalStored: 0, pendingSyncCount: 0, syncedCount: 0, failedCount: 0 },
+    stats: EMPTY_STATS,
   historicalStats: [],
     dailyStats: [],
   logs: [],
@@ -144,13 +147,9 @@ function genUuid(): string {
 export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
     const { children = null } = props || {};
     // REMOVED: const [db, setDb] = useState<IDBDatabase | null>(null);
+    const { isAuthenticated, isLoading } = useAuth();
     const [isOnline, setIsOnline] = useState(navigator.onLine);
-    const [stats, setStats] = useState<Stats>({
-        totalStored: 0,
-        pendingSyncCount: 0,
-        syncedCount: 0,
-        failedCount: 0
-    });
+    const [stats, setStats] = useState<Stats>(() => ({ ...EMPTY_STATS }));
     const [historicalStats, setHistoricalStats] = useState<HistoricalStats[]>([]);
     const [logs, setLogs] = useState<LogItem[]>([]);
     const [dailyStats, setDailyStats] = useState<DailyStat[]>([]);
@@ -272,7 +271,11 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         }
         // Clear cache when days change and refresh logs
         clearHistoricalLogsCache();
-        
+
+        if (!isAuthenticated) {
+            return;
+        }
+
         // If online, immediately refresh with new setting
         if (navigator.onLine) {
             refreshHistoricalLogs();
@@ -284,6 +287,11 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
 
     // Fetch and merge historical logs with local logs
     const loadHybridLogs = async (reason: string = 'load-hybrid-logs') => {
+        if (!isAuthenticated) {
+            setLogs([]);
+            setDailyStats([]);
+            return;
+        }
         const startTime = performance.now();
         const logPrefix = `[Performance] Hybrid logs refresh (${reason})`;
         console.log(`${logPrefix} started at`, new Date().toISOString());
@@ -358,11 +366,26 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
     
     // Public function to refresh historical logs
     const refreshHistoricalLogs = async () => {
+        if (!isAuthenticated) {
+            return;
+        }
         await loadHybridLogs('manual-refresh');
     };
 
     // Initialize (no explicit initDB needed; dbService opens lazily)
     useEffect(() => {
+        if (isLoading) {
+            return;
+        }
+
+        if (!isAuthenticated) {
+            setStats({ ...EMPTY_STATS });
+            setLogs([]);
+            setDailyStats([]);
+            setHistoricalStats([]);
+            return;
+        }
+
         const loadData = async () => {
             await updateStats(); // Initial stats load
             await loadHybridLogs('initial-load'); // Load hybrid logs
@@ -384,7 +407,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         };
 
         loadHistoricalStats();
-    }, []);
+    }, [isAuthenticated, isLoading]);
 
     // Track service worker state and listen for sync triggers
     useEffect(() => {
@@ -430,6 +453,10 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
 
     // Update UI data periodically
     const updateStats = async () => {
+        if (!isAuthenticated) {
+            setStats({ ...EMPTY_STATS });
+            return;
+        }
         const all = await getAllFromDb();
         const unsynced = await getUnsyncedFromDb();
 
@@ -475,6 +502,10 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
     };
 
     useEffect(() => {
+        if (!isAuthenticated) {
+            return;
+        }
+
         const interval = setInterval(() => {
             updateStats();
         }, 60000);
@@ -490,7 +521,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
             clearInterval(interval);
             clearInterval(logsInterval);
         };
-    }, [isLoadingHistoricalLogs, historicalLogsDays]); // Re-setup intervals when loading state or days change
+    }, [isAuthenticated, isLoadingHistoricalLogs, historicalLogsDays]); // Re-setup intervals when loading state or days change
 
     // Core storage functions now use dbService
     const storeVerificationResult = async (jsonData: any): Promise<number | undefined> => {

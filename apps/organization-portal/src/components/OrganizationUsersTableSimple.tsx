@@ -69,7 +69,15 @@ export const OrganizationUsersTableSimple: React.FC<OrganizationUsersTableSimple
     setPage(0); // Reset to first page when filtering
   };
 
+  const isAdminMember = (member: OrganizationMember) => {
+    const roleValue = member.role || '';
+    return roleValue.toUpperCase() === 'ADMIN';
+  };
+
   const handleEditClick = (member: OrganizationMember) => {
+    if (isAdminMember(member)) {
+      return;
+    }
     setEditingMember(member);
     setEditFormData({
       role: member.role,
@@ -197,9 +205,9 @@ export const OrganizationUsersTableSimple: React.FC<OrganizationUsersTableSimple
                 <TableCell>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     Name
-                    <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                    {/* <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
                       (click to view logs)
-                    </Typography>
+                    </Typography> */}
                   </Box>
                 </TableCell>
                 <TableCell>Email</TableCell>
@@ -275,21 +283,25 @@ export const OrganizationUsersTableSimple: React.FC<OrganizationUsersTableSimple
                     >
                       <LogsIcon />
                     </IconButton>
-                    <IconButton 
-                      onClick={() => handleEditClick(member)}
-                      size="small"
-                      disabled={actionLoading}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton 
-                      onClick={() => handleDeleteClick(member)}
-                      size="small"
-                      color="error"
-                      disabled={actionLoading}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+                    {!isAdminMember(member) && (
+                      <>
+                        <IconButton 
+                          onClick={() => handleEditClick(member)}
+                          size="small"
+                          disabled={actionLoading}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton 
+                          onClick={() => handleDeleteClick(member)}
+                          size="small"
+                          color="error"
+                          disabled={actionLoading}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

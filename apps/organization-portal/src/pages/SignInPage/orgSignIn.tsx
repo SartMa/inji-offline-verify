@@ -5,7 +5,6 @@ import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import CssBaseline from '@mui/material/CssBaseline';
 import FormControlLabel from '@mui/material/FormControlLabel';
-import Divider from '@mui/material/Divider';
 import FormLabel from '@mui/material/FormLabel';
 import FormControl from '@mui/material/FormControl';
 import Link from '@mui/material/Link';
@@ -18,7 +17,6 @@ import Alert from '@mui/material/Alert';
 import { styled } from '@mui/material/styles';
 import ForgotPassword from '@inji-offline-verify/shared-ui/src/components/ForgotPassword';
 import { AppTheme, ColorModeSelect } from '@inji-offline-verify/shared-ui/src/theme';
-import { GoogleIcon, FacebookIcon, SitemarkIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons';
 import { useAuth, loginorg } from '@inji-offline-verify/shared-auth';
 
 const Card = styled(MuiCard)(({ theme }) => ({
@@ -71,9 +69,9 @@ interface OrgSignInProps {
 
 export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwitchToWorkerSignIn }: OrgSignInProps) {
   const navigate = useNavigate();
-  const [orgName, setOrgName] = React.useState('AcmeCorp10');
-  const [username, setUsername] = React.useState('org1');
-  const [password, setPassword] = React.useState('12345678');
+  const [orgName, setOrgName] = React.useState('');
+  const [username, setUsername] = React.useState('');
+  const [password, setPassword] = React.useState('');
   const [orgError, setOrgError] = React.useState(false);
   const [orgErrorMessage, setOrgErrorMessage] = React.useState('');
   const [usernameError, setUsernameError] = React.useState(false);
@@ -123,9 +121,7 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
         "org_name": orgName.trim()
       };
 
-      console.log('Organization login request:', loginData);
-      const res = await loginorg(loginData);
-      console.log('Organization login successful:', res);
+  const res = await loginorg(loginData);
 
       // Use the auth context signIn method to update the global state
       await signIn(username, password);
@@ -134,8 +130,7 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
       navigate('/dashboard');
       showToast('Successfully signed in!', 'success');
     } catch (error: any) {
-      console.error('Organization sign in failed:', error);
-      console.log('Organization error response data:', error?.response?.data);
+  console.error('Organization sign in failed:', error);
       
       // Extract error message from server response
       let errorMessage = 'Invalid credentials';
@@ -265,7 +260,6 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
       <SignInContainer direction="column" justifyContent="space-between">
         <ColorModeSelect sx={{ position: 'fixed', top: '1rem', right: '1rem' }} />
         <Card variant="outlined">
-          <SitemarkIcon />
           <Typography
             component="h1"
             variant="h4"
@@ -443,49 +437,6 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
             >
               Forgot your password?
             </Link>
-          </Box>
-          <Divider>or</Divider>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={() => alert('Sign in with Google')}
-              startIcon={<GoogleIcon />}
-            >
-              Sign in with Google
-            </Button>
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={() => alert('Sign in with Facebook')}
-              startIcon={<FacebookIcon />}
-            >
-              Sign in with Facebook
-            </Button>
-            <Typography sx={{ textAlign: 'center' }}>
-              Don&apos;t have an organization?{' '}
-              <Link
-                component="button"
-                type="button"
-                onClick={handleSwitchToSignUp}
-                variant="body2"
-                sx={{ alignSelf: 'center' }}
-              >
-                Register Organization
-              </Link>
-            </Typography>
-            {/* <Typography sx={{ textAlign: 'center', mt: 1 }}>
-              Are you a worker?{' '}
-              <Link
-                component="button"
-                type="button"
-                onClick={onSwitchToWorkerSignIn}
-                variant="body2"
-                sx={{ alignSelf: 'center' }}
-              >
-                Worker Sign in
-              </Link>
-            </Typography> */}
           </Box>
         </Card>
         

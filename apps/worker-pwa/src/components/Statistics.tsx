@@ -249,26 +249,6 @@ const Statistics = () => {
                     </Grid>
                 ))}
             </Grid>
-
-            {stats.totalStored === 0 && (
-                <Box
-                    sx={{
-                        textAlign: 'center',
-                        py: 4,
-                        color: 'text.secondary',
-                    }}
-                >
-                    <Typography variant="h3" sx={{ fontSize: '3rem', mb: 1 }}>
-                        📭
-                    </Typography>
-                    <Typography variant="h6" gutterBottom>
-                        No data yet
-                    </Typography>
-                    <Typography variant="body2">
-                        Start by testing the verification interface to see statistics
-                    </Typography>
-                </Box>
-            )}
         </Box>
     );
 };

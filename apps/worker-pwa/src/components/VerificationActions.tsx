@@ -91,7 +91,7 @@ export default function VerificationActions({ onScanComplete, onUploadComplete }
               Upload File
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Upload credential files for verification
+              Upload verifiable credential files for verification
             </Typography>
             <Button
               variant="outlined"

@@ -41,6 +41,15 @@ const isURL = (value: any) => {
   return typeof value === 'string' && (value.startsWith('http://') || value.startsWith('https://'));
 };
 
+const formatErrorCodeForDisplay = (code?: string | null) => {
+  if (!code) {
+    return [];
+  }
+
+  // Return the full error code as a single line
+  return [code];
+};
+
 const CredentialField = ({ label, value }: { label: string; value: any }) => {
   return (
     <Box 
@@ -462,6 +471,9 @@ export default function VerificationResultModal({ open, onClose, result }: Props
                     borderRadius: '8px',
                     transition: 'all 0.2s ease',
                     height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1,
                     '&:hover': {
                       borderColor: theme.palette.error.main,
                       boxShadow: `0 2px 8px ${alpha(theme.palette.error.main, 0.15)}`,
@@ -472,27 +484,43 @@ export default function VerificationResultModal({ open, onClose, result }: Props
                       fontWeight: 600,
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px',
-                      fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                      textAlign: 'left'
                     }}>
                       Error Code
                     </Typography>
-                    <Typography variant="body2" sx={{ 
-                      fontWeight: 600,
-                      fontFamily: 'monospace',
-                      color: theme.palette.error.main,
-                      mt: 0.5,
-                      fontSize: { xs: '0.75rem', sm: '0.8rem' },
-                      backgroundColor: alpha(theme.palette.error.main, 0.1),
-                      px: 0.75,
-                      py: 0.25,
-                      borderRadius: '4px',
-                      display: 'inline-block',
-                      maxWidth: '100%',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}>
-                      {result.verificationErrorCode}
-                    </Typography>
+                    <Box
+                      sx={{
+                        backgroundColor: alpha(theme.palette.error.main, 0.1),
+                        px: 0.75,
+                        py: 0.6,
+                        borderRadius: '4px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        gap: 0.3,
+                        width: '100%'
+                      }}
+                    >
+                      {formatErrorCodeForDisplay(result.verificationErrorCode).map((segment, index) => (
+                        <Typography
+                          key={`${segment}-${index}`}
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            fontFamily: 'monospace',
+                            color: theme.palette.error.main,
+                            fontSize: { xs: '0.75rem', sm: '0.8rem' },
+                            lineHeight: 1.2,
+                            textAlign: 'left',
+                            wordBreak: 'break-word',
+                            whiteSpace: 'normal'
+                          }}
+                        >
+                          {segment}
+                        </Typography>
+                      ))}
+                    </Box>
                   </Box>
                 </Box>
               )}

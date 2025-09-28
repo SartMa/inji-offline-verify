@@ -26,6 +26,9 @@
   --neutral-border: rgba(107, 114, 128, 0.2);
   --table-background: #ffffff;
   --container-bg: #ffffff;
+  --slider-background: rgba(243, 244, 246, 0.65);
+  --slider-border: rgba(209, 213, 219, 0.7);
+  --slider-rail: rgba(209, 213, 219, 0.6);
 }
 
 [data-mui-color-scheme='dark'] {
@@ -55,6 +58,9 @@
   --neutral-border: rgba(107, 114, 128, 0.2);
   --table-background: rgba(17, 24, 39, 1);
   --container-bg: transparent;
+  --slider-background: rgba(8, 11, 20, 0.92);
+  --slider-border: rgba(71, 85, 105, 0.55);
+  --slider-rail: rgba(100, 116, 139, 0.55);
 }
 
 .storage-logs-container {

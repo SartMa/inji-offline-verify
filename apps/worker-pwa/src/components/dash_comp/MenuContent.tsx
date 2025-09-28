@@ -18,9 +18,9 @@ import { useState, useEffect } from 'react';
 const mainListItems = [
   { text: 'Dashboard', icon: <HomeRoundedIcon />, path: '/dashboard', clickable: true, scrollTo: 'top' },
   { text: 'VC Verification', icon: <VerifiedUserIcon />, path: null, clickable: true, scrollTo: 'vc-verification' },
-  { text: 'VP Verification', icon: <QrCodeScannerIcon />, path: '/vp-verification', clickable: true, scrollTo: null },
   { text: 'Sync Status', icon: <SyncIcon />, path: null, clickable: true, scrollTo: 'statistics' },
   { text: 'Statistics', icon: <AssessmentIcon />, path: null, clickable: true, scrollTo: 'sync-status' },
+  { text: 'VP Verification', icon: <QrCodeScannerIcon />, path: '/vp-verification', clickable: false, scrollTo: null },
 ];
 
 const secondaryListItems = [

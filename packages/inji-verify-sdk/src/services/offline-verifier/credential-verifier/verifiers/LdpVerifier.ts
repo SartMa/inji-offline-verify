@@ -5,7 +5,7 @@ import { Ed25519VerificationKey2020 } from '@digitalbazaar/ed25519-verification-
 import { Ed25519Signature2018 } from '@digitalbazaar/ed25519-signature-2018';
 import { Ed25519VerificationKey2018 } from '@digitalbazaar/ed25519-verification-key-2018';
 import { secp256k1 } from '@noble/curves/secp256k1';
-import { sha256 } from '@noble/hashes/sha2';
+import { sha256 } from '@noble/hashes/sha2.js';
 import { base64url } from 'multiformats/bases/base64';
 
 // Import SDK-internal utilities and exceptions
@@ -154,7 +154,8 @@ export class LdpVerifier {
 
       const enc = new TextEncoder();
       const signingInput = concatBytes(enc.encode(protectedB64), enc.encode('.'), payloadBytes);
-      const signingInputHash = sha256(signingInput);
+  // Use the named import 'sha256' directly (previous code referenced 'sha2.sha256' but no namespace import existed)
+  const signingInputHash = sha256(signingInput);
 
       const signaturePart = parts[2];
       const signatureBytes = signaturePart.startsWith('u')

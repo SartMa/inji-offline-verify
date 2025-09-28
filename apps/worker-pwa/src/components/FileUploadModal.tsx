@@ -47,7 +47,7 @@ export default function FileUploadModal({ open, onClose, onResult }: FileUploadM
 	const [uploadedVCs, setUploadedVCs] = useState<UploadedVC[]>([]);
 	const [selectedVCForView, setSelectedVCForView] = useState<VerificationResult | null>(null);
 
-	const { storeVerificationResult } = useVCStorage();
+	const { storeVerificationResult, recordVerificationDuration } = useVCStorage();
 	const verificationStartRef = useRef<number | null>(null);
 
 	// Check cache status when modal opens
@@ -110,6 +110,7 @@ export default function FileUploadModal({ open, onClose, onResult }: FileUploadM
 		if (typeof start === 'number') {
 			const durationMs = performance.now() - start;
 			console.log('[Performance] QR upload verification completed in', `${durationMs.toFixed(2)}ms`);
+			recordVerificationDuration(durationMs);
 			verificationStartRef.current = null;
 		}
 

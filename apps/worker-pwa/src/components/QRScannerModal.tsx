@@ -218,15 +218,27 @@ export default function QRScannerModal({ open, onClose, onResult }: QRScannerMod
             borderRadius: 3,
             minHeight: '500px',
             backgroundColor: 'background.paper',
-            backgroundImage: 'none', // Remove default MUI background gradient in dark mode
+            backgroundImage: 'none',
+            // Mobile specific adjustments without changing desktop
+            '@media (max-width: 600px)': {
+              borderRadius: 2,
+              m: 1,
+              maxHeight: 'calc(100vh - 16px)',
+            },
+          },
+        }}
+        sx={{
+          // Prevent heavy black overlay on mobile while keeping desktop behavior
+          '& .MuiBackdrop-root': {
+            backgroundColor: { xs: 'rgba(0, 0, 0, 0.3)', sm: 'rgba(0, 0, 0, 0.5)' },
           },
         }}
       >
-        <DialogTitle sx={{ p: 2, pb: 1 }}>
+        <DialogTitle sx={{ p: { xs: 1, sm: 2 }, pb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <QrCodeScanner sx={{ color: 'primary.main' }} />
-              <Typography variant="h6" component="span">
+              <QrCodeScanner sx={{ color: 'primary.main', fontSize: { xs: 20, sm: 24 } }} />
+              <Typography variant="h6" component="span" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
                 Scan QR Codes
               </Typography>
               {scannedVCs.length > 0 && (
@@ -239,7 +251,13 @@ export default function QRScannerModal({ open, onClose, onResult }: QRScannerMod
           </Box>
         </DialogTitle>
 
-        <DialogContent sx={{ p: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <DialogContent sx={{ 
+          p: { xs: 2, sm: 3 }, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          overflow: 'auto',
+        }}>
           {!scannerStarted ? (
             // Scanner Preview UI
             <Box sx={{ textAlign: 'center', width: '100%' }}>
@@ -248,8 +266,8 @@ export default function QRScannerModal({ open, onClose, onResult }: QRScannerMod
                   border: '2px dashed',
                   borderColor: 'primary.main',
                   borderRadius: 3,
-                  p: { xs: 3, sm: 6 },
-                  mb: 3,
+                  p: { xs: 2, sm: 4, md: 6 },
+                  mb: { xs: 2, sm: 3 },
                   backgroundColor: (theme) => 
                     theme.palette.mode === 'dark' 
                       ? 'rgba(59, 130, 246, 0.08)' 
@@ -388,10 +406,10 @@ export default function QRScannerModal({ open, onClose, onResult }: QRScannerMod
             <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
               {/* Scanner Area */}
               <Box sx={{ 
-                minHeight: '400px', 
-                minWidth: '400px',
+                minHeight: { xs: '300px', sm: '400px' }, 
+                minWidth: { xs: '280px', sm: '400px' },
                 width: '100%',
-                height: '400px',
+                height: { xs: '300px', sm: '400px' },
                 mb: 2, 
                 position: 'relative',
                 border: '1px solid #ddd',

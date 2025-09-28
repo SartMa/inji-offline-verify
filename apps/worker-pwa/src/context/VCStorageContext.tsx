@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import { syncToServer as syncToServerService } from '../services/syncService';
 import { 
   fetchHistoricalLogsWithCache, 
@@ -39,6 +39,49 @@ type LogItem = {
     hash: string;
 };
 
+const MAX_METRIC_SAMPLES = 50;
+const VERIFICATION_METRICS_KEY = 'vcMetrics:verificationMs';
+const STORAGE_METRICS_KEY = 'vcMetrics:storageMs';
+
+const sanitizeDurations = (values: unknown[]): number[] =>
+    values
+        .map((value) => (typeof value === 'number' ? value : Number(value)))
+        .filter((value) => Number.isFinite(value) && value > 0)
+        .slice(-MAX_METRIC_SAMPLES);
+
+const loadDurations = (key: string): number[] => {
+    if (typeof localStorage === 'undefined') {
+        return [];
+    }
+
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) {
+            return [];
+        }
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) {
+            return [];
+        }
+        return sanitizeDurations(parsed);
+    } catch (error) {
+        console.warn('Failed to load stored performance durations', { key, error });
+        return [];
+    }
+};
+
+const persistDurations = (key: string, values: number[]) => {
+    if (typeof localStorage === 'undefined') {
+        return;
+    }
+
+    try {
+        localStorage.setItem(key, JSON.stringify(values.slice(-MAX_METRIC_SAMPLES)));
+    } catch (error) {
+        console.warn('Failed to persist performance durations', { key, error });
+    }
+};
+
 type VCStorageContextValue = {
     isOnline: boolean;
     serviceWorkerActive: boolean;
@@ -57,6 +100,9 @@ type VCStorageContextValue = {
     exportData: () => Promise<void>;
     clearPendingSync: () => Promise<void>;
     refreshHistoricalLogs: () => Promise<void>;
+    avgVerificationMs: number | null;
+    avgStorageWriteMs: number | null;
+    recordVerificationDuration: (durationMs: number) => void;
 };
 
 const defaultContextValue: VCStorageContextValue = {
@@ -76,7 +122,10 @@ const defaultContextValue: VCStorageContextValue = {
     clearAllData: async () => {},
     exportData: async () => {},
     clearPendingSync: async () => {},
-    refreshHistoricalLogs: async () => {}
+        refreshHistoricalLogs: async () => {},
+        avgVerificationMs: null,
+        avgStorageWriteMs: null,
+        recordVerificationDuration: () => {}
 };
 const VCStorageContext = createContext<VCStorageContextValue>(defaultContextValue);
 
@@ -106,6 +155,48 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
     const [logs, setLogs] = useState<LogItem[]>([]);
     const [dailyStats, setDailyStats] = useState<DailyStat[]>([]);
     const [serviceWorkerActive, setServiceWorkerActive] = useState(false);
+    const [verificationDurations, setVerificationDurations] = useState<number[]>(() => loadDurations(VERIFICATION_METRICS_KEY));
+    const [storageDurations, setStorageDurations] = useState<number[]>(() => loadDurations(STORAGE_METRICS_KEY));
+
+    const recordVerificationDuration = useCallback((durationMs: number) => {
+        if (!Number.isFinite(durationMs) || durationMs <= 0) {
+            return;
+        }
+
+        setVerificationDurations(prev => {
+            const next = [...prev, durationMs].slice(-MAX_METRIC_SAMPLES);
+            persistDurations(VERIFICATION_METRICS_KEY, next);
+            return next;
+        });
+    }, []);
+
+    const recordStorageDuration = useCallback((durationMs: number) => {
+        if (!Number.isFinite(durationMs) || durationMs <= 0) {
+            return;
+        }
+
+        setStorageDurations(prev => {
+            const next = [...prev, durationMs].slice(-MAX_METRIC_SAMPLES);
+            persistDurations(STORAGE_METRICS_KEY, next);
+            return next;
+        });
+    }, []);
+
+    const avgVerificationMs = useMemo(() => {
+        if (verificationDurations.length === 0) {
+            return null;
+        }
+        const total = verificationDurations.reduce((sum, value) => sum + value, 0);
+        return total / verificationDurations.length;
+    }, [verificationDurations]);
+
+    const avgStorageWriteMs = useMemo(() => {
+        if (storageDurations.length === 0) {
+            return null;
+        }
+        const total = storageDurations.reduce((sum, value) => sum + value, 0);
+        return total / storageDurations.length;
+    }, [storageDurations]);
     
     // New state for historical logs
     const [isLoadingHistoricalLogs, setIsLoadingHistoricalLogs] = useState(false);
@@ -427,6 +518,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
             uuid: rec.uuid,
             storedId
         });
+        recordStorageDuration(storeDuration);
 
         // Refresh stats and logs quickly after write
         updateStats().catch(() => {});
@@ -530,7 +622,10 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         clearAllData,
         exportData,
         clearPendingSync,
-        refreshHistoricalLogs
+        refreshHistoricalLogs,
+        avgVerificationMs,
+        avgStorageWriteMs,
+        recordVerificationDuration
     };
 
     // Guard: if no children passed, avoid runtime crash and still mount provider

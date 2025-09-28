@@ -3,7 +3,8 @@ import { decodeDidKeyMultibaseEd25519 } from '../publicKey/Utils.js';
 import { base64url } from 'multiformats/bases/base64';
 import { base58btc } from 'multiformats/bases/base58';
 import jsonld from 'jsonld';
-import { sha256 } from '@noble/hashes/sha2';
+// Add .js to subpath to avoid Vite import-analysis resolution issues on some environments
+import { sha256 } from '@noble/hashes/sha2.js';
 
 const textEncoder = new TextEncoder();
 

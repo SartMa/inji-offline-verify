@@ -42,6 +42,13 @@ const CredentialVerifierConstants = {
     ERROR_MESSAGE_OFFLINE_DEPENDENCIES_MISSING: "Required verification data not available offline. Connect to the internet to seed the cache and try again.",
     ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING: "ERR_OFFLINE_DEPENDENCIES_MISSING",
 
+    // CORS and network-related errors
+    ERROR_CODE_CORS_BLOCKED: "ERR_CORS_BLOCKED",
+    ERROR_MESSAGE_CORS_BLOCKED: "Verification failed due to CORS policy restrictions. The issuer's server does not allow cross-origin requests.",
+    
+    ERROR_CODE_PUBLIC_KEY_RESOLUTION_FAILED: "ERR_PUBLIC_KEY_RESOLUTION_FAILED",
+    ERROR_MESSAGE_PUBLIC_KEY_RESOLUTION_FAILED: "Unable to resolve the public key needed for verification.",
+
     // This is used to turn public key bytes into a buffer in DER format
     DER_PUBLIC_KEY_PREFIX: "302a300506032b6570032100",
 

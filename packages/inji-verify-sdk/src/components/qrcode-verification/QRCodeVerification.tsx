@@ -25,8 +25,13 @@ import { Slider } from "@mui/material";
 import "./QRCodeVerification.css";
 
 import { CredentialsVerifier } from '../../services/offline-verifier/CredentialsVerifier';
+import { PresentationVerifier } from '../../services/offline-verifier/PresentationVerifier';
 import { CredentialFormat } from '../../services/offline-verifier/constants/CredentialFormat';
-import { VerificationResult } from '../../services/offline-verifier/data/data';
+import {
+  VerificationResult,
+  VPVerificationStatus,
+  VerificationStatus as CredentialVerificationStatus,
+} from '../../services/offline-verifier/data/data';
 
 export interface QRCodeVerificationProps {
   triggerElement?: React.ReactNode;
@@ -200,6 +205,61 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
     }
   };
 
+  const isVerifiablePresentation = (payload: any): boolean => {
+    if (!payload) return false;
+    const typeField = payload.type;
+    if (Array.isArray(typeField) && typeField.includes('VerifiablePresentation')) return true;
+    if (typeof typeField === 'string' && typeField === 'VerifiablePresentation') return true;
+    return Array.isArray(payload.verifiableCredential) || !!payload.verifiableCredential;
+  };
+
+  const verifyPresentationPayload = async (presentationPayload: any): Promise<VerificationResult> => {
+    const presentationVerifier = new PresentationVerifier();
+    const presentationJson = typeof presentationPayload === 'string'
+      ? presentationPayload
+      : JSON.stringify(presentationPayload);
+
+    const presentationResult = await presentationVerifier.verify(presentationJson);
+    const proofValid = presentationResult.proofVerificationStatus === VPVerificationStatus.VALID;
+    const hasInvalidVc = presentationResult.vcResults.some(
+      (vc) => vc.status === CredentialVerificationStatus.INVALID,
+    );
+    const hasExpiredVc = presentationResult.vcResults.some(
+      (vc) => vc.status === CredentialVerificationStatus.EXPIRED,
+    );
+
+    // Handle expired credentials the same way as other signatures - valid but expired
+    const overallStatus = proofValid && !hasInvalidVc; // Remove hasExpiredVc from failure condition
+    const reasons: string[] = [];
+    if (!proofValid) reasons.push('presentation proof invalid');
+    if (hasInvalidVc) reasons.push('credential invalid');
+
+    const message = overallStatus
+      ? hasExpiredVc 
+        ? 'Presentation verified successfully (credential expired)'
+        : 'Presentation verification successful'
+      : `Presentation verification failed${reasons.length ? `: ${reasons.join(', ')}` : ''}`;
+
+    // Set appropriate error code for expired credentials
+    let errorCode = '';
+    if (!overallStatus) {
+      errorCode = 'VP_VERIFICATION_FAILED';
+    } else if (hasExpiredVc) {
+      errorCode = 'VC_EXPIRED'; // Same as other signature handlers use
+    }
+
+    const result = new VerificationResult(
+      overallStatus,
+      message,
+      errorCode,
+      presentationPayload,
+    ) as VerificationResult & { presentationVerification?: typeof presentationResult };
+
+    result.presentationVerification = presentationResult;
+
+    return result;
+  };
+
   async function processScanResult(rawInput: unknown) {
     try {
       if (typeof rawInput === 'string') {
@@ -219,24 +279,38 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
       clearTimer();
       stopVideoStream();
       setScanning(true);
+      setLoading(true);
 
       try {
-        const verifier = new CredentialsVerifier();
-        const format = props.credentialFormat ?? CredentialFormat.LDP_VC;
-        const payload = JSON.stringify(credentialPayload);
-        const result = await verifier.verify(payload, format);
+        let verificationOutcome: VerificationResult;
 
-        const parsedObject = credentialPayload;
-        const hasResultShape = result && typeof result === 'object' && 'verificationStatus' in result;
-        if (hasResultShape) {
-          const r = result as VerificationResult & { payload?: any };
-          if (!r.payload) r.payload = parsedObject;
-          props.onVerificationResult?.(r as VerificationResult);
+        if (isVerifiablePresentation(credentialPayload)) {
+          verificationOutcome = await verifyPresentationPayload(credentialPayload);
         } else {
-          const wrapped = new VerificationResult(!!result, !!result ? 'Verification successful' : 'Verification failed', '');
-          wrapped.payload = parsedObject;
-          props.onVerificationResult?.(wrapped);
+          const verifier = new CredentialsVerifier();
+          const format = props.credentialFormat ?? CredentialFormat.LDP_VC;
+          const payload = typeof credentialPayload === 'string'
+            ? credentialPayload
+            : JSON.stringify(credentialPayload);
+          const result = await verifier.verify(payload, format);
+
+          if (result && typeof result === 'object' && 'verificationStatus' in result) {
+            verificationOutcome = result as VerificationResult;
+            if (!verificationOutcome.payload) {
+              verificationOutcome.payload = credentialPayload;
+            }
+          } else {
+            const wrapped = new VerificationResult(
+              !!result,
+              !!result ? 'Verification successful' : 'Verification failed',
+              '',
+            );
+            wrapped.payload = credentialPayload;
+            verificationOutcome = wrapped;
+          }
         }
+
+        props.onVerificationResult?.(verificationOutcome);
       } finally {
         setScanning(false);
         setUploading(false);

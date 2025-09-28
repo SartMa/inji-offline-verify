@@ -24,4 +24,5 @@ RUN pnpm --filter @inji-offline-verify/shared-ui run build || true \
 FROM nginx:alpine
 # Vite build outputs to the app-local ./dist (see vite.config.ts) so adjust copy path
 COPY --from=builder /repo/apps/worker-pwa/dist /usr/share/nginx/html
+COPY apps/worker-pwa/nginx/default.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

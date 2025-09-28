@@ -63,6 +63,8 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
   const [zoomLevel, setZoomLevel] = useState(INITIAL_ZOOM_LEVEL);
   const [isMobile, setIsMobile] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [retryCount, setRetryCount] = useState(0); // Add retry counter
+  const [isStartingCamera, setIsStartingCamera] = useState(false); // Add camera starting state
   const canvasRef = useRef<HTMLCanvasElement>(document.createElement("canvas"));
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamingRef = useRef(false);
@@ -113,26 +115,117 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
   }, []);
 
   const startVideoStream = useCallback(() => {
-    if (!isEnableScan || isCameraActive || streamingRef.current) {
+    console.log('QR Scanner: startVideoStream called', { isEnableScan, isCameraActive, streaming: streamingRef.current, retryCount, isStartingCamera });
+    
+    if (!isEnableScan || isCameraActive || streamingRef.current || isStartingCamera) {
+      console.log('QR Scanner: Early return from startVideoStream - already active or starting');
       return;
     }
-    navigator.mediaDevices.getUserMedia({ video: { /* ... constraints ... */ } })
+
+    // Set starting state to prevent multiple simultaneous starts
+    setIsStartingCamera(true);
+
+    // Check if video element exists, if not, retry with limit
+    const video = videoRef.current;
+    if (!video) {
+      if (retryCount < 10) { // Max 10 retries (1 second total)
+        console.log(`QR Scanner: Video element not ready, retrying ${retryCount + 1}/10 in 100ms...`);
+        setRetryCount(prev => prev + 1);
+        setTimeout(() => {
+          setIsStartingCamera(false); // Reset starting state before retry
+          startVideoStream();
+        }, 100);
+        return;
+      } else {
+        console.error('QR Scanner: Video element never became available after 10 retries');
+        setIsStartingCamera(false);
+        onError(new Error('Video element not available - camera cannot be initialized'));
+        return;
+      }
+    }
+
+    // Reset retry count when video element is found
+    setRetryCount(0);
+    
+    const videoConstraints = {
+      width: { ideal: CONSTRAINTS_IDEAL_WIDTH },
+      height: { ideal: CONSTRAINTS_IDEAL_HEIGHT },
+      frameRate: { ideal: CONSTRAINTS_IDEAL_FRAME_RATE },
+      facingMode: 'environment' // Use back camera for QR scanning
+    };
+    
+    const fallbackConstraints = {
+      width: { ideal: CONSTRAINTS_IDEAL_WIDTH },
+      height: { ideal: CONSTRAINTS_IDEAL_HEIGHT },
+      frameRate: { ideal: CONSTRAINTS_IDEAL_FRAME_RATE }
+      // No facingMode for fallback - use any available camera
+    };
+    
+    console.log('QR Scanner: Video element found! Requesting camera access with constraints:', videoConstraints);
+    
+    navigator.mediaDevices.getUserMedia({ video: videoConstraints })
       .then((stream) => {
+        console.log('QR Scanner: Camera stream obtained successfully');
         streamingRef.current = true;
         setIsCameraActive(true);
+        setIsStartingCamera(false); // Reset starting state
         const video = videoRef.current;
-        if (!video) return;
+        if (!video) {
+          console.error('QR Scanner: Video element not found after getting stream');
+          // Stop the stream if video element is not available
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
         video.srcObject = stream;
         video.onloadedmetadata = () => {
+          console.log('QR Scanner: Video metadata loaded, starting playback');
           video.play().then(() => {
+            console.log('QR Scanner: Video playback started, beginning frame processing');
             setTimeout(processFrame, FRAME_PROCESS_INTERVAL_MS);
-          }).catch((playError) => onError(playError));
+          }).catch((playError) => {
+            console.error('QR Scanner: Video play error:', playError);
+            onError(playError);
+          });
         };
-      }).catch((streamError) => onError(streamError));
-  }, [isEnableScan, isCameraActive, onError, processFrame]);
+      }).catch((streamError) => {
+        console.error('QR Scanner: Environment camera error, trying fallback:', streamError);
+        // Fallback to any available camera
+        navigator.mediaDevices.getUserMedia({ video: fallbackConstraints })
+          .then((stream) => {
+            console.log('QR Scanner: Fallback camera stream obtained successfully');
+            streamingRef.current = true;
+            setIsCameraActive(true);
+            setIsStartingCamera(false); // Reset starting state
+            const video = videoRef.current;
+            if (!video) {
+              console.error('QR Scanner: Video element not found in fallback');
+              // Stop the stream if video element is not available
+              stream.getTracks().forEach(track => track.stop());
+              return;
+            }
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+              console.log('QR Scanner: Fallback video metadata loaded');
+              video.play().then(() => {
+                console.log('QR Scanner: Fallback video playback started');
+                setTimeout(processFrame, FRAME_PROCESS_INTERVAL_MS);
+              }).catch((playError) => {
+                console.error('QR Scanner: Fallback video play error:', playError);
+                onError(playError);
+              });
+            };
+          }).catch((fallbackError) => {
+            console.error('QR Scanner: All camera access attempts failed:', fallbackError);
+            setIsStartingCamera(false);
+            onError(fallbackError);
+          });
+      });
+  }, [isEnableScan, isCameraActive, onError, processFrame, retryCount]);
 
   const stopVideoStream = () => {
+    console.log('QR Scanner: stopVideoStream called');
     streamingRef.current = false;
+    setIsStartingCamera(false); // Reset starting state
     const video = videoRef.current;
     if (!video) return;
     const stream = video.srcObject as MediaStream | null;
@@ -341,17 +434,39 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
   const handleSliderChange = (_: any, value: number | number[]) => { if (typeof value === "number") handleZoomChange(value); };
 
   useEffect(() => {
-    if (!isEnableScan) return;
-    startVideoStream();
-    timerRef.current = setTimeout(() => {
+    if (!isEnableScan) {
+      console.log('QR Scanner: Scanning disabled, cleaning up...');
+      return;
+    }
+    
+    // Prevent multiple initializations
+    if (isCameraActive || streamingRef.current) {
+      console.log('QR Scanner: Camera already active, skipping initialization');
+      return;
+    }
+    
+    // Add a delay to ensure the video element is mounted and DOM is ready
+    const timer = setTimeout(() => {
+      console.log('QR Scanner: Starting video stream after delay...');
+      startVideoStream();
+    }, 250); // Increased delay to 250ms
+
+    const sessionTimer = setTimeout(() => {
+      console.log('QR Scanner: Session expired, stopping camera');
       stopVideoStream();
       onError(new Error("scanSessionExpired"));
     }, ScanSessionExpiryTime);
+    
+    // Store the session timer reference
+    timerRef.current = sessionTimer;
+    
     return () => {
+      console.log('QR Scanner: Cleanup called');
+      clearTimeout(timer);
       clearTimer();
       stopVideoStream();
     };
-  }, [isEnableScan, isUploading]); // Simplified dependencies
+  }, [isEnableScan]); // Simplified dependencies - removed isUploading and startVideoStream
 
   useEffect(() => {
     const resize = () => setIsMobile(window.innerWidth < 768);
@@ -395,7 +510,7 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
     }
   }, []); // Empty dependency array means this runs only once on mount.
 
-  const startScanning = isCameraActive && isEnableScan && !isUploading && !isScanning;
+  const startScanning = isEnableScan && !isUploading && !isScanning; // Removed isCameraActive dependency
   // --- NO CHANGE HERE: The entire JSX and UI rendering is preserved exactly as it was ---
   return (
     <div className="qrcode-container">

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
 	Dialog,
 	DialogContent,
@@ -9,16 +9,17 @@ import {
 	Paper,
 	Button,
 	Badge,
-	Avatar,
     Chip,
 } from '@mui/material';
-import { Close, CloudUpload, CheckCircle, Error as ErrorIcon, Warning } from '@mui/icons-material';
+import { Close, CloudUpload } from '@mui/icons-material';
 import { QRCodeVerification, VerificationResult, CredentialFormat } from '@mosip/react-inji-verify-sdk';
 import './styles/FileUploadModal.css';
 import VerificationResultModal from './VerificationResultModal';
 import { WorkerCacheService } from '../services/WorkerCacheService';
 import { useVCStorage } from '../context/VCStorageContext';
 import { v4 as uuidv4 } from 'uuid';
+import ColoredCredentialIcon from './icons/ColoredCredentialIcon';
+import { VC_VARIANT_COLORS, resolveVCVariant } from './vcVisuals';
 
 // Helper to create a simple hash of the payload for logging
 async function createHash(data: string) {
@@ -174,17 +175,6 @@ export default function FileUploadModal({ open, onClose, onResult }: FileUploadM
 		onClose();
 	};
 
-	const getVCIcon = (result: VerificationResult) => {
-		if (!result.verificationStatus) return <ErrorIcon />;
-		const isExpired = result.verificationErrorCode === 'VC_EXPIRED' || result.verificationErrorCode === 'EXPIRED';
-		return isExpired ? <Warning /> : <CheckCircle />;
-	};
-
-	const getVCColor = (result: VerificationResult) => {
-		if (!result.verificationStatus) return '#ef4444';
-		const isExpired = result.verificationErrorCode === 'VC_EXPIRED' || result.verificationErrorCode === 'EXPIRED';
-		return isExpired ? '#f59e0b' : '#10b981';
-	};
 
 	// Trigger the SDK file input programmatically (optional helper)
 	const openFilePicker = () => {
@@ -408,7 +398,7 @@ export default function FileUploadModal({ open, onClose, onResult }: FileUploadM
 								scrollbarWidth: 'none',
 								'&::-webkit-scrollbar': { display: 'none' },
 								'[data-mui-color-scheme="dark"] &': {
-									backgroundColor: '#1a1a1a !important',
+									backgroundColor: 'hsl(220, 30%, 7%) !important',
 									color: '#ffffff !important',
 									border: '1px solid rgba(255, 255, 255, 0.2)',
 								},
@@ -419,80 +409,83 @@ export default function FileUploadModal({ open, onClose, onResult }: FileUploadM
 								gutterBottom
 								sx={{
 									fontWeight: 600,
-									mb: 1.5,
+									mb: 1,
 									color: '#1f2937',
 									'[data-mui-color-scheme="dark"] &': { color: '#ffffff !important' },
 								}}
 							>
 								Uploaded Credentials
 							</Typography>
-							<Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
-								{uploadedVCs.map((vc, index) => (
-									<Box key={vc.id}>
-										<Box
-											onClick={() => {
-												setSelectedVCForView(vc.result);
-												setShowResult(true);
-											}}
-											sx={{
-												position: 'relative',
-												cursor: 'pointer',
-												borderRadius: 1,
-												overflow: 'hidden',
-												border: '2px solid',
-												borderColor: getVCColor(vc.result),
-												transition: 'all 0.2s ease',
-												boxShadow: (theme) =>
+							<Box sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+								{uploadedVCs.map((vc, index) => {
+									const variant = resolveVCVariant(vc.result);
+									const accent = VC_VARIANT_COLORS[variant].accent;
+
+									return (
+										<Box key={vc.id}>
+											<Box
+												onClick={() => {
+													setSelectedVCForView(vc.result);
+													setShowResult(true);
+												}}
+												sx={{
+													position: 'relative',
+													cursor: 'pointer',
+													borderRadius: 2,
+													padding: 1,
+													transition: 'all 0.2s ease',
+													boxShadow: (theme) =>
 													theme.palette.mode === 'dark'
 														? '0 4px 12px rgba(0,0,0,0.5)'
 														: '0 2px 8px rgba(0,0,0,0.12)',
-												'&:hover': {
-													transform: 'scale(1.05)',
-													boxShadow: (theme) =>
-														theme.palette.mode === 'dark'
+													'&:hover': {
+													transform: 'translateY(-4px)',
+														boxShadow: (theme) =>
+															theme.palette.mode === 'dark'
 															? '0 8px 24px rgba(0,0,0,0.6)'
-															: '0 4px 16px rgba(0,0,0,0.2)',
-												},
-											}}
-										>
-											<Avatar
-												sx={{
-													width: 60,
-													height: 60,
-													backgroundColor: getVCColor(vc.result),
-													fontSize: '0.75rem',
-													fontWeight: 'bold',
-													color: 'white',
-													boxShadow: (theme) =>
-														theme.palette.mode === 'dark'
-															? '0 2px 8px rgba(0,0,0,0.4)'
-															: '0 2px 8px rgba(0,0,0,0.1)',
+															: '0 6px 18px rgba(0,0,0,0.18)',
+													},
 												}}
 											>
-												{index + 1}
-											</Avatar>
-											<Box
-												sx={{
-													position: 'absolute',
-													top: -2,
-													right: -2,
-													backgroundColor: (theme) =>
-														theme.palette.mode === 'dark' ? 'rgba(20, 20, 20, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-													borderRadius: '50%',
-													p: 0.25,
-													boxShadow: (theme) =>
-														theme.palette.mode === 'dark'
-															? '0 2px 6px rgba(0,0,0,0.6)'
-															: '0 2px 4px rgba(0,0,0,0.1)',
-													border: (theme) =>
-														theme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
-												}}
-											>
-												{React.cloneElement(getVCIcon(vc.result), { sx: { fontSize: 16, color: getVCColor(vc.result) } })}
+												<Box
+													sx={{
+														width: 58,
+														height: 58,
+														display: 'flex',
+														alignItems: 'center',
+														justifyContent: 'center',
+														backgroundColor: '#ffffff',
+														borderRadius: 1.5,
+														position: 'relative',
+														border: '1px solid rgba(15, 23, 42, 0.08)',
+														boxShadow: '0 6px 14px rgba(15, 23, 42, 0.08)',
+													}}
+												>
+													<ColoredCredentialIcon variant={variant} size={44} />
+													<Box
+														sx={{
+															position: 'absolute',
+															top: 4,
+															left: 4,
+															borderRadius: '999px',
+															padding: '1px 6px',
+															backgroundColor: accent,
+															color: '#ffffff',
+															fontSize: '0.7rem',
+															fontWeight: 700,
+															boxShadow: (theme) =>
+																theme.palette.mode === 'dark'
+																	? '0 2px 6px rgba(0,0,0,0.45)'
+																	: '0 2px 6px rgba(0,0,0,0.18)',
+														}}
+													>
+														#{index + 1}
+													</Box>
+												</Box>
 											</Box>
 										</Box>
-									</Box>
-								))}
+									);
+								})}
 							</Box>
 						</Box>
 					)}

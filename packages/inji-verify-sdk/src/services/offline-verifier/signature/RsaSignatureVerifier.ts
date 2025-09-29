@@ -1,12 +1,12 @@
-import { CredentialVerifierConstants } from '../../constants/CredentialVerifierConstants.js';
-import { PublicKeyService } from '../../publicKey/PublicKeyService.js';
-import { parsePemToDer } from '../../publicKey/Utils.js';
-import { Base64Utils } from '../../utils/Base64Utils.js';
-import { OfflineDocumentLoader } from '../../utils/OfflineDocumentLoader.js';
+import { CredentialVerifierConstants } from '../constants/CredentialVerifierConstants.js';
+import { PublicKeyService } from '../publicKey/PublicKeyService.js';
+import { parsePemToDer } from '../publicKey/Utils.js';
+import { Base64Utils } from '../utils/Base64Utils.js';
+import { OfflineDocumentLoader } from '../utils/OfflineDocumentLoader.js';
 import {
   computeLinkedDataVerifyArtifacts,
   concatBytes,
-} from '../../utils/VerificationMethodUtils.js';
+} from '../utils/VerificationMethodUtils.js';
 
 export class RsaSignatureVerifier {
   constructor(

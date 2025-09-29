@@ -23,7 +23,7 @@ import {
   concatBytes,
   resolveSecp256k1PublicKeyBytes,
 } from '../../utils/VerificationMethodUtils.js';
-import { RsaSignatureVerifier } from './RsaSignatureVerifier.js';
+import { RsaSignatureVerifier } from '../../signature/RsaSignatureVerifier.js';
 import { buildEcVerificationDocuments } from '../../signature/ecDataIntegrity.js';
 
 /**

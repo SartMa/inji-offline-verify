@@ -155,16 +155,21 @@ Use these utilities to guarantee that kiosks, PWAs, or service workers have ever
 
 ## Installation
 
+Since this package is part of the monorepo and not published to npm, you consume it directly via workspace dependencies:
+
 ```bash
-# with pnpm (recommended when working inside the monorepo)
-pnpm add @mosip/react-inji-verify-sdk
+# Add to your worker-pwa/package.json dependencies (recommended)
+# This is automatically resolved by pnpm workspace protocol
+"@mosip/react-inji-verify-sdk": "workspace:*"
 
-# or via npm
-npm install @mosip/react-inji-verify-sdk
+# Or install it explicitly from the monorepo root
+pnpm --filter your-app-name add @mosip/react-inji-verify-sdk@workspace:*
 
-# or via yarn
-yarn add @mosip/react-inji-verify-sdk
+# Final installation from root directory
+pnpm install
 ```
+
+**Note**: This package is **not available on npm, yarn, or any public registry**. It exists only as a local workspace package within this monorepo.
 
 The package declares React 19 as a peer dependency. Ensure your application already provides a matching `react` and `react-dom` runtime.
 
@@ -280,17 +285,6 @@ if (await isVCRevoked("urn:uuid:credential-id")) {
 
 
 
-## Local development
-
-```bash
-# install workspace dependencies
-pnpm install
-
-# build the SDK (emits dist/ via webpack + tsc declarations)
-pnpm --filter @mosip/react-inji-verify-sdk run build
-
-# run unit tests (Jest + Testing Library)
-pnpm --filter @mosip/react-inji-verify-sdk run test
 ```
 
 The webpack config targets `es2017` modules with CSS extraction enabled, while TypeScript emits declaration files (`dist/**/*.d.ts`) for consumers.

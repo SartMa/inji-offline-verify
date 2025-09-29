@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Box,
   Button,
@@ -26,6 +26,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SecurityIcon from '@mui/icons-material/Security';
 import LinkIcon from '@mui/icons-material/Link';
 import VerifiedIcon from '@mui/icons-material/Verified';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { OrgResolver } from '@mosip/react-inji-verify-sdk';
 import { authenticatedFetch } from '@inji-offline-verify/shared-auth';
 
@@ -242,10 +243,33 @@ export default function AddDID() {
     severity: 'success' as 'success' | 'error'
   });
   const [vcJson, setVcJson] = useState('');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const onChangeVc = (e: React.ChangeEvent<HTMLInputElement>) => {
     setVcJson(e.target.value);
     if (fieldError) setFieldError('');
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      JSON.parse(text);
+      setVcJson(text);
+      setFieldError('');
+      showToast(`Loaded ${file.name}`, 'success');
+    } catch {
+      setFieldError('Invalid JSON in uploaded file');
+      showToast('Uploaded file is not valid JSON', 'error');
+    } finally {
+      event.target.value = '';
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -594,11 +618,12 @@ const handleSubmit = async () => {
                                   </IconButton>
                                 </InputAdornment>
                               ),
-                              endAdornment: vcJson && (
+                              endAdornment: (
                                 <InputAdornment position="end">
                                   <IconButton
-                                    onClick={handleCopyVc}
+                                    onClick={handleUploadClick}
                                     edge="end"
+                                    aria-label="Upload VC JSON file"
                                     sx={{ 
                                       color: isDark ? '#a0aec0' : 'text.secondary',
                                       backgroundColor: 'transparent !important',
@@ -625,8 +650,42 @@ const handleSubmit = async () => {
                                       }
                                     }}
                                   >
-                                    <ContentCopyIcon />
+                                    <UploadFileIcon />
                                   </IconButton>
+                                  {vcJson && (
+                                    <IconButton
+                                      onClick={handleCopyVc}
+                                      edge="end"
+                                      aria-label="Copy VC JSON"
+                                      sx={{ 
+                                        color: isDark ? '#a0aec0' : 'text.secondary',
+                                        backgroundColor: 'transparent !important',
+                                        border: 'none !important',
+                                        boxShadow: 'none !important',
+                                        padding: '8px',
+                                        margin: 0,
+                                        '&:hover': { 
+                                          color: isDark ? '#4299e1' : 'primary.main',
+                                          backgroundColor: 'transparent !important',
+                                          boxShadow: 'none !important',
+                                        },
+                                        '&:focus': {
+                                          backgroundColor: 'transparent !important',
+                                          boxShadow: 'none !important',
+                                          outline: 'none',
+                                        },
+                                        '&:active': {
+                                          backgroundColor: 'transparent !important',
+                                          boxShadow: 'none !important',
+                                        },
+                                        '& .MuiTouchRipple-root': {
+                                          display: 'none',
+                                        }
+                                      }}
+                                    >
+                                      <ContentCopyIcon />
+                                    </IconButton>
+                                  )}
                                 </InputAdornment>
                               ),
                             }}
@@ -664,7 +723,7 @@ const handleSubmit = async () => {
                                   width: '100% !important',
                                   maxWidth: '100% !important',
                                   boxSizing: 'border-box !important',
-                                  padding: '12px 50px 12px 50px !important', // Reserve space for icons
+                                  padding: '12px 90px 12px 50px !important', // Reserve space for icons
                                   // marginBottom: '3px !important',
                                   border: 'none',
                                   outline: 'none',
@@ -689,6 +748,13 @@ const handleSubmit = async () => {
                                 },
                               },
                             }}
+                          />
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".json,application/json"
+                            onChange={handleFileChange}
+                            style={{ display: 'none' }}
                           />
                         </Grid>
                       </Grid>

@@ -1,4 +1,4 @@
- import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Box,
   Button,
@@ -25,6 +25,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SecurityIcon from '@mui/icons-material/Security';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import WarningIcon from '@mui/icons-material/Warning';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { authenticatedFetch } from '@inji-offline-verify/shared-auth';
 
 // Styled Components - Matching AddWorker.tsx exactly
@@ -240,6 +241,7 @@ export default function AddRevokedVC() {
   });
   const [vcJson, setVcJson] = useState('');
   const [reason, setReason] = useState('');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const onChangeVc = (e: React.ChangeEvent<HTMLInputElement>) => {
     setVcJson(e.target.value);
@@ -276,6 +278,39 @@ export default function AddRevokedVC() {
       showToast('VC JSON copied to clipboard!', 'success');
     } catch {
       showToast('Failed to copy', 'error');
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const allowedTypes = ['application/json', 'application/ld+json', 'text/json'];
+    if (file.type && !allowedTypes.includes(file.type)) {
+      showToast('Please upload a valid JSON file', 'error');
+      setFieldError('Uploaded file must be JSON');
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      JSON.parse(text);
+      setVcJson(text);
+      setFieldError('');
+      showToast('VC JSON loaded from file', 'success');
+    } catch {
+      setFieldError('Invalid JSON file');
+      showToast('Uploaded file is not valid JSON', 'error');
+    } finally {
+      // reset the input to allow re-uploading the same file if needed
+      event.target.value = '';
     }
   };
 
@@ -501,7 +536,7 @@ export default function AddRevokedVC() {
                           Enter VC Information
                         </Typography>
                         <Typography variant="body1" sx={{ color: isDark ? '#a0aec0' : 'text.secondary' }}>
-                          Paste the complete VC JSON to add it to the revocation list
+                          Paste or upload the complete VC JSON to add it to the revocation list
                         </Typography>
                       </Box>
 
@@ -553,11 +588,12 @@ export default function AddRevokedVC() {
                                   </IconButton>
                                 </InputAdornment>
                               ),
-                              endAdornment: vcJson && (
+                              endAdornment: (
                                 <InputAdornment position="end">
                                   <IconButton
-                                    onClick={handleCopyVc}
+                                    onClick={handleUploadClick}
                                     edge="end"
+                                    aria-label="Upload VC JSON file"
                                     sx={{ 
                                       color: isDark ? '#a0aec0' : 'text.secondary',
                                       backgroundColor: 'transparent !important',
@@ -584,8 +620,42 @@ export default function AddRevokedVC() {
                                       }
                                     }}
                                   >
-                                    <ContentCopyIcon />
+                                    <UploadFileIcon />
                                   </IconButton>
+                                  {vcJson && (
+                                    <IconButton
+                                      onClick={handleCopyVc}
+                                      edge="end"
+                                      aria-label="Copy VC JSON"
+                                      sx={{ 
+                                        color: isDark ? '#a0aec0' : 'text.secondary',
+                                        backgroundColor: 'transparent !important',
+                                        border: 'none !important',
+                                        boxShadow: 'none !important',
+                                        padding: '8px',
+                                        margin: 0,
+                                        '&:hover': { 
+                                          color: isDark ? '#4299e1' : 'primary.main',
+                                          backgroundColor: 'transparent !important',
+                                          boxShadow: 'none !important',
+                                        },
+                                        '&:focus': {
+                                          backgroundColor: 'transparent !important',
+                                          boxShadow: 'none !important',
+                                          outline: 'none',
+                                        },
+                                        '&:active': {
+                                          backgroundColor: 'transparent !important',
+                                          boxShadow: 'none !important',
+                                        },
+                                        '& .MuiTouchRipple-root': {
+                                          display: 'none',
+                                        }
+                                      }}
+                                    >
+                                      <ContentCopyIcon />
+                                    </IconButton>
+                                  )}
                                 </InputAdornment>
                               ),
                             }}
@@ -647,6 +717,13 @@ export default function AddRevokedVC() {
                                 },
                               },
                             }}
+                          />
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="application/json,application/ld+json,.json"
+                            hidden
+                            onChange={handleFileChange}
                           />
                         </Grid>
                         <Grid size={{ xs: 12 }}>

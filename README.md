@@ -135,7 +135,6 @@ All mandatory requirements from the MOSIP Inji Verify problem statement have bee
    ```env
    DJANGO_SECRET_KEY=your-secret-key-here
    SENDGRID_API_KEY=your-sendgrid-key
-   DATABASE_URL=postgresql://user:pass@db:5432/inji_verify
    ```
 
 3. **Launch the stack**:

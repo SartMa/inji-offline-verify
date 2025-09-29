@@ -1,0 +1,45 @@
+
+{
+    "id": "did:rcw:ab01ec3f-9f67-4ce8-ade1-8fce82a9bee1",
+    "type": [
+        "VerifiableCredential",
+        "LifeInsuranceCredential",
+        "InsuranceCredential"
+    ],
+    "proof": {
+        "type": "Ed25519Signature2020",
+        "created": "2024-05-03T12:53:39Z",
+        "proofValue": "z4GVSorSVms65uTSLHRdqJB7Km7UuyzGzYbu9uKuwBPRLgHLmBMa8YnBczVh4id2PMsrB31kjCbe6NVLdA9jThURs",
+        "proofPurpose": "assertionMethod",
+        "verificationMethod": "did:web:challabeehyv.github.io:DID-Resolve:3313e611-d08a-49c8-b478-7f55eafe62f2#key-0"
+    },
+    "issuer": "did:web:challabeehyv.github.io:DID-Resolve:3313e611-d08a-49c8-b478-7f55eafe62f2",
+    "@context": [
+        "https://www.w3.org/2018/credentials/v1",
+        "https://holashchand.github.io/test_project/insurance-context.json",
+        {
+            "LifeInsuranceCredential": {
+                "@id": "InsuranceCredential"
+            }
+        },
+        "https://w3id.org/security/suites/ed25519-2020/v1"
+    ],
+    "issuanceDate": "2024-05-03T12:53:39.113Z",
+    "expirationDate": "2024-06-02T12:53:39.110Z",
+    "credentialSubject": {
+        "id": "did:jwk:eyJrdHkiOiJFQyIsInVzZSI6InNpZyIsImNydiI6IlAtMjU2Iiwia2lkIjoic3pGa2cyOVFFalpiQ1VheFRfbFdiZElEU1ZQNWhlREhTeGR6UlhTOW1WZyIsIngiOiJzeVZ2Y2pEX1k0Y0xFS2NUTGR3a1dEWnR1RGpGWGxwcUtLZ2l5TDB2ZUY0IiwieSI6Ii13eGZIMDZRclRCZGljOG1yRDRBM2E0alhGREx1RnlBa0NPMm56Z3BNUGMiLCJhbGciOiJFUzI1NiJ9",
+        "dob": "1991-08-13",
+        "email": "challarao@beehyv.com",
+        "gender": "Male",
+        "mobile": "0123456789",
+        "benefits": [
+            "Critical Surgery",
+            "Full body checkup"
+        ],
+        "fullName": "Challarao V",
+        "policyName": "Start Insurance Gold Premium",
+        "policyNumber": "1234567",
+        "policyIssuedOn": "2023-04-20T20:48:17.684Z",
+        "policyExpiresOn": "2033-04-20T20:48:17.684Z"
+    }
+}

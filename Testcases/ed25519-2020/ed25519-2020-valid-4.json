@@ -1,0 +1,25 @@
+{
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1",
+    "https://w3id.org/security/suites/ed25519-2020/v1",
+    "https://www.w3.org/2018/credentials/examples/v1"
+  ],
+  "type": [
+    "VerifiableCredential",
+    "AlumniCredential"
+  ],
+  "credentialSubject": {
+    "id": "did:example:holder",
+    "alumniOf": "Example University"
+  },
+  "id": "urn:uuid:c7c3df2e-166a-4c9b-a4fe-73abb46e7085",
+  "issuer": "did:web:chandrahas121.github.io",
+  "issuanceDate": "2025-09-28T18:29:09.837Z",
+  "proof": {
+    "type": "Ed25519Signature2020",
+    "created": "2025-09-28T18:29:09Z",
+    "verificationMethod": "did:web:chandrahas121.github.io#key-ed25519-1",
+    "proofPurpose": "assertionMethod",
+    "proofValue": "zNeBuH82r5eKVDQovqeRtQE6qa7yH4C4xBFfPcUA7YuAAHcMkVZgjoorEKoym68iNXfuxVaYa2GYY66x8DYtqxbD"
+  }
+}

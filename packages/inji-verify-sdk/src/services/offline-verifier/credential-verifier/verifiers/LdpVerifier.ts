@@ -25,7 +25,7 @@ import {
 } from '../../utils/VerificationMethodUtils.js';
 import { RsaSignatureVerifier } from './RsaSignatureVerifier.js';
 import { buildEcVerificationDocuments } from '../../signature/ecDataIntegrity.js';
-import { RsaSignatureVerifier } from './RsaSignatureVerifier.js';
+
 
 /**
  * LDP (Linked Data Proof) Verifier

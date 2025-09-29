@@ -273,10 +273,12 @@ export function getPublicKeyFromHex(hexKey: string, keyType: string, verificatio
 
 export function getPublicKeyFromMultibaseEd25519(multibaseKey: string, keyType: string, verificationMethod: string): PublicKeyData {
   const { multicodec, keyBytes } = decodeDidKeyMultibase(multibaseKey);
-
-  if (multicodec === MULTICODEC_ED25519) {
-    const raw = decodeDidKeyMultibaseEd25519(multibaseKey);
-    const spki = buildEd25519SpkiFromRaw(raw);
+  
+  // --- FIX #1 ---
+  // The multicodec for Ed25519 is 0xed, not 0xed01. The constant was wrong.
+  if (multicodec === 0xed) {
+    // We already have the raw 32-byte key in `keyBytes` from `decodeDidKeyMultibase`
+    const spki = buildEd25519SpkiFromRaw(keyBytes);
     return {
       verificationMethod,
       keyType,
@@ -327,7 +329,10 @@ export function getPublicKeyFromMultibaseEd25519(multibaseKey: string, keyType: 
 
 export function decodeDidKeyMultibaseEd25519(multibaseKey: string): Uint8Array {
   const { multicodec, keyBytes } = decodeDidKeyMultibase(multibaseKey);
-  if (multicodec !== MULTICODEC_ED25519) {
+
+  // --- FIX #2 ---
+  // The multicodec for Ed25519 is 0xed, not 0xed01. The constant was wrong.
+  if (multicodec !== 0xed) {
     throw new PublicKeyTypeNotSupportedError('Unsupported or invalid did:key multicodec for Ed25519');
   }
   if (keyBytes.length !== 32) {

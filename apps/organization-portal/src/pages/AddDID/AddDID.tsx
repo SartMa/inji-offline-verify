@@ -318,7 +318,7 @@ const getOrganizationId = () => {
     return true;
   };
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
     if (!validateInput()) return;
     setSubmitting(true);
 
@@ -327,22 +327,38 @@ const getOrganizationId = () => {
       parsed = JSON.parse(vcJson);
     } catch {
       showToast('Invalid JSON', 'error');
+      setSubmitting(false); // Make sure to stop submitting on parse error
       return;
     }
 
     const organization_id = getOrganizationId();
     if (!organization_id) {
       showToast('No organization selected in session', 'error');
-      setSubmitting(false); // Make sure to stop submitting
+      setSubmitting(false);
       return;
     }
 
     try {
-      // Build bundle (issuer key + exact contexts) using SDK
-      const bundle = await OrgResolver.buildBundleFromVC(parsed, true);
+      // --- START: NEW LOGIC TO HANDLE BOTH VC AND VP ---
+      let bundle;
+      const isVp = Array.isArray(parsed.type) && parsed.type.includes('VerifiablePresentation');
+
+      if (isVp) {
+        console.log("Processing as Verifiable Presentation...");
+        bundle = await OrgResolver.buildBundleFromVP(parsed, true);
+      } else {
+        console.log("Processing as Verifiable Credential...");
+        bundle = await OrgResolver.buildBundleFromVC(parsed, true);
+      }
+      // --- END: NEW LOGIC ---
+
       const keys = bundle.publicKeys || [];
       const contexts = bundle.contexts || [];
 
+      if (keys.length === 0) {
+        throw new Error("Could not extract any public keys. Check the VC/VP structure.");
+      }
+      
       // Upsert contexts under organization
       for (const c of contexts) {
         if (!c.document) continue; // Skip contexts that couldn't be fetched
@@ -388,8 +404,8 @@ const getOrganizationId = () => {
       showToast(`Successfully stored ${keys.length} keys and ${contexts.length} contexts`, 'success');
       setVcJson('');
     } catch (e: any) {
-      console.error('AddDID submission error:', e);
-      showToast(e?.message || 'Failed to add VC data', 'error');
+      console.error('Submission error:', e);
+      showToast(e?.message || 'Failed to add VC/VP data', 'error');
     } finally {
       setSubmitting(false);
     }

@@ -37,7 +37,13 @@ Whether you are scanning credentials inside a kiosk or embedding the verifier in
 ## Feature highlights
 
 - **Unified QR scanner** – Camera + upload workflows, WASM-based decoding via `zxing-wasm`, mobile-friendly zoom controls, and fail-safe timers.
-- **Offline verifier core** – Validates LDP VCs, MSO mDocs, and verifiable presentations with Ed25519, RSA, ES256K, and COSE signature suites.
+- **Offline verifier core** – Validates LDP VCs and verifiable presentations with comprehensive signature suite support:
+  - **Ed25519Signature2020** (Ed25519 algorithm with 2020 context)
+  - **Ed25519Signature2018** (Ed25519 algorithm with 2018 context)  
+  - **EcdsaSecp256k1Signature2019** (ECDSA secp256k1 with noble-secp256k1 library)
+  - **RsaSignature2018** (RSA PKCS#1 v1.5 with SHA-256)
+  - **JsonWebSignature2020** (JWS-based signatures)
+  - **DataIntegrityProof** with `ecdsa-rdfc-2019` cryptosuite (ECDSA with RDF canonicalization)
 - **Revocation & cache services** – Seed and synchronise issuer keys, JSON-LD contexts, and revoked credential lists with a consistent bundle contract.
 - **Extensible public key resolution** – `did:web`, `did:key`, `did:jwk`, and HTTPS key endpoints are supported out of the box.
 - **Developer ergonomics** – Typed APIs, isolated services, Jest + Testing Library harnesses, and webpack + TypeScript build pipeline.
@@ -45,12 +51,14 @@ Whether you are scanning credentials inside a kiosk or embedding the verifier in
 
 ## Supported credential formats
 
-| Credential format | Signature suites implemented | Offline support | Testing status |
-| --- | --- | --- | --- |
-| `ldp_vc` | `Ed25519Signature2018`, `Ed25519Signature2020`, `EcdsaSecp256k1Signature2019` | Fully offline once JSON-LD contexts and verification methods are cached. | Actively exercised in worker/PWA flows. |
-| `ldp_vc` | `RsaSignature2018`, `JsonWebSignature2020` | Requires cached PEM/JWK material. Logic exists but relies on online fetch fallback if caches are empty. | Implementation present; **not yet validated end-to-end** – treat as experimental. |
-| `mso_mdoc` | COSE `ES256` (COSE_Sign1) validity window checks | Works offline when COSE payload is provided; signature verification parity still under review. | Ported from Kotlin; **manual production testing pending**. |
-| Verifiable Presentation | `Ed25519Signature2020` | Requires cached contexts and keys. Fails gracefully with `ERR_OFFLINE_DEPENDENCIES_MISSING` when prerequisites are absent. | Used in wallet integration smoke tests. |
+| Credential format | Signature suites implemented | Cryptographic algorithms | Offline support | Testing status |
+| --- | --- | --- | --- | --- |
+| `ldp_vc` | `Ed25519Signature2018`<br/>`Ed25519Signature2020` | Ed25519 elliptic curve digital signatures | Fully offline once JSON-LD contexts and verification methods are cached. | ✅ Actively exercised in worker/PWA flows. |
+| `ldp_vc` | `EcdsaSecp256k1Signature2019` | ECDSA with secp256k1 curve (Bitcoin/Ethereum compatible) | Fully offline with noble-secp256k1 library | ✅ Production ready with noble cryptography. |
+| `ldp_vc` | `RsaSignature2018`<br/>`JsonWebSignature2020` | RSA PKCS#1 v1.5 with SHA-256<br/>JWS (JSON Web Signature) format | Requires cached PEM/JWK material. Logic exists but relies on online fetch fallback if caches are empty. | ⚠️ Implementation present; **not yet validated end-to-end** – treat as experimental. |
+| `ldp_vc` | `DataIntegrityProof`<br/>(cryptosuite: `ecdsa-rdfc-2019`) | ECDSA with P-256/P-384 curves + RDF Dataset Canonicalization | Fully offline once verification methods are cached | ✅ Active implementation with ECDSA cryptosuite support. |
+| `mso_mdoc` | COSE `ES256` (COSE_Sign1) | ECDSA with P-256 curve in COSE format | Works offline when COSE payload is provided; signature verification parity still under review. | ⚠️ Ported from Kotlin; **manual production testing pending**. |
+| Verifiable Presentation | `Ed25519Signature2020`<br/>`Ed25519Signature2018` | Ed25519 elliptic curve digital signatures | Requires cached contexts and keys. Fails gracefully with `ERR_OFFLINE_DEPENDENCIES_MISSING` when prerequisites are absent. | ✅ Used in wallet integration and recently enhanced with comprehensive debugging. |
 
 The TypeScript implementation mirrors MOSIP's Kotlin verifier while adding IndexedDB caching, granular error mapping, and optional online fallbacks for missing artefacts.
 

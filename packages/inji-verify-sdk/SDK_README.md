@@ -275,28 +275,7 @@ if (await isVCRevoked("urn:uuid:credential-id")) {
 }
 ```
 
-## Architecture overview
 
-1. **Decode intake** – `QRCodeVerification` uses `zxing-wasm` to decode camera frames or uploaded files. The component throttles frames and automatically falls back to upload when camera access fails.
-2. **Format detection** – Decoded payloads are inspected to distinguish stand-alone VCs from Verifiable Presentations. Presentations are delegated to `PresentationVerifier` which, in turn, invokes `CredentialsVerifier` for each embedded VC.
-3. **Signature validation** – The verifier selects an algorithm-specific verifier (`Ed25519`, `noble-secp256k1`, or `RsaSignatureVerifier`). JSON-LD canonicalisation is handled by `jsonld-signatures` with an offline document loader.
-4. **Cache interaction** – `PublicKeyService` and `OfflineDocumentLoader` retrieve data from IndexedDB. Cache misses while offline trigger explicit error codes so the UI can prompt a sync.
-5. **Result modelling** – Verification outcomes are wrapped in `VerificationResult` objects (with payload echoing the credential) to simplify UI rendering and auditing.
-
-
-
-```
-
-The webpack config targets `es2017` modules with CSS extraction enabled, while TypeScript emits declaration files (`dist/**/*.d.ts`) for consumers.
-
-## Publishing to an internal registry
-
-`npm link` / `yarn link` do not work because the package relies on peer dependencies. For local testing we recommend [Verdaccio](https://verdaccio.org/docs/what-is-verdaccio/):
-
-```bash
-# bump patch version, build artifacts, and publish to Verdaccio
-pnpm --filter @mosip/react-inji-verify-sdk run localPublish
-# defaults to http://localhost:4873 – update the script or command to match your registry port
 ```
 
 ## Compatibility
@@ -304,7 +283,7 @@ pnpm --filter @mosip/react-inji-verify-sdk run localPublish
 - ✅ React 19 (matching peer dependency)
 - ✅ Modern evergreen browsers (Chromium, Firefox, Safari)
 - ⚠️ Server-side rendering (Next.js, Remix) requires client-only guards around scanner components
-- ❌ React Native and other non-DOM runtimes are not supported out of the box
+
 
 ## Project structure
 

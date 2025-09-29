@@ -12,8 +12,8 @@ An installable offline-first web app that lets field workers verify credentials,
 4. [Offline data & caching](#offline-data--caching)
 5. [Background services & PWA behavior](#background-services--pwa-behavior)
 6. [Day-to-day commands](#day-to-day-commands)
-7. [Performance benchmarking](#performance-benchmarking)
-8. [Directory tour](#directory-tour)
+7. [Directory tour](#directory-tour)
+8. [Performance benchmarking](#performance-benchmarking)
 9. [Additional resources](#additional-resources)
 
 ---
@@ -29,7 +29,7 @@ The application lives inside the `pnpm` + `nx` monorepo alongside the shared SDK
 ## Key capabilities
 
 - **Secure login & session bootstrap** – Organization-scoped credentials bring down all cryptographic material in one go (`SignIn.tsx`, `authService.ts`, `AuthContext.tsx`).
-- **Offline credential verification** – Scan QR codes, upload credential files, or verify from cached envelopes with the inji verify SDK (`VerificationActions.tsx`, `OfflineVCTester.tsx`).
+- **Offline credential verification** – Scan QR codes, upload credential files, or verify from cached envelopes with the inji verify SDK (`QRScannerModal.tsx`, `FileUploadModal.tsx`, `@mosip/react-inji-verify-sdk`).
 - **Fast history & analytics** – IndexedDB-backed storage surfaces verification history, sync status, and daily breakdowns even while offline (`VCStorageContext.tsx`, `Statistics.tsx`).
 - **Sync automation** – Background jobs upload pending verification logs as soon as service workers detect network recovery (`SyncControls.tsx`, `syncService.ts`).
 - **System status awareness** – Real-time tiles track network reachability, service worker health, cache status, and pending payloads (`SystemStatus.tsx`, `StatusBar.tsx`).

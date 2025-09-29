@@ -85,7 +85,7 @@ All mandatory requirements from the MOSIP Inji Verify problem statement have bee
 | **Task** | **Description** |
 |----------|-----------------|
 | **DID Resolution (Limited Offline)** | Advanced caching strategies for DIDs enabling offline resolution for frequently used issuers |
-| **Proof-of-Concept Native Mobile** | PWA provides native-like mobile experience with installability and offline capabilities on Android/iOS |
+| **Proof-of-Concept Native Mobile** | PWA provides native-like mobile experience with installability and offline capabilities on Android/iOS ([APP README](https://github.com/SartMa/inji-offline-app/blob/master/README.md)) |
 | **Performance Benchmarking** | Comprehensive performance measurement of offline verification (74ms average) and sync processes with 1,500+ sample analysis |
 | **Offline Credential Presentation** | Complete offline credential presentation with QR code generation and VP creation for other offline verifiers |
 

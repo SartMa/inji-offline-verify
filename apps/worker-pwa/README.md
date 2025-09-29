@@ -11,12 +11,10 @@ An installable offline-first web app that lets field workers verify credentials,
 3. [System architecture](#system-architecture)
 4. [Offline data & caching](#offline-data--caching)
 5. [Background services & PWA behavior](#background-services--pwa-behavior)
-6. [Getting started](#getting-started)
-7. [Day-to-day commands](#day-to-day-commands)
-8. [Performance benchmarking](#performance-benchmarking)
-9. [Directory tour](#directory-tour)
-10. [Troubleshooting & tips](#troubleshooting--tips)
-11. [Additional resources](#additional-resources)
+6. [Day-to-day commands](#day-to-day-commands)
+7. [Performance benchmarking](#performance-benchmarking)
+8. [Directory tour](#directory-tour)
+9. [Additional resources](#additional-resources)
 
 ---
 
@@ -158,35 +156,9 @@ pnpm nx dev worker-pwa
 
 # Production build / preview
 pnpm nx build worker-pwa
-pnpm nx preview worker-pwa
-
-# ESLint / type checks
-pnpm nx lint worker-pwa
-
-# Optional: run only the worker-pwa scripts via filters
-pnpm --filter worker-pwa run build
-pnpm --filter worker-pwa run lint
 ```
 
 The PWA is served at [http://localhost:4201](http://localhost:4201) in dev mode. Install prompts will appear once you interact with the app for a few minutes.
-
----
-
-## Performance benchmarking
-
-Automated Playwright harnesses stress-test verification, storage, and hybrid refresh flows.
-
-```bash
-# Install browsers once
-pnpm --filter worker-pwa exec playwright install chromium
-
-# Collect a benchmark run (uses scripts/benchmark-config.json)
-pnpm --filter worker-pwa exec node performance_benchmarking/scripts/collect-benchmark.js performance_benchmarking/scripts/benchmark-config.json
-```
-
-- Outputs land in `performance_benchmarking/docs/run-snapshots/` with timestamps and summary JSON.
-- Recent campaign analysis and ASCII charts live in [`performance_benchmarking/docs/performance-benchmark-2025-09-27.md`](./performance_benchmarking/docs/performance-benchmark-2025-09-27.md).
-- Override workload via environment variables, for example `ITERATIONS=2000` to replay the full soak test.
 
 ---
 
@@ -207,11 +179,30 @@ pnpm --filter worker-pwa exec node performance_benchmarking/scripts/collect-benc
 
 ---
 
+
+## Performance benchmarking
+
+Automated Playwright harnesses stress-test verification, storage, and hybrid refresh flows.
+
+```bash
+# Install browsers once
+pnpm --filter worker-pwa exec playwright install chromium
+
+# Collect a benchmark run (uses scripts/benchmark-config.json)
+pnpm --filter worker-pwa exec node performance_benchmarking/scripts/collect-benchmark.js performance_benchmarking/scripts/benchmark-config.json
+```
+
+- Outputs land in `performance_benchmarking/docs/run-snapshots/` with timestamps and summary JSON.
+- Recent campaign analysis and ASCII charts live in [`performance_benchmarking/docs/performance-benchmark-2025-09-27.md`](./performance_benchmarking/docs/performance-benchmark-2025-09-27.md).
+- Override workload via environment variables, for example `ITERATIONS=2000` to replay the full soak test.
+
+---
+
 ## Additional resources
 
 - [`packages/inji-verify-sdk`](../../packages/inji-verify-sdk/README-OFFLINE.md) – deeper dive into the verification SDK powering this app.
 - [`server/README.md`](../../server/README.md) – backend APIs consumed during login and sync.
 - [`apps/organization-portal`](../organization-portal/README.md) – companion portal used by supervisors and administrators.
-- [OPENID4VP Offline Implementation notes](../../OPENID4VP_OFFLINE_IMPLEMENTATION.md) – design rationale for the offline verification stack.
 
-For questions or improvements, open an issue or ping the `#inji-offline` channel.
+
+

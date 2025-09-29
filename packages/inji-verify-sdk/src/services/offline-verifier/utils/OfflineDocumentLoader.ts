@@ -32,8 +32,12 @@ export class OfflineDocumentLoader {
       return { contextUrl: undefined, document: ctx, documentUrl: url };
     }
 
-    // 3. If online, fetch and cache once
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
+    // Determine if we are allowed to hit the network. In browsers honor navigator.onLine,
+    // while in Node (navigator undefined) fall back to checking global fetch availability.
+    const canFetch = typeof fetch === 'function' && (typeof navigator === 'undefined' || navigator.onLine);
+
+    // 3. If online (or running in an environment that supports fetch), fetch and cache once
+    if (canFetch) {
       console.log(`🌐 [OfflineDocumentLoader] Fetching exact context: ${url}`);
       try {
         const resp = await fetch(url, { headers: { Accept: 'application/ld+json, application/json' }, cache: 'no-store' as RequestCache });

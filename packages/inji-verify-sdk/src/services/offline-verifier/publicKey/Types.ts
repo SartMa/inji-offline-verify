@@ -5,14 +5,16 @@ export interface PublicKeyData {
   verificationMethod: string;
   // DID key type (e.g., Ed25519VerificationKey2020, EcdsaSecp256k1VerificationKey2019, RsaVerificationKey2018)
   keyType: string;
-  // Algorithm family (Ed25519, secp256k1, RSA)
-  algorithm: 'Ed25519' | 'secp256k1' | 'RSA' | 'Unknown';
+  // Algorithm family (Ed25519, secp256k1, P-256, P-384, RSA)
+  algorithm: 'Ed25519' | 'secp256k1' | 'P-256' | 'P-384' | 'RSA' | 'Unknown';
   // Where we derived this from
   source: KeySource;
   // Raw public key bytes if applicable (e.g., SPKI DER or raw point for EC)
   bytes?: Uint8Array;
   // For JWK keys, the JWK itself
   jwk?: any;
+  // Multibase value when provided (e.g., Multikey)
+  publicKeyMultibase?: string;
   // Optional uncompressed EC point hex (04||X||Y) for secp256k1
   ecUncompressedHex?: string;
   // Optional PEM text if came as PEM

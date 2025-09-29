@@ -2,6 +2,8 @@ import type { PublicKeyData } from './Types.js';
 import { PublicKeyNotFoundError, PublicKeyTypeNotSupportedError } from './Types.js';
 import { base58btc } from 'multiformats/bases/base58';
 import { secp256k1 } from '@noble/curves/secp256k1';
+import { p256 } from '@noble/curves/p256';
+import { p384 } from '@noble/curves/p384';
 
 // Constants analogous to Kotlin CredentialVerifierConstants
 export const RSA_KEY_TYPE = 'RsaVerificationKey2018';
@@ -92,21 +94,41 @@ export function ed25519RawToMultibase(raw32: Uint8Array): string {
   return base58btc.encode(out);
 }
 
-export function decodeDidKeyMultibaseEd25519(mb: string): Uint8Array {
-  // Expect leading multibase char 'z' for base58btc
+const MULTICODEC_ED25519 = 0xed01;
+const MULTICODEC_P256_UNCOMPRESSED = 0x1200;
+const MULTICODEC_P256_COMPRESSED = 0x8024;
+const MULTICODEC_P384_UNCOMPRESSED = 0x1201;
+const MULTICODEC_P384_COMPRESSED = 0x8025;
+
+function decodeMulticodecVarint(bytes: Uint8Array): { value: number; length: number } {
+  let value = 0;
+  let shift = 0;
+  let index = 0;
+  while (index < bytes.length) {
+    const byte = bytes[index];
+    value |= (byte & 0x7f) << shift;
+    index += 1;
+    if ((byte & 0x80) === 0) {
+      return { value, length: index };
+    }
+    shift += 7;
+    if (shift > 28) break; // prevent runaway for unexpected encodings
+  }
+  throw new PublicKeyTypeNotSupportedError('Invalid multicodec varint encoding');
+}
+
+function decodeDidKeyMultibase(mb: string): { multicodec: number; keyBytes: Uint8Array } {
   if (!mb || mb.length < 2) throw new PublicKeyNotFoundError('Invalid multibase key');
-  const code = mb[0];
-  let bytes: Uint8Array;
-  if (code === 'z') {
-    bytes = base58btc.decode(mb);
-  } else {
-    throw new PublicKeyTypeNotSupportedError(`Unsupported multibase prefix: ${code}`);
+  if (mb[0] !== 'z') {
+    throw new PublicKeyTypeNotSupportedError(`Unsupported multibase prefix: ${mb[0]}`);
   }
-  // Check multicodec header 0xed 0x01 and length 34 (header 2 + 32)
-  if (bytes.length !== 34 || bytes[0] !== 0xed || bytes[1] !== 0x01) {
-    throw new PublicKeyTypeNotSupportedError('Unsupported or invalid did:key multicodec for Ed25519');
+  const decoded = base58btc.decode(mb);
+  if (decoded.length < 2) {
+    throw new PublicKeyNotFoundError('Multibase key payload too short');
   }
-  return bytes.slice(2);
+  const { value, length } = decodeMulticodecVarint(decoded);
+  const keyBytes = decoded.subarray(length);
+  return { multicodec: value, keyBytes };
 }
 
 export function getPublicKeyFromPem(publicKeyPem: string, keyType: string, verificationMethod: string): PublicKeyData {
@@ -146,6 +168,58 @@ export function getPublicKeyFromJwk(jwk: any, keyType: string, verificationMetho
       verificationMethod,
       keyType,
       algorithm: 'secp256k1',
+      source: 'jwk',
+      bytes: uncompressed,
+      jwk,
+      ecUncompressedHex: bytesToHex(uncompressed),
+    };
+  }
+
+  const crv = jwk.crv?.toUpperCase?.();
+
+  // ECDSA with P-256 curve (JsonWebKey2020, etc.)
+  if (crv === 'P-256' || crv === 'SECP256R1') {
+    if (!jwk.x || !jwk.y) {
+      throw new PublicKeyTypeNotSupportedError('P-256 JWK must include x and y coordinates');
+    }
+    const x = base64UrlDecode(jwk.x);
+    const y = base64UrlDecode(jwk.y);
+    if (x.length !== 32 || y.length !== 32) {
+      throw new PublicKeyTypeNotSupportedError('P-256 public key coordinates must be 32 bytes each');
+    }
+    const uncompressed = new Uint8Array(65);
+    uncompressed[0] = 0x04;
+    uncompressed.set(x, 1);
+    uncompressed.set(y, 33);
+    return {
+      verificationMethod,
+      keyType,
+      algorithm: 'P-256',
+      source: 'jwk',
+      bytes: uncompressed,
+      jwk,
+      ecUncompressedHex: bytesToHex(uncompressed),
+    };
+  }
+
+  // ECDSA with P-384 curve
+  if (crv === 'P-384' || crv === 'SECP384R1') {
+    if (!jwk.x || !jwk.y) {
+      throw new PublicKeyTypeNotSupportedError('P-384 JWK must include x and y coordinates');
+    }
+    const x = base64UrlDecode(jwk.x);
+    const y = base64UrlDecode(jwk.y);
+    if (x.length !== 48 || y.length !== 48) {
+      throw new PublicKeyTypeNotSupportedError('P-384 public key coordinates must be 48 bytes each');
+    }
+    const uncompressed = new Uint8Array(97);
+    uncompressed[0] = 0x04;
+    uncompressed.set(x, 1);
+    uncompressed.set(y, 49);
+    return {
+      verificationMethod,
+      keyType,
+      algorithm: 'P-384',
       source: 'jwk',
       bytes: uncompressed,
       jwk,
@@ -198,15 +272,68 @@ export function getPublicKeyFromHex(hexKey: string, keyType: string, verificatio
 }
 
 export function getPublicKeyFromMultibaseEd25519(multibaseKey: string, keyType: string, verificationMethod: string): PublicKeyData {
-  const raw = decodeDidKeyMultibaseEd25519(multibaseKey);
-  const spki = buildEd25519SpkiFromRaw(raw);
-  return {
-    verificationMethod,
-    keyType,
-    algorithm: 'Ed25519',
-    source: 'multibase',
-    bytes: spki,
-  };
+  const { multicodec, keyBytes } = decodeDidKeyMultibase(multibaseKey);
+
+  if (multicodec === MULTICODEC_ED25519) {
+    const raw = decodeDidKeyMultibaseEd25519(multibaseKey);
+    const spki = buildEd25519SpkiFromRaw(raw);
+    return {
+      verificationMethod,
+      keyType,
+      algorithm: 'Ed25519',
+      source: 'multibase',
+      bytes: spki,
+      publicKeyMultibase: multibaseKey,
+    };
+  }
+
+  if (multicodec === MULTICODEC_P256_UNCOMPRESSED || multicodec === MULTICODEC_P256_COMPRESSED) {
+    if (keyBytes.length !== 33 && keyBytes.length !== 65) {
+      throw new PublicKeyTypeNotSupportedError('P-256 multibase key must be compressed (33 bytes) or uncompressed (65 bytes)');
+    }
+    const point = p256.ProjectivePoint.fromHex(keyBytes);
+    const uncompressed = point.toRawBytes(false);
+    return {
+      verificationMethod,
+      keyType,
+      algorithm: 'P-256',
+      source: 'multibase',
+      bytes: uncompressed,
+      ecUncompressedHex: bytesToHex(uncompressed),
+      publicKeyMultibase: multibaseKey,
+    };
+  }
+
+  if (multicodec === MULTICODEC_P384_UNCOMPRESSED || multicodec === MULTICODEC_P384_COMPRESSED) {
+    if (keyBytes.length !== 49 && keyBytes.length !== 97) {
+      throw new PublicKeyTypeNotSupportedError('P-384 multibase key must be compressed (49 bytes) or uncompressed (97 bytes)');
+    }
+    const point = p384.ProjectivePoint.fromHex(keyBytes);
+    const uncompressed = point.toRawBytes(false);
+    return {
+      verificationMethod,
+      keyType,
+      algorithm: 'P-384',
+      source: 'multibase',
+      bytes: uncompressed,
+      ecUncompressedHex: bytesToHex(uncompressed),
+      publicKeyMultibase: multibaseKey,
+    };
+  }
+
+  const hexCode = `0x${multicodec.toString(16)}`;
+  throw new PublicKeyTypeNotSupportedError(`Unsupported or invalid did:key multicodec: ${hexCode}`);
+}
+
+export function decodeDidKeyMultibaseEd25519(multibaseKey: string): Uint8Array {
+  const { multicodec, keyBytes } = decodeDidKeyMultibase(multibaseKey);
+  if (multicodec !== MULTICODEC_ED25519) {
+    throw new PublicKeyTypeNotSupportedError('Unsupported or invalid did:key multicodec for Ed25519');
+  }
+  if (keyBytes.length !== 32) {
+    throw new PublicKeyTypeNotSupportedError('Ed25519 multibase key must contain 32-byte raw key');
+  }
+  return keyBytes;
 }
 
 /**

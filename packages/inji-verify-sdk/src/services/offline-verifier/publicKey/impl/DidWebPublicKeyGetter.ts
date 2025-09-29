@@ -24,11 +24,12 @@ export class DidWebPublicKeyGetter implements PublicKeyGetter {
     if (vm.publicKeyPem) {
       return getPublicKeyFromPem(vm.publicKeyPem, vm.type, verificationMethod);
     }
-    if (vm.publicKeyMultibase) {
-      return getPublicKeyFromMultibaseEd25519(vm.publicKeyMultibase, vm.type, verificationMethod);
-    }
+    // Prefer JWK when available to support JsonWebKey2020 / P-256 keys
     if (vm.publicKeyJwk) {
       return getPublicKeyFromJwk(vm.publicKeyJwk, vm.type, verificationMethod);
+    }
+    if (vm.publicKeyMultibase) {
+      return getPublicKeyFromMultibaseEd25519(vm.publicKeyMultibase, vm.type, verificationMethod);
     }
     if (vm.publicKeyHex) {
       return getPublicKeyFromHex(vm.publicKeyHex, vm.type, verificationMethod);

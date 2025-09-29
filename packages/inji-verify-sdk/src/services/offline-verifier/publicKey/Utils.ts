@@ -94,7 +94,7 @@ export function ed25519RawToMultibase(raw32: Uint8Array): string {
   return base58btc.encode(out);
 }
 
-const MULTICODEC_ED25519 = 0xed01;
+const MULTICODEC_ED25519 = 0xed;
 const MULTICODEC_P256_UNCOMPRESSED = 0x1200;
 const MULTICODEC_P256_COMPRESSED = 0x8024;
 const MULTICODEC_P384_UNCOMPRESSED = 0x1201;

@@ -357,7 +357,6 @@ Intelligent synchronization system that handles both automatic background sync a
 | **Hybrid Log Refresh** | 1,138 ms | 5% faster | 1,200 ms |
 | **QR Verification** | 74 ms | 91% faster | 800 ms |
 | **IndexedDB Writes** | 4.4 ms | 26% faster | 6.0 ms |
-| **Background Sync** | 234 ms | 15% faster | 275 ms |
 
 ### Benchmark Methodology
 

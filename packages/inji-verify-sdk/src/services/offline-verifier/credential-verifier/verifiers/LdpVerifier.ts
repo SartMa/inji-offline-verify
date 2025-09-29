@@ -1,9 +1,12 @@
 // External cryptographic libraries - The "Verification Engine"
 import * as jsigs from 'jsonld-signatures';
+import * as vc from '@digitalbazaar/vc';
 import { Ed25519Signature2020 } from '@digitalbazaar/ed25519-signature-2020';
 import { Ed25519VerificationKey2020 } from '@digitalbazaar/ed25519-verification-key-2020';
 import { Ed25519Signature2018 } from '@digitalbazaar/ed25519-signature-2018';
 import { Ed25519VerificationKey2018 } from '@digitalbazaar/ed25519-verification-key-2018';
+import { DataIntegrityProof } from '@digitalbazaar/data-integrity';
+import { cryptosuite as ecdsaRdfc2019Cryptosuite } from '@digitalbazaar/ecdsa-rdfc-2019-cryptosuite';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { base64url } from 'multiformats/bases/base64';
@@ -20,6 +23,7 @@ import {
   concatBytes,
   resolveSecp256k1PublicKeyBytes,
 } from '../../utils/VerificationMethodUtils.js';
+import { buildEcVerificationDocuments } from '../../signature/ecDataIntegrity.js';
 
 /**
  * LDP (Linked Data Proof) Verifier
@@ -129,9 +133,113 @@ export class LdpVerifier {
         this.logger.info('🔐 Using noble secp256k1 verifier for EcdsaSecp256k1Signature2019');
         return this.verifyEcdsaWithNoble(vcObject, proof);
 
+      case 'DataIntegrityProof':
+        if (proof.cryptosuite === 'ecdsa-rdfc-2019') {
+          this.logger.info('🔐 Using DataIntegrityProof verifier for ecdsa-rdfc-2019');
+          return this.verifyDataIntegrityEcdsa(vcObject, proof);
+        }
+        this.logger.error(`❌ Unsupported DataIntegrityProof cryptosuite: ${proof.cryptosuite || 'unknown'}`);
+        return false;
+
       default:
         this.logger.error(`❌ Unsupported signature type: ${proof.type}`);
         return false;
+    }
+  }
+
+  private async verifyDataIntegrityEcdsa(vcObject: any, proof: any): Promise<boolean> {
+    try {
+      const verificationMethodUrl: string | undefined = proof?.verificationMethod;
+      if (!verificationMethodUrl) {
+        this.logger.error('❌ DataIntegrityProof missing verificationMethod');
+        return false;
+      }
+
+      const publicKeyData = await this.publicKeyService.getPublicKey(verificationMethodUrl);
+      if (!publicKeyData) {
+        this.logger.error(`❌ Could not resolve public key for DataIntegrityProof: ${verificationMethodUrl}`);
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
+        }
+        return false;
+      }
+
+      const ecDocs = buildEcVerificationDocuments(publicKeyData, verificationMethodUrl, this.logger);
+      if (!ecDocs) {
+        return false;
+      }
+
+  const { verificationMethodDoc, controllerDoc } = ecDocs;
+  const controllerId = controllerDoc.id || verificationMethodUrl.split('#')[0] || '';
+
+      const baseLoader = OfflineDocumentLoader.getDocumentLoader();
+      const documentLoader = async (url: string) => {
+        if (url === verificationMethodUrl) {
+          return {
+            contextUrl: null,
+            documentUrl: url,
+            document: verificationMethodDoc
+          };
+        }
+        if (url === controllerId) {
+          return {
+            contextUrl: null,
+            documentUrl: url,
+            document: controllerDoc
+          };
+        }
+        return baseLoader(url);
+      };
+
+      const suite = new DataIntegrityProof({ cryptosuite: ecdsaRdfc2019Cryptosuite });
+      const credentialForVerification = {
+        ...vcObject,
+        proof: { ...proof }
+      };
+
+      const vcLib = vc as any;
+      const verification = await vcLib.verifyCredential({
+        credential: credentialForVerification,
+        suite,
+        documentLoader,
+        checkStatus: async () => ({ verified: true })
+      });
+
+      if (verification.verified) {
+        this.logger.info('✅ DataIntegrityProof (ecdsa-rdfc-2019) verification successful');
+        return true;
+      }
+
+      const err = verification.error as any;
+      const collectMessages = (e: any): string[] => {
+        if (!e) return [];
+        const out: string[] = [];
+        if (typeof e.message === 'string') out.push(e.message);
+        if (Array.isArray(e.errors)) {
+          for (const sub of e.errors) {
+            out.push(...collectMessages(sub));
+          }
+        }
+        if (Array.isArray(e.details)) {
+          for (const sub of e.details) {
+            out.push(...collectMessages(sub));
+          }
+        }
+        return out;
+      };
+      const messages = collectMessages(err);
+      if (messages.some((m) => m.includes(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING))) {
+        throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
+      }
+
+      this.logger.error('❌ DataIntegrityProof verification failed:', verification);
+      return false;
+    } catch (error: any) {
+      this.logger.error('💥 A critical error occurred during DataIntegrityProof verification:', error?.message ?? error);
+      if (error?.message === CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING) {
+        throw error;
+      }
+      return false;
     }
   }
 

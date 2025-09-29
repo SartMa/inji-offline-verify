@@ -8,6 +8,8 @@
 import { PublicKeyGetterFactory } from '../../publicKey/PublicKeyGetterFactory';
 import { base58btc } from 'multiformats/bases/base58';
 import type { CachedPublicKey, CachedRevokedVC } from './CacheHelper';
+import { Base64Utils } from '../../utils/Base64Utils.js';
+import { bytesToHex } from '../../publicKey/Utils.js';
 
 export type CacheBundle = {
   publicKeys?: CachedPublicKey[];
@@ -48,6 +50,136 @@ function ed25519RawToMultibase(raw32: Uint8Array): string {
   return base58btc.encode(out);
 }
 
+const normalizeEcCurveName = (curve?: string): 'P-256' | 'P-384' | null => {
+  if (!curve) return null;
+  const upper = curve.toUpperCase();
+  if (upper === 'P-256' || upper === 'SECP256R1') {
+    return 'P-256';
+  }
+  if (upper === 'P-384' || upper === 'SECP384R1') {
+    return 'P-384';
+  }
+  return null;
+};
+
+function normalizeEcJwk(pk: any): any | null {
+  const jwk = pk?.jwk;
+  const normalizedCurve = normalizeEcCurveName(jwk?.crv);
+  if (jwk?.x && jwk?.y && normalizedCurve) {
+    return {
+      ...jwk,
+      kty: jwk.kty ?? 'EC',
+      crv: normalizedCurve,
+    };
+  }
+
+  const bytes: Uint8Array | undefined = pk?.bytes;
+  if (bytes && bytes[0] === 0x04) {
+    if (bytes.length === 65) {
+      const x = bytes.slice(1, 33);
+      const y = bytes.slice(33, 65);
+      return {
+        kty: 'EC',
+        crv: 'P-256',
+        x: Base64Utils.base64UrlEncode(x),
+        y: Base64Utils.base64UrlEncode(y),
+      };
+    }
+    if (bytes.length === 97) {
+      const x = bytes.slice(1, 49);
+      const y = bytes.slice(49, 97);
+      return {
+        kty: 'EC',
+        crv: 'P-384',
+        x: Base64Utils.base64UrlEncode(x),
+        y: Base64Utils.base64UrlEncode(y),
+      };
+    }
+  }
+
+  return null;
+}
+
+function inferKeyType(pk: any): string {
+  if (pk?.keyType) return pk.keyType;
+  const algorithm: string | undefined = pk?.algorithm;
+  if (algorithm === 'Ed25519') return 'Ed25519VerificationKey2020';
+  if (algorithm === 'secp256k1') return 'EcdsaSecp256k1VerificationKey2019';
+  const normalizedCurve = normalizeEcCurveName(pk?.jwk?.crv);
+  if (algorithm === 'P-256' || normalizedCurve === 'P-256') return 'JsonWebKey2020';
+  if (algorithm === 'P-384' || normalizedCurve === 'P-384') return 'JsonWebKey2020';
+  if (pk?.jwk?.kty === 'EC') return 'JsonWebKey2020';
+  return 'JsonWebKey2020';
+}
+
+function buildCachedPublicKey(pk: any, keyId: string): CachedPublicKey {
+  const controller = keyId.split('#')[0];
+  const algorithm: string | undefined = pk?.algorithm;
+  const normalizedCurve = normalizeEcCurveName(pk?.jwk?.crv);
+  const cached: CachedPublicKey = {
+    key_id: keyId,
+    key_type: inferKeyType(pk),
+    controller,
+    public_key_multibase: undefined,
+    public_key_hex: undefined,
+    public_key_jwk: undefined,
+    purpose: 'assertion',
+    is_active: true,
+    organization_id: null,
+  };
+
+  if (algorithm === 'Ed25519' || pk?.keyType?.includes?.('Ed25519')) {
+    let multibase: string | undefined = (pk as any).publicKeyMultibase;
+    if (!multibase && pk?.bytes) {
+      try {
+        multibase = ed25519RawToMultibase(spkiToRawEd25519(pk.bytes));
+      } catch {
+        // ignore; we'll fall back to other representations
+      }
+    }
+    cached.public_key_multibase = multibase;
+    if (pk?.bytes) {
+      cached.public_key_hex = bytesToHex(pk.bytes);
+    }
+    return cached;
+  }
+
+  if (algorithm === 'secp256k1' || pk?.keyType?.includes?.('Secp256k1')) {
+    cached.public_key_hex = pk?.ecUncompressedHex ?? (pk?.bytes ? bytesToHex(pk.bytes) : undefined);
+    if (pk?.jwk) {
+      cached.public_key_jwk = pk.jwk;
+    }
+    return cached;
+  }
+
+  if (algorithm === 'P-256' || normalizedCurve === 'P-256') {
+    const jwk = normalizeEcJwk(pk);
+    cached.public_key_jwk = jwk ?? pk?.jwk;
+    if (pk?.bytes && !cached.public_key_hex) {
+      cached.public_key_hex = bytesToHex(pk.bytes);
+    }
+    return cached;
+  }
+
+  if (algorithm === 'P-384' || normalizedCurve === 'P-384') {
+    const jwk = normalizeEcJwk(pk);
+    cached.public_key_jwk = jwk ?? pk?.jwk;
+    if (pk?.bytes && !cached.public_key_hex) {
+      cached.public_key_hex = bytesToHex(pk.bytes);
+    }
+    return cached;
+  }
+
+  if (pk?.jwk) {
+    cached.public_key_jwk = pk.jwk;
+  }
+  if (pk?.bytes && !cached.public_key_hex) {
+    cached.public_key_hex = bytesToHex(pk.bytes);
+  }
+
+  return cached;
+}
+
 async function fetchContext(url: string) {
   const resp = await fetch(url, { headers: { Accept: 'application/ld+json, application/json' } });
   if (!resp.ok) throw new Error(`Context fetch failed: ${url} (${resp.status})`);
@@ -85,25 +217,10 @@ export class OrgResolver {
 
     // Derive fields
     const keyId = vmFromProof ?? didOrVm;
-    const controller = keyId.split('#')[0];
-    let publicKeyMultibase: string | undefined = (pk as any).publicKeyMultibase;
-    if (!publicKeyMultibase && pk?.bytes && pk?.algorithm === 'Ed25519') {
-      publicKeyMultibase = ed25519RawToMultibase(spkiToRawEd25519(pk.bytes));
-    }
 
     // Bundle
     const bundle: CacheBundle = {
-      publicKeys: [{
-        key_id: keyId,
-        key_type: pk.keyType ?? 'Ed25519VerificationKey2020',
-        public_key_multibase: publicKeyMultibase,
-        public_key_hex: pk.bytes ? Array.from(pk.bytes as Uint8Array).map((b: number) => b.toString(16).padStart(2, '0')).join('') : undefined,
-        public_key_jwk: pk.jwk,
-        controller,
-        purpose: 'assertion',
-        is_active: true,
-        organization_id: null
-      }],
+      publicKeys: [buildCachedPublicKey(pk, keyId)],
       contextUrls
     };
 
@@ -133,24 +250,9 @@ export class OrgResolver {
     const pk = await new PublicKeyGetterFactory().get(didOrVm);
 
     const keyId = didOrVm;
-    const controller = keyId.split('#')[0];
-    let publicKeyMultibase: string | undefined = (pk as any).publicKeyMultibase;
-    if (!publicKeyMultibase && pk?.bytes && pk?.algorithm === 'Ed25519') {
-      publicKeyMultibase = ed25519RawToMultibase(spkiToRawEd25519(pk.bytes));
-    }
 
     const bundle: CacheBundle = {
-      publicKeys: [{
-        key_id: keyId,
-        key_type: pk.keyType ?? 'Ed25519VerificationKey2020',
-        public_key_multibase: publicKeyMultibase,
-        public_key_hex: pk.bytes ? Array.from(pk.bytes as Uint8Array).map((b: number) => b.toString(16).padStart(2, '0')).join('') : undefined,
-        public_key_jwk: pk.jwk,
-        controller,
-        purpose: 'assertion',
-        is_active: true,
-        organization_id: null
-      }],
+      publicKeys: [buildCachedPublicKey(pk, keyId)],
       contextUrls: unique(contextUrls)
     };
 

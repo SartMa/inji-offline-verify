@@ -22,7 +22,11 @@ export class PublicKeyService {
       let record = await store.get(verificationMethod);
       const controller = verificationMethod.split('#')[0];
 
-      const isIncomplete = (rec: any) => !rec?.public_key_multibase && !rec?.public_key_jwk && !rec?.public_key_hex;
+      const isIncomplete = (rec: any) => {
+        if (!rec) return true;
+        if (rec.key_type === 'Multikey' && !rec.public_key_multibase) return true;
+        return !rec.public_key_multibase && !rec.public_key_jwk && !rec.public_key_hex;
+      };
 
       if (!record || isIncomplete(record)) {
           console.warn(`⚠️ Public key not found in cache: ${verificationMethod}`);
@@ -38,11 +42,18 @@ export class PublicKeyService {
               if (controller.startsWith('did:key:')) {
                 public_key_multibase = controller.split('did:key:')[1];
               }
+              if ((pk as any).publicKeyMultibase) {
+                public_key_multibase = (pk as any).publicKeyMultibase;
+              }
               // If getter returned JWK or EC hex, capture it
               if ((pk as any).jwk) public_key_jwk = (pk as any).jwk;
               if ((pk as any).ecUncompressedHex) public_key_hex = (pk as any).ecUncompressedHex;
               // As a last resort, if bytes are present for EC keys, compute hex
-              if (!public_key_hex && (pk as any).bytes && (pk as any).algorithm === 'secp256k1') {
+              if (
+                !public_key_hex &&
+                (pk as any).bytes &&
+                ((pk as any).algorithm === 'secp256k1' || (pk as any).algorithm === 'P-256' || (pk as any).algorithm === 'P-384')
+              ) {
                 public_key_hex = bytesToHex((pk as any).bytes as Uint8Array);
               }
 

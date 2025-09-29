@@ -6,6 +6,8 @@
 // export * from './es256k';
 // export * from './cose';
 
+export * from './ecDataIntegrity.js';
+
 // Placeholder export to prevent module resolution errors
 export const SignatureVerifier = {
   rs256: () => { throw new Error('RS256 signature verification not implemented'); },

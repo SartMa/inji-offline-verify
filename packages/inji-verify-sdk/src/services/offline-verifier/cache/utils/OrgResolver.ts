@@ -212,7 +212,6 @@ export class OrgResolver {
     if (!didOrVm) throw new Error('buildBundleFromVC: missing issuer or verificationMethod');
 
     // Resolve public key
-// Resolve public key
     const pk = await new PublicKeyGetterFactory().get(didOrVm);
 
     // Derive fields
@@ -269,5 +268,64 @@ export class OrgResolver {
     }
 
     return bundle;
+  }
+
+  /**
+   * Build a CacheBundle from a Verifiable Presentation (VP) envelope.
+   * - Resolves the holder's proof on the VP.
+   * - Resolves the issuer's proof for EACH Verifiable Credential inside the VP.
+   * - Merges all discovered public keys and contexts into a single bundle.
+   */
+  static async buildBundleFromVP(vp: any, fetchFullContexts = true): Promise<CacheBundle> {
+    if (!vp || typeof vp !== 'object' || !vp.type?.includes('VerifiablePresentation')) {
+      throw new Error('buildBundleFromVP: Input is not a valid Verifiable Presentation');
+    }
+    console.log('[OrgResolver] Building bundle from VP...');
+
+    const allBundles: CacheBundle[] = [];
+
+    // 1. Process the outer Presentation proof (the holder's signature)
+    if (vp.proof?.verificationMethod) {
+      const holderBundle = await this.buildBundleFromId(
+        vp.proof.verificationMethod,
+        (Array.isArray(vp['@context']) ? vp['@context'] : [vp['@context']]).filter(c => typeof c === 'string'),
+        fetchFullContexts,
+      );
+      allBundles.push(holderBundle);
+    }
+
+    // 2. Process each inner Verifiable Credential
+    const vcs = vp.verifiableCredential ?? [];
+    for (const vc of Array.isArray(vcs) ? vcs : [vcs]) {
+      try {
+        const vcBundle = await this.buildBundleFromVC(vc, fetchFullContexts);
+        allBundles.push(vcBundle);
+      } catch (e) {
+        console.warn('[OrgResolver] Skipping a VC inside the VP due to an error.', e);
+      }
+    }
+
+    // 3. Merge all bundles into one, ensuring no duplicates
+    const finalBundle: CacheBundle = {
+      publicKeys: [],
+      contexts: [],
+      contextUrls: [],
+    };
+    
+    const keyMap = new Map<string, CachedPublicKey>();
+    const contextMap = new Map<string, any>();
+    const contextUrlSet = new Set<string>();
+
+    for (const bundle of allBundles) {
+      bundle.publicKeys?.forEach(pk => keyMap.set(pk.key_id, pk));
+      bundle.contexts?.forEach(ctx => contextMap.set(ctx.url, ctx.document));
+      bundle.contextUrls?.forEach(url => contextUrlSet.add(url));
+    }
+    
+    finalBundle.publicKeys = Array.from(keyMap.values());
+    finalBundle.contexts = Array.from(contextMap.entries()).map(([url, document]) => ({ url, document }));
+    finalBundle.contextUrls = Array.from(contextUrlSet);
+    
+    return finalBundle;
   }
 }

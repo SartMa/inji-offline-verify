@@ -192,35 +192,6 @@ pnpm test
    # Organization Portal  
    pnpm nx dev organization-portal
    ```
-### Environment Variables
-
-
-```env
-# Django Backend
-DJANGO_SECRET_KEY=your-256-bit-secret
-DEBUG=False
-ALLOWED_HOSTS=api.yourdomain.com,localhost
-DATABASE_URL=postgresql://user:pass@host:5432/db
-
-# Email Configuration  
-EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
-EMAIL_HOST=smtp.sendgrid.net
-EMAIL_PORT=587
-EMAIL_HOST_USER=apikey
-EMAIL_HOST_PASSWORD=your-sendgrid-api-key
-EMAIL_USE_TLS=True
-DEFAULT_FROM_EMAIL=noreply@yourdomain.com
-
-# CORS & Frontend URLs
-CORS_ALLOWED_ORIGINS=https://org.yourdomain.com,https://worker.yourdomain.com
-FRONTEND_ORG_URL=https://org.yourdomain.com
-FRONTEND_WORKER_URL=https://worker.yourdomain.com
-
-# Optional: Analytics & Monitoring
-SENTRY_DSN=your-sentry-dsn
-REDIS_URL=redis://localhost:6379
-```   
-
 ---
 
 ## Deployment

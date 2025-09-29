@@ -1,0 +1,38 @@
+{
+        "issuanceDate": "2025-09-23T05:02:24.720Z",
+        "credentialSubject": {
+            "gender": "Male",
+            "primaryCropType": "Maize",
+            "mobileNumber": "9876543210",
+            "postalCode": "453000",
+            "landArea": "3 hectares",
+            "fullName": "John Doe",
+            "secondaryCropType": "Rice",
+            "dateOfBirth": "25-05-1990",
+            "face": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAFCAYAAABW1IzHAAAAHklEQVQokWNgGPaAkZHxPyMj439sYrSQo51PBgsAALa0ECF30JSdAAAAAElFTkSuQmCC",
+            "farmerID": "987654321",
+            "villageOrTown": "Koramangala",
+            "district": "Bangalore",
+            "id": "did:jwk:eyJrdHkiOiJSU0EiLCJlIjoiQVFBQiIsInVzZSI6InNpZyIsImtpZCI6IklpTzlrcDA3QVJtMHlKcGlVVjNkWGktdzdpUTlZUUxBbk9tRHdBc2JrT0EiLCJhbGciOiJSUzI1NiIsIm4iOiJpVWRaY1BrSFBWSmgyRFlJa2ZqMUM0bmgxLTFkeU9pTDZDSl9IVW1GRlZkMzZrV0p6am5oTnVsS1BXN1NqOXVtUjd6NEhXRG9lWWxxOG5KbHctbk5mZGRGNGg5cTJsOXhjbm51M3NlZHlLOUtfRl90UnVzRFFRbndsTlA3NWl2eGl5OUt3akI1OWZFQjI0VF9BODlRRzhBVWIzdjluV3EtUGR4STBsN0xCcnFabUVBYUUxaVI4YjFnV2pQLXZYTGtqeWI1M3NfSFJHR3hoSlBRNFNBc3pXMjJRb2FYeHJqSWpBcFhEdUhmRXhxMlFZR1g2YWtucFVuR1lBbUc0TTBXdWJDNEY1V2FBWmluNGdBSFE1SkN0czRpRTAyNnRFMmptU3VTZjRMOU90UmN5NUJmTzU3TXNWY1JfTDY4eUN4ZGdyaHU5ODVIZVhWdWFEWS1mY1NJZFEifQ==",
+            "state": "Karnataka",
+            "landOwnershipType": "Owner"
+        },
+        "type": [
+            "VerifiableCredential",
+            "FarmerCredential"
+        ],
+        "@context": [
+            "https://www.w3.org/2018/credentials/v1",
+            "https://piyush7034.github.io/my-files/farmer.json",
+            "https://w3id.org/security/suites/ed25519-2020/v1"
+        ],
+        "issuer": "did:web:piyush7034.github.io:my-files:piyush",
+        "expirationDate": "2027-09-23T05:02:24.720Z",
+        "proof": {
+            "type": "Ed25519Signature2020",
+            "created": "2025-09-22T23:32:24Z",
+            "proofPurpose": "assertionMethod",
+            "verificationMethod": "did:web:piyush7034.github.io:my-files:piyush#mI5Tk0tnlL4tymGuR7084zLWzKBV7j2Jsz4CPbL7IXI",
+            "proofValue": "z4CSUxdD3EgUfzDTHdCNBbAyFVNqqShwCZYRC6sjpPxvr8iDv3ou9AwWd6CsG81PPGuzsYATterc7bjx6n2zd15kT"
+        }
+    }

@@ -1,0 +1,45 @@
+{
+        "credentialSubject": {
+            "gender": "Male",
+            "primaryCropType": "Maize",
+            "mobileNumber": "9876543210",
+            "postalCode": "453000",
+            "landArea": "3 hectares",
+            "fullName": "John Doe",
+            "secondaryCropType": "Rice",
+            "dateOfBirth": "25-05-1990",
+            "face": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAFCAYAAABW1IzHAAAAHklEQVQokWNgGPaAkZHxPyMj439sYrSQo51PBgsAALa0ECF30JSdAAAAAElFTkSuQmCC",
+            "farmerID": "987654321",
+            "villageOrTown": "Koramangala",
+            "district": "Bangalore",
+            "id": "did:jwk:eyJrdHkiOiJSU0EiLCJlIjoiQVFBQiIsInVzZSI6InNpZyIsImtpZCI6InFzNUFQTmxNcGtMNG9NZHhCaVBhR3F6TTFXWElCNW9qUVNlZVBsNHVQeXMiLCJhbGciOiJSUzI1NiIsIm4iOiJxbzhCbHRnRlk3bHFPWmJvYUZ2cjIxSDdVNzZCOTl1TEtmV1ZSWmhuR1o1UUVLUnFRRDl0c0xHeU5qaERPOXZwQ2RfVVJ5ODFlZFl5RkhjSDJiaGxmSXlCaml4U1I0dmFOS1BhMUY5YjJ3b3VfMEF4OC0wQVBoQ3FrVFNPVkhFdmpoTFNnRnhfbHd1T2h3Ykxnai1iaTM3V2FONHJlU1gwZTJlYXZFTWpfUmhUckMwQnNaaFFaNkNONkhzSDNXRkstZjM0cDZUZTFTckhKUWoyTFJvV2RYOGZwNFIyUWtXbzVwYmxla0lLRGtPVUdoc2N3MWsycnFfMWdMQkZFOHc2TlZXakc2M0lMUUdBM2ZrZzhDTE1FS2FNWV8xaXdEdmNXaEZQUS15RDdOVmtyME8xdTI3UkhTTHQ0QmlqSE14YmtSSldsQmk0aXZXMmlXTzV0aDJVQncifQ==",
+            "state": "Karnataka",
+            "landOwnershipType": "Owner"
+        },
+        "validUntil": "2027-09-23T04:57:59.122Z",
+        "validFrom": "2025-09-23T04:57:59.122Z",
+        "type": [
+            "VerifiableCredential",
+            "FarmerCredential"
+        ],
+        "@context": [
+            "https://www.w3.org/ns/credentials/v2",
+            "https://piyush7034.github.io/my-files/farmer.json",
+            "https://w3id.org/security/suites/ed25519-2020/v1"
+        ],
+        "issuer": "did:web:piyush7034.github.io:my-files:piyush",
+        "credentialStatus": {
+            "statusPurpose": "revocation",
+            "statusListIndex": "0",
+            "id": "http://localhost:8090/v1/certify/credentials/status-list/d8813e53-cc35-4e25-ba10-708f74bce23e#0",
+            "type": "BitstringStatusListEntry",
+            "statusListCredential": "http://localhost:8090/v1/certify/credentials/status-list/d8813e53-cc35-4e25-ba10-708f74bce23e"
+        },
+        "proof": {
+            "type": "Ed25519Signature2020",
+            "created": "2025-09-22T23:27:59Z",
+            "proofPurpose": "assertionMethod",
+            "verificationMethod": "did:web:piyush7034.github.io:my-files:piyush#mI5Tk0tnlL4tymGuR7084zLWzKBV7j2Jsz4CPbL7IXI",
+            "proofValue": "z2LYTojiSdg9yGaCegfyEu9quWeQNQHq93nhY7AznMChGnnuJKbjzYthq3rtkqTDSLn7JxLaAa4duZLMz4LgRxit3"
+        }
+    }

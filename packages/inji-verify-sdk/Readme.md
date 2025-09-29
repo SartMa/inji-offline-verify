@@ -63,7 +63,7 @@ Whether you are scanning credentials inside a kiosk or embedding the verifier in
 | `ldp_vc` | `RsaSignature2018`<br/>`JsonWebSignature2020` | RSA PKCS#1 v1.5 with SHA-256<br/>JWS (JSON Web Signature) format | `jsonld-signatures`<br/>Browser Web Crypto API<br/>Custom RSA verifier | Requires cached PEM/JWK material. Logic exists but relies on online fetch fallback if caches are empty. | ⚠️ Implementation present; **not yet validated end-to-end** – treat as experimental. |
 | `ldp_vc` | `DataIntegrityProof`<br/>(cryptosuite: `ecdsa-rdfc-2019`) | ECDSA with P-256/P-384 curves + RDF Dataset Canonicalization | `@digitalbazaar/vc`<br/>`@digitalbazaar/data-integrity`<br/>`@digitalbazaar/ecdsa-rdfc-2019-cryptosuite` | Fully offline once verification methods are cached | ✅ Active implementation with ECDSA cryptosuite support. |
 | `mso_mdoc` | COSE `ES256` (COSE_Sign1) | ECDSA with P-256 curve in COSE format | Custom COSE implementation<br/>Browser Web Crypto API | Works offline when COSE payload is provided; signature verification parity still under review. | ⚠️ Ported from Kotlin; **manual production testing pending**. |
-| Verifiable Presentation | `Ed25519Signature2020` | Ed25519 elliptic curve digital signatures | `@digitalbazaar/vc`<br/>`@digitalbazaar/ed25519-signature-2020`<br/>`@digitalbazaar/ed25519-verification-key-2020` | Requires cached contexts and keys. Fails gracefully with `ERR_OFFLINE_DEPENDENCIES_MISSING` when prerequisites are absent. | ⚠️ **Limited testing** - Only Ed25519Signature2020 VP examples verified. IndexedDB integration recently fixed but requires broader testing. |
+| Verifiable Presentation | `Ed25519Signature2020` | Ed25519 elliptic curve digital signatures | `@digitalbazaar/vc`<br/>`@digitalbazaar/ed25519-signature-2020`<br/>`@digitalbazaar/ed25519-verification-key-2020` | Requires cached contexts and keys. Fails gracefully with `ERR_OFFLINE_DEPENDENCIES_MISSING` when prerequisites are absent. | ⚠️ **Limited testing** - Only Ed25519Signature2020 VP examples verified.|
 
 The TypeScript implementation mirrors MOSIP's Kotlin verifier while adding IndexedDB caching, granular error mapping, and optional online fallbacks for missing artefacts.
 
@@ -77,17 +77,78 @@ The TypeScript implementation mirrors MOSIP's Kotlin verifier while adding Index
 
 Direct imports from `src/index.ts` expose the same primitives used internally:
 
-- `CredentialsVerifier` – validates a single verifiable credential for a given `CredentialFormat`.
-- `PresentationVerifier` – verifies a VP's proof and delegates each embedded VC to `CredentialsVerifier`.
+#### Core verification entry points
+- **`CredentialsVerifier`** – Primary entry point for individual VC verification called by `QRCodeVerification` component:
+  - Orchestrates the complete verification pipeline for single verifiable credentials
+  - Uses `LdpValidator` for structural validation (schema compliance, required fields, expiration dates)
+  - Delegates cryptographic verification to `LdpVerifier` for signature validation
+  - Supports all `CredentialFormat` types (LDP_VC, mDOC, etc.)
+  - Returns structured `VerificationResult` with detailed error codes and status
+
+- **`PresentationVerifier`** – Primary entry point for VP verification called by `QRCodeVerification` component:
+  - Handles presentation-level proof verification using `@digitalbazaar/vc` library
+  - Validates presentation signatures with challenge-based authentication
+  - Automatically delegates embedded credential verification to `CredentialsVerifier`
+  - Supports both signed and unsigned presentations with configurable domain validation
+  - Returns `PresentationVerificationResult` with aggregated VC verification status
+
+#### Verification layer components
+- **`LdpValidator`** – Structural validation engine (ported from Kotlin):
+  - Validates credential schema compliance for Data Model 1.1 and 2.0
+  - Checks mandatory fields, date formats, and credential structure
+  - Handles expiration validation (`expirationDate` for v1.1, `validUntil` for v2.0)
+  - Returns `ValidationStatus` with specific error codes for structural issues
+  
+- **`LdpVerifier`** – Cryptographic verification engine:
+  - Contains the core signature verification logic for all supported proof types
+  - Routes to appropriate signature suites (Ed25519, ECDSA, RSA, DataIntegrity)
+  - Uses `jsonld-signatures` with custom `OfflineDocumentLoader` for context resolution
+  - Integrates with `PublicKeyService` for verification method resolution
+  - Performs canonicalization and cryptographic proof validation
+
+#### Helper types and utilities
 - `CredentialFormat` helpers – narrows string inputs to supported formats.
 - `VerificationResult`, `PresentationVerificationResult`, `VCResult` – strongly typed result objects.
-- `PublicKeyService` – resolves keys via cached bundles or live DID/HTTPS lookups.
 
-### Cache and revocation helpers
+### Key resolution and document loading
 
-- `SDKCacheManager` – hydrates IndexedDB with keys, JSON-LD contexts, and revoked credential entries from a backend-supplied bundle.
-- `OrgResolver` – builds cache bundles from a VC or issuer DID on the server side.
-- `CacheHelper` utilities – read/write helpers for contexts, keys, and revocation entries, including `replaceRevokedVCsForOrganization` and `isVCRevoked`.
+- **`PublicKeyService`** – Primary key resolver with cache-first strategy:
+  - Queries IndexedDB cache for verification methods and public keys
+  - Falls back to `PublicKeyGetterFactory` for online DID resolution when cache misses
+  - Supports `did:web`, `did:key`, `did:jwk` and HTTPS endpoints
+  - Automatically caches resolved keys for future offline use
+  
+- **`OfflineDocumentLoader`** – JSON-LD context resolver for `jsonld-signatures`:
+  - Prioritizes cached contexts from IndexedDB for offline-first operation
+  - Fetches missing contexts from network when online and caches them via `SDKCacheManager`
+  - Provides security boundary - handles only @context URLs, not DID resolution
+  - Throws `ERR_OFFLINE_DEPENDENCIES_MISSING` when required contexts are unavailable offline
+
+- **`PublicKeyGetterFactory`** – Multi-protocol DID resolver (ported from Kotlin):
+  - Resolves `did:web` by fetching DID documents from web endpoints
+  - Extracts keys from `did:key` using multibase decoding
+  - Handles `did:jwk` and HTTPS key endpoints
+  - Returns normalized key material in multiple formats (multibase, JWK, hex, PEM)
+
+### Cache management and organization utilities
+
+- **`SDKCacheManager`** – Central cache orchestrator managing IndexedDB storage:
+  - Hydrates IndexedDB with keys, JSON-LD contexts, and revoked credential entries
+  - Provides `primeFromServer()` and `syncFromServer()` methods for cache seeding
+  - Manages database schema with constants defined in `CacheConstants`
+  - Coordinates with `CacheHelper` utilities for low-level database operations
+
+- **`OrgResolver`** – Server-side bundle builder for organizations:
+  - Generates `CacheBundle` objects from VCs or issuer DIDs using `PublicKeyGetterFactory`
+  - Fetches and packages JSON-LD contexts for offline distribution
+  - Builds comprehensive bundles that organizations store in backend databases
+  - Enables pre-seeding of verification dependencies before credentials are issued
+
+- **`CacheHelper`** utilities – Low-level IndexedDB operations:
+  - `putPublicKeys()`, `getAnyKeyForDid()` - Key storage and retrieval
+  - `putContexts()`, `getContext()` - JSON-LD context management  
+  - `replaceRevokedVCsForOrganization()`, `isVCRevoked()` - Revocation list handling
+  - Direct IndexedDB access with transaction management and error handling
 
 Use these utilities to guarantee that kiosks, PWAs, or service workers have everything they need for offline validation before a presentation begins.
 

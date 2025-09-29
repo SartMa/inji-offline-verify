@@ -44,19 +44,32 @@ The application lives inside the `pnpm` + `nx` monorepo alongside the shared SDK
 ### 1. Authentication & cache priming
 
 - `SignIn.tsx` collects org, username, and password, then invokes `login()` from the shared auth package.
-- On success, the backend responds with organization metadata; `buildServerCacheBundle()` gathers public keys and JSON-LD contexts.
-- `WorkerCacheService.primeFromServer()` writes keys into the SDK-managed IndexedDB stores (`public_keys`, `contexts`) to unlock offline verification.
+- On success, the backend responds with organization metadata; `buildServerCacheBundle()` gathers public keys, JSON-LD contexts, and revoked VCs from server endpoints.
+- `WorkerCacheService` acts as a bridge to the SDK's cache management system:
+  - Calls `SDKCacheManager.primeFromServer()` from `@mosip/react-inji-verify-sdk` to populate the SDK's IndexedDB stores
+  - Manages SDK cache operations including `public_keys`, `contexts`, and `revoked_vcs` stores
+  - The SDK maintains its own IndexedDB database separate from worker application data
 - `AuthContext` persists the session token and exposes `isAuthenticated`, `isLoading`, and `signIn/signOut` hooks across the app.
 
 ### 2. Offline verification flow
 
-- Dashboard entry points (`VerificationActions.tsx`, `QRVerificationWrapper.tsx`) call into the `@mosip/react-inji-verify-sdk`.
-- The SDK uses the primed **document loader** and **DID resolver** to resolve contexts and keys from IndexedDB before attempting the network.
-- Verification results (success/failure plus metadata) are returned to the UI and pushed to local persistence.
+- `VerificationActions.tsx` provides the main verification entry points with scan and upload cards.
+- User interactions launch `QRScannerModal` or `FileUploadModal`, which internally use the `QRCodeVerification` component from `@mosip/react-inji-verify-sdk`.
+- The SDK's verification engine uses the primed **document loader** and **DID resolver** to resolve contexts and keys from its IndexedDB stores before attempting network fallback.
+- Verification results (success/failure plus metadata) are returned to the UI and pushed to worker application's local persistence via `VCStorageContext`.
 
-### 3. Local logging & synchronization
+### 3. Automatic cache synchronization
 
-- `VCStorageContext` is the source of truth for verification logs. It writes to IndexedDB through `dbService.ts` and exposes helpers like `storeVerificationResult`, `syncToServer`, and `getUnsyncedVerifications`.
+- `CacheSyncService` runs continuous background synchronization every **90 seconds** when online:
+  - Fetches updated organization data (public keys, JSON-LD contexts, revoked VCs) from server endpoints
+  - Detects changes and updates the SDK cache automatically via `WorkerCacheService.primeFromServer()`
+  - Ensures offline verification always uses the latest cryptographic material and revocation lists
+  - Triggers on network recovery, periodic intervals, and manual sync requests
+- This keeps the SDK's IndexedDB stores fresh with organizational updates without user intervention.
+
+### 4. Local logging & synchronization
+
+- `VCStorageContext` is the source of truth for verification logs. It writes to worker's IndexedDB through `dbService.ts` and exposes helpers like `storeVerificationResult`, `syncToServer`, and `getUnsyncedVerifications`.
 - Metrics for verification and storage duration are tracked on-device for performance trendlines and displayed in the dashboard.
 - Sync triggers fire on three channels:
   - browser `online` event,
@@ -64,22 +77,56 @@ The application lives inside the `pnpm` + `nx` monorepo alongside the shared SDK
   - a manual **Sync Now** control in the UI.
 - After successful server upload, `markAsSynced()` updates local records to prevent double sends.
 
-### 4. Observability & diagnostics
+### 5. Observability & diagnostics
 
 - Hybrid log refresh keeps a rolling window of recent results by merging locally captured data with server-side history (`historicalLogsService.ts`).
 - Performance logs labeled `[Performance]` surface verification, storage, and hybrid refresh timings, feeding the benchmarking harness.
 
 ---
 
-## Offline data & caching
+## IndexedDB architecture
 
-| Store / cache | Backing tech | Contents | Populated by |
-| --- | --- | --- | --- |
-| `public_keys` | IndexedDB (SDK) | Issuer verification keys per controller | `WorkerCacheService.primeFromServer` |
-| `contexts` | IndexedDB (SDK) | JSON-LD contexts required by credentials | `WorkerCacheService` & SDK document loader |
-| `verification_logs` | IndexedDB (`dbService.ts`) | Per-attempt record with status, hash, timestamps | `VCStorageContext.storeVerificationResult` |
-| `historicalStats` & duration caches | `localStorage` | Aggregated metrics for charts and benchmarking | `VCStorageContext` utilities |
-| Static assets & API responses | Service worker caches | App shell, Google fonts, `/organization/api`, `/worker/api`, `/api` payloads | Workbox runtime caching (see `vite.config.ts`) |
+The Worker PWA uses two separate IndexedDB databases for different concerns:
+
+```
+📁 IndexedDB Storage
+├── 🗃️ SDKCache (managed by @mosip/react-inji-verify-sdk)
+│   ├── 📋 public_keys
+│   │   ├── key_id, key_type, public_key_multibase
+│   │   ├── public_key_hex, public_key_jwk, controller
+│   │   └── purpose, is_active, organization_id
+│   ├── 📋 contexts
+│   │   ├── url (JSON-LD context URL)
+│   │   └── document (cached context document)
+│   └── 📋 revoked_vcs
+│       ├── vc_id, issuer, subject
+│       ├── reason, revoked_at
+│       └── organization_id
+│
+└── 🗃️ WorkerCache (managed by worker PWA dbService.ts)
+    └── 📋 verifications
+        ├── sno (auto-increment primary key)
+        ├── uuid (unique sync identifier)
+        ├── verified_at, verification_status
+        ├── vc_hash, credential_subject
+        ├── error_message, synced (boolean)
+        └── indexes: uuid, verified_at, synced
+```
+
+**SDK Cache Management:**
+- Controlled entirely by `SDKCacheManager` from `@mosip/react-inji-verify-sdk`
+- `WorkerCacheService` acts as a bridge, calling SDK methods like `primeFromServer()`
+- Auto-synced every 90 seconds via `CacheSyncService` when online
+- Used for offline verification: key resolution, context loading, revocation checks
+
+**Worker Cache Management:**
+- Managed locally by `dbService.ts` with direct IndexedDB operations
+- Stores verification attempt logs with sync status tracking
+- Used for verification history, analytics, and server synchronization
+
+**Additional Storage:**
+- `localStorage`: Performance metrics, sync metadata, device ID
+- Service Worker caches: App shell, API responses, static assets (via Workbox)
 
 For manual maintenance, debug panes inside the dashboard expose cache priming status, pending sync counts, and allow clearing local and historical data.
 
@@ -92,30 +139,6 @@ For manual maintenance, debug panes inside the dashboard expose cache priming st
   - Static assets and fonts leverage `CacheFirst` strategies with long retention.
 - **Background sync** registers `sync-verifications` so the browser retries log uploads when connectivity stabilizes, even if the PWA is closed.
 - **Installability** is enabled through the web manifest (`public/manifest.webmanifest`) with maskable icons and standalone display, making it easy to pin to Android/iOS home screens or desktop.
-
----
-
-## Getting started
-
-### Prerequisites
-
-- Node.js 20+
-- `pnpm` (workspace uses the [pnpm-lock.yaml](../../pnpm-lock.yaml))
-- Access to the backend server (default is `http://localhost:8000`)
-
-### Environment configuration
-
-Common overrides for local development can be placed in a root-level `.env` file:
-
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `VITE_API_HOST` | `http://localhost:8000` | Base URL for backend endpoints |
-| `VITE_ORGANIZATION_PREFIX` | `/organization/api` | Proxy prefix for organization endpoints |
-| `VITE_WORKER_PREFIX` | `/worker/api` | Proxy prefix for worker endpoints |
-| `VITE_SHARED_PREFIX` | `/api` | Shared API prefix |
-| `WORKER_PWA_PORT` | `3000` | Dev server port (proxy points back to backend) |
-
-Credentials for a seeded development org: `sunsun / 12345678` under **AcmeCorp**.
 
 ---
 
@@ -181,16 +204,6 @@ pnpm --filter worker-pwa exec node performance_benchmarking/scripts/collect-benc
 | `public/` | Manifest, icons, and fallback assets used by the service worker |
 | `performance_benchmarking/` | Scripts, configs, and run artifacts for automated benchmarking |
 | `vite.config.ts` | PWA build, proxy, and caching strategies |
-
----
-
-## Troubleshooting & tips
-
-- **Cannot log in?** Ensure the backend is running and reachable at the URL defined by `VITE_API_HOST`. Browser devtools will show proxied requests hitting `/worker/api/login/`.
-- **Priming failures** surface as console warnings from `WorkerCacheService`. Re-run login once connectivity is stable; the SDK will retry the downloads.
-- **No offline history** usually means IndexedDB was cleared or blocked. Check browser privacy settings and the storage quota in `chrome://inspect/#service-workers`.
-- **Background sync unavailable** on Safari/iOS older than 17.4 – the app still works, but manual sync is required.
-- **Need a clean slate?** Use the dashboard controls or DevTools > Application > Storage to clear local caches before re-authenticating.
 
 ---
 

@@ -8,6 +8,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import FormLabel from '@mui/material/FormLabel';
 import FormControl from '@mui/material/FormControl';
 import Link from '@mui/material/Link';
+import Divider from '@mui/material/Divider';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
@@ -437,6 +438,20 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
             >
               Forgot your password?
             </Link>
+          </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography sx={{ textAlign: 'center' }}>
+              Don&apos;t have an organization?{' '}
+              <Link
+                component="button"
+                type="button"
+                onClick={handleSwitchToSignUp}
+                variant="body2"
+                sx={{ alignSelf: 'center' }}
+              >
+                Register Organization
+              </Link>
+            </Typography>
           </Box>
         </Card>
         

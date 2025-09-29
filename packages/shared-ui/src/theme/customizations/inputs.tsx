@@ -383,7 +383,7 @@ export const inputsCustomizations: Components<Theme> = {
         padding: 0,
       },
       root: ({ theme }) => ({
-        padding: '8px 12px',
+        padding: '8px 8px',
         color: (theme.vars || theme).palette.text.primary,
         borderRadius: (theme.vars || theme).shape.borderRadius,
         border: `1px solid ${(theme.vars || theme).palette.divider}`,

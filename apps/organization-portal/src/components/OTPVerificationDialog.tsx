@@ -25,7 +25,7 @@ const OTPContainer = styled(Box)(({ theme }) => ({
 const OTPInput = styled(TextField)(({ theme }) => ({
   '& .MuiInputBase-input': {
     textAlign: 'center',
-    fontSize: '1.2rem',
+    fontSize: '1rem',
     fontWeight: 'bold',
     width: '32px',
     padding: theme.spacing(0.5),

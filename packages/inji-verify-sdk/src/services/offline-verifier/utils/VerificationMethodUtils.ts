@@ -161,6 +161,15 @@ export function resolveProofContext(proofType: string): string[] | null {
         'https://w3id.org/security/v2',
         'https://w3id.org/security/suites/ed25519-2020/v1'
       ];
+    case 'RsaSignature2018':
+      return [
+        'https://w3id.org/security/v2'
+      ];
+    case 'JsonWebSignature2020':
+      return [
+        'https://w3id.org/security/v2',
+        'https://w3id.org/security/suites/jws-2020/v1'
+      ];
     // ... other cases
   }
   return null;

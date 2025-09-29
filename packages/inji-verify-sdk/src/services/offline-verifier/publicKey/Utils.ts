@@ -241,6 +241,16 @@ export function getPublicKeyFromJwk(jwk: any, keyType: string, verificationMetho
     };
   }
 
+  if (keyType === RSA_KEY_TYPE || jwk.kty === 'RSA') {
+    return {
+      verificationMethod,
+      keyType,
+      algorithm: 'RSA',
+      source: 'jwk',
+      jwk,
+    };
+  }
+
   throw new PublicKeyTypeNotSupportedError(`Unsupported key type: ${keyType}`);
 }
 

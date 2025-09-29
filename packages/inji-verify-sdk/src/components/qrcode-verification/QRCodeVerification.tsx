@@ -67,6 +67,7 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
   const [isStartingCamera, setIsStartingCamera] = useState(false); // Add camera starting state
   const canvasRef = useRef<HTMLCanvasElement>(document.createElement("canvas"));
   const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const streamingRef = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const lastProcessedRef = useRef<string | null>(null);
@@ -169,11 +170,13 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
         streamingRef.current = true;
         setIsCameraActive(true);
         setIsStartingCamera(false); // Reset starting state
+        streamRef.current = stream;
         const video = videoRef.current;
         if (!video) {
           console.error('QR Scanner: Video element not found after getting stream');
           // Stop the stream if video element is not available
           stream.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
           return;
         }
         video.srcObject = stream;
@@ -196,11 +199,13 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
             streamingRef.current = true;
             setIsCameraActive(true);
             setIsStartingCamera(false); // Reset starting state
+            streamRef.current = stream;
             const video = videoRef.current;
             if (!video) {
               console.error('QR Scanner: Video element not found in fallback');
               // Stop the stream if video element is not available
               stream.getTracks().forEach(track => track.stop());
+              streamRef.current = null;
               return;
             }
             video.srcObject = stream;
@@ -227,12 +232,14 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
     streamingRef.current = false;
     setIsStartingCamera(false); // Reset starting state
     const video = videoRef.current;
-    if (!video) return;
-    const stream = video.srcObject as MediaStream | null;
+    const stream = streamRef.current ?? (video?.srcObject as MediaStream | null);
     if (stream) {
       stream.getTracks().forEach((track) => track.stop());
     }
-    video.srcObject = null;
+    streamRef.current = null;
+    if (video) {
+      video.srcObject = null;
+    }
     setIsCameraActive(false);
   };
 

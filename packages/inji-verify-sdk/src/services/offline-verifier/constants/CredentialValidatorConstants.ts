@@ -138,6 +138,7 @@ const CredentialValidatorConstants = {
         "Ed25519Signature2018",
         "Ed25519Signature2020",
         "EcdsaSecp256k1Signature2019",
+        "JsonWebSignature2020",
         "DataIntegrityProof"
     ]
 };

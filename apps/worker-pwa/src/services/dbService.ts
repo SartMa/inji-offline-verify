@@ -1,5 +1,5 @@
 // IndexedDB Configuration and Setup
-const DB_NAME = 'VCVerifierDB';
+const DB_NAME = 'WorkerCache';
 const DB_VERSION = 1;
 const STORE_NAME = 'verifications';
 

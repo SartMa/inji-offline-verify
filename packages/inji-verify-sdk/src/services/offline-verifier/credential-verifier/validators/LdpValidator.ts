@@ -114,13 +114,17 @@ export class LdpValidator {
       if (e instanceof ValidationException) {
         // It's a known validation error we threw on purpose.
         return new ValidationStatus(e.errorMessage, e.errorCode);
-      } else {
-        // It's an unexpected error (e.g., JSON.parse failed).
-        return new ValidationStatus(
-          `${CredentialValidatorConstants.EXCEPTION_DURING_VALIDATION}${e.message}`,
-          CredentialValidatorConstants.ERROR_CODE_GENERIC
-        );
       }
+
+      if (e?.errorMessage && e?.errorCode) {
+        return new ValidationStatus(e.errorMessage, e.errorCode);
+      }
+
+      // It's an unexpected error (e.g., JSON.parse failed).
+      return new ValidationStatus(
+        `${CredentialValidatorConstants.EXCEPTION_DURING_VALIDATION}${e?.message ?? 'Unknown validation error'}`,
+        CredentialValidatorConstants.ERROR_CODE_GENERIC
+      );
     }
   }
 

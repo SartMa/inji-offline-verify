@@ -1,359 +1,261 @@
-# INJI VERIFY SDK
+# Inji Verify SDK (internal distribution)
 
-Inji Verify SDK is a library which exposes React components for integrating Inji Verify features seamlessly into any relaying party application.
+> ⚠️ This package is vendored inside the `inji-offline-verify` workspace and is **not** published to npm. Consume it via the workspace tooling or by building local artifacts.
 
-## Features
+React-first verifier experiences powered by MOSIP's offline credential validation engine. The SDK is inspired by the core [`vc-verifier`](https://github.com/mosip/vc-verifier) project and has been extended for TypeScript, browser, and offline-first use cases inside this repository.
 
-- OpenId4VP component that creates QR code and performs OpenId4Vp sharing backend flow.
-- QRCodeVerification component that allows scanning and uploading images to verify the verifiable credentials.
+## Table of contents
 
-## Usage
-`npm i @mosip/react-inji-verify-sdk`
+- [Overview](#overview)
+- [Feature highlights](#feature-highlights)
+- [Supported credential formats](#supported-credential-formats)
+- [SDK surface](#sdk-surface)
+  - [QRCodeVerification component](#qrcodeverification-component)
+  - [Offline verification engine](#offline-verification-engine)
+  - [Cache and revocation helpers](#cache-and-revocation-helpers)
+- [Installation](#installation)
+- [Getting started](#getting-started)
+- [Offline toolkit recipes](#offline-toolkit-recipes)
+- [Error codes](#error-codes)
+- [Backend & cache preparation](#backend--cache-preparation)
+- [Local development](#local-development)
+- [Publishing to an internal registry](#publishing-to-an-internal-registry)
+- [Compatibility](#compatibility)
+- [Project structure](#project-structure)
+- [References & further reading](#references--further-reading)
 
-[npm](https://www.npmjs.com/package/@mosip/react-inji-verify-sdk)
+## Overview
 
-## Local Publishing Guide
+`@mosip/react-inji-verify-sdk` delivers the building blocks needed to integrate MOSIP's verifier flows into a React application:
 
-Install the dependencies
-`npm install`
+- a production-ready React component for offline QR/passive document verification;
+- an offline-first verification engine (ported from the MOSIP [`vc-verifier`](https://github.com/mosip/vc-verifier) Java/Kotlin library) implemented in TypeScript;
+- IndexedDB-backed caching for JSON-LD contexts, issuer public keys, and revocation lists so that verifications succeed even without network access.
 
-Build the project
-`npm run build`
+Whether you are scanning credentials inside a kiosk or embedding the verifier in another relying party application, the SDK exposes the same validation primitives that power Inji's worker applications.
 
-Publish the npm package using Verdaccio
-We use [verdaccio](https://verdaccio.org/docs/what-is-verdaccio). `npm link` or `yarn link` won't work as we have peer dependencies. Follow the docs to set up Verdaccio. Then run
-`npm publish --registry http://localhost:<VERADACCIO_PORT>`
+## Feature highlights
 
-### Prerequisites
-
-- React Project Setup
-
-> **NOTE**
-The component does not support other frontend frameworks like Angular, Vue, or React Native.
-The component is written in React + TypeScript
-
-
-### Backend Requirements
-
-To use the component, you must host a verification backend that implements the OpenID4VP protocol. This backend is referred to as the [inji-verify-service]("../Readme.md"). It also needs to adhere to the OpenAPI spec defined [here]("../docs/api-documentation-openapi.yaml") in case if the backend service is not inji-verify-service.
-
-> ⚠️ Important: The component expects these endpoints to be accessible via a base URL (verifyServiceUrl).
-Example:
-If you deploy the inji-verify/verify-service at:
-https://injiverify-service.example.com
-Then use this as the verifyServiceUrl in the component:
-verifyServiceUrl="https://injiverify-service.example.com/v1/verify"
-
-## Integration Guide
-
-### OpenID4VPVerification
-
-This guide walks you through integrating the OpenID4VPVerification component into your React TypeScript project. It facilitates Verifiable Presentation (VP) verification using the OpenID4VP protocol and supports flexible workflows, including client-side and backend-to-backend verification.
-
-#### Component Props
-
-##### Exclusive Verification Flows
-
-> Only one of the following should be provided:
+- **Unified QR scanner** – Camera + upload workflows, WASM-based decoding via `zxing-wasm`, mobile-friendly zoom controls, and fail-safe timers.
+- **Offline verifier core** – Validates LDP VCs, MSO mDocs, and verifiable presentations with Ed25519, RSA, ES256K, and COSE signature suites.
+- **Revocation & cache services** – Seed and synchronise issuer keys, JSON-LD contexts, and revoked credential lists with a consistent bundle contract.
+- **Extensible public key resolution** – `did:web`, `did:key`, `did:jwk`, and HTTPS key endpoints are supported out of the box.
+- **Developer ergonomics** – Typed APIs, isolated services, Jest + Testing Library harnesses, and webpack + TypeScript build pipeline.
 
 
-| Prop                                           | Description                                       |
-|------------------------------------------------|---------------------------------------------------|
-| `onVpReceived(txnId: string)`                  | Use when your backend fetches the VP result later |
-| `onVpProcessed(vpResult: VerificationResults)` | Use when the frontend needs the result directly   |
+## Supported credential formats
 
-##### `onVpProcessed` Response Structure
-```ts
-type vpResultStatus = "SUCCESS" | "FAILED";
+| Credential format | Signature suites implemented | Offline support | Testing status |
+| --- | --- | --- | --- |
+| `ldp_vc` | `Ed25519Signature2018`, `Ed25519Signature2020`, `EcdsaSecp256k1Signature2019` | Fully offline once JSON-LD contexts and verification methods are cached. | Actively exercised in worker/PWA flows. |
+| `ldp_vc` | `RsaSignature2018`, `JsonWebSignature2020` | Requires cached PEM/JWK material. Logic exists but relies on online fetch fallback if caches are empty. | Implementation present; **not yet validated end-to-end** – treat as experimental. |
+| `mso_mdoc` | COSE `ES256` (COSE_Sign1) validity window checks | Works offline when COSE payload is provided; signature verification parity still under review. | Ported from Kotlin; **manual production testing pending**. |
+| Verifiable Presentation | `Ed25519Signature2020` | Requires cached contexts and keys. Fails gracefully with `ERR_OFFLINE_DEPENDENCIES_MISSING` when prerequisites are absent. | Used in wallet integration smoke tests. |
 
-/*
- * Individual VC verification result
- */
-interface VerificationResult {
-  /**
-   * Verified credential data (structured per implementation).
-   */
-  vc: Record<string, unknown>;
+The TypeScript implementation mirrors MOSIP's Kotlin verifier while adding IndexedDB caching, granular error mapping, and optional online fallbacks for missing artefacts.
 
-  /**
-   * The status of the individual VC.
-   */
-  vcStatus: VerificationStatus;
-}
+## SDK surface
 
-/*
- * Individual VP verification result
- */
-interface VerificationResults {
-    /**
-     * Array of individual VC verification results.
-     */
-    vcResults: VerificationResult[];
+### QRCodeVerification component
 
-    /**
-     * The status of the overall Verifiable Presentation.
-     */
-    vpResultStatus: vpResultStatus;
-}
+`QRCodeVerification` handles camera capture, file uploads (`png`, `jpeg`, `jpg`, `pdf`), and throttled decoding via `zxing-wasm`. The component routes decoded payloads to the offline verifier and exposes a single `onVerificationResult` callback to keep consuming applications simple.
+
+### Offline verification engine
+
+Direct imports from `src/index.ts` expose the same primitives used internally:
+
+- `CredentialsVerifier` – validates a single verifiable credential for a given `CredentialFormat`.
+- `PresentationVerifier` – verifies a VP's proof and delegates each embedded VC to `CredentialsVerifier`.
+- `CredentialFormat` helpers – narrows string inputs to supported formats.
+- `VerificationResult`, `PresentationVerificationResult`, `VCResult` – strongly typed result objects.
+- `PublicKeyService` – resolves keys via cached bundles or live DID/HTTPS lookups.
+
+### Cache and revocation helpers
+
+- `SDKCacheManager` – hydrates IndexedDB with keys, JSON-LD contexts, and revoked credential entries from a backend-supplied bundle.
+- `OrgResolver` – builds cache bundles from a VC or issuer DID on the server side.
+- `CacheHelper` utilities – read/write helpers for contexts, keys, and revocation entries, including `replaceRevokedVCsForOrganization` and `isVCRevoked`.
+
+Use these utilities to guarantee that kiosks, PWAs, or service workers have everything they need for offline validation before a presentation begins.
+
+
+## Installation
+
+```bash
+# with pnpm (recommended when working inside the monorepo)
+pnpm add @mosip/react-inji-verify-sdk
+
+# or via npm
+npm install @mosip/react-inji-verify-sdk
+
+# or via yarn
+yarn add @mosip/react-inji-verify-sdk
 ```
 
-#### Example Usage
-```tsx
-<OpenID4VPVerification
-  triggerElement={<button>Start VP Verification</button>}
-  protocol="openid4vp://"
-  verifyServiceUrl="https://verifier.example.com/v1/verify"
-  presentationDefinitionId="example-definition-id"
-  onVpProcessed={(vpResult) => {
-    console.log("VP Verification Results:", vpResult);
-  }}
-  onQrCodeExpired={() => alert("QR expired")}
-  onError={(err) => console.error("Verification error:", err)}
-/>;
-```
-#### Sample output structure:
-```tx
-VP Verification Results: {
-    vcResults: [
-        {
-        vc: "",
-        vcStatus: "",
-        },
-    ],
-    vpResultStatus : "";
-}
-```
+The package declares React 19 as a peer dependency. Ensure your application already provides a matching `react` and `react-dom` runtime.
 
-##### Presentation Definition Options
-
-> Only one of the following should be provided:
-
-| Prop                       | Description                                         |
-|----------------------------|-----------------------------------------------------|
-| `presentationDefinitionId` | Fetch a predefined definition from the backend      |
-| `presentationDefinition`   | Provide the full definition inline as a JSON object |
-
-#### Example — Inline presentationDefinition Usage
-
-If you want to directly provide a Presentation Definition instead of fetching it by ID, you can pass it like this:
-
-```js
-presentationDefinition = {
-  id: "c4822b58-7fb4-454e-b827-f8758fe27f9a",
-  purpose:
-    "Relying party is requesting your digital ID for the purpose of Self-Authentication",
-  format: {
-    ldp_vc: {
-      proof_type: ["Ed25519Signature2020"],
-    },
-  },
-  input_descriptors: [
-    {
-      id: "id card credential",
-      format: {
-        ldp_vc: {
-          proof_type: ["Ed25519Signature2020"],
-        },
-      },
-      constraints: {
-        fields: [
-          {
-            path: ["$.type"],
-            filter: {
-              type: "object",
-              pattern: "LifeInsuranceCredential",
-            },
-          },
-        ],
-      },
-    },
-  ],
-};
-```
-> If you use `presentationDefinition`, do not pass `presentationDefinitionId`, and vice versa.
-
-##### Required Props
-
-| Prop               | Type                   | Description                              |
-|--------------------|------------------------|------------------------------------------|
-| `verifyServiceUrl` | `string`               | Base URL for your verification backend   |
-| `protocol`         | `string`               | Protocol for QR (e.g.: `"openid4vp://"`) |
-| `onQrCodeExpired`  | `() => void`           | Callback when QR expires                 |
-| `onError`          | `(err: Error) => void` | Error handler callback                   |
-
-##### Optional Props
-
-| Prop             | Type              | Description                                         |
-|------------------|-------------------|-----------------------------------------------------|
-| `triggerElement` | `React.ReactNode` | Element that triggers verification (e.g., a button) |
-| `transactionId`  | `string`          | Optional external tracking ID                       |
-| `qrCodeStyles`   | `object`          | Customize QR appearance (size, color, margin, etc.) |
-
-#### Integration Examples
-
-##### VP Result via UI (frontend receives result)
+## Getting started
 
 ```tsx
-<OpenID4VPVerification
-  triggerElement={<button>Start VP Verification</button>}
-  protocol="openid4vp://"
-  verifyServiceUrl="https://verifier.example.com/v1/verify"
-  presentationDefinitionId="example-definition-id"
-  onVpProcessed={(vpResult) => {
-    console.log("VP Verified:", vpResult);
-  }}
-  onQrCodeExpired={() => alert("QR expired")}
-  onError={(err) => console.error("Verification error:", err)}
-/>
-```
+import {
+  QRCodeVerification,
+  CredentialFormat,
+  VerificationResult
+} from "@mosip/react-inji-verify-sdk";
 
-##### VP Result via Backend (frontend just gets txnId)
-
-```tsx
-<OpenID4VPVerification
-  triggerElement={<button>Verify using Wallet</button>}
-  protocol="openid4vp://"
-  verifyServiceUrl="https://verifier.example.com/v1/verify"
-  presentationDefinition={{
-    id: "custom-def",
-    input_descriptors: [/* your PD here */],
-  }}
-  onVpReceived={(txnId) => {
-    // Send txnId to your backend to fetch the result later
-    console.log("VP submission received, txn ID:", txnId);
-  }}
-  onQrCodeExpired={() => alert("QR expired")}
-  onError={(err) => console.error("Verification error:", err)}
-/>
-```
-
-#### Testing the Component (for QA)
-
-- **Simulate Wallet Scan** : Use a mobile wallet app that supports OpenID4VP, or use mock tools to scan the QR code.
-
-- **Trigger Expiry** : Don't scan the QR and wait for expiry to ensure onQrCodeExpired fires.
-
-- **Force Errors** :
-    - Stop the backend or simulate a 500 error.
-    - Try missing required props or using both callbacks to see validation.
-
-### QRCodeVerification
-This guide walks you through integrating the QRCodeVerification component into your React TypeScript project. It facilitates QR code scanning and image upload to verify Verifiable Credentials (VCs) in your React application, including client-side and backend-to-backend verification.
-
-#### Component Props
-##### Required Props
-
-| Prop                              | Type                     | Description                                             |
-|-----------------------------------|--------------------------|---------------------------------------------------------|
-| `verifyServiceUrl`                | `string`                 | Backend service URL for VC submission and verification. |
-| `onError`                         | `(error: Error) => void` | Callback triggered on errors during scanning/upload.    |
-| `onVCReceived` or `onVCProcessed` | See below                | Only one of these callbacks should be provided.         |
-
-##### Callback Types
-Use one of the following:
-
-`onVCReceived`
-
-```
-onVCReceived: (txnId: string) => void;
-```
-
-Called when a Verifiable Presentation (VP) is received and submitted to the backend, returning the transaction ID
-
-`onVCProcessed`
-
-```
-onVCProcessed: (vpResult: VerificationResults) => void;
-```
-
-Called when the VP is verified, returning an array of verification result objects:
-
-```ts
-type VerificationResult = {   vc: unknown;   vcStatus: "SUCCESS" | "INVALID" | "EXPIRED"; };  type VerificationResults = VerificationResult[];
-```
-> `onVCReceived` and `onVCProcessed` cannot be used simultaneously.
-
-##### Required Props
-| Prop                | Type                  | Default                   | Description                                                             |
-|---------------------|-----------------------|:--------------------------|-------------------------------------------------------------------------|
-| `triggerElement`    | `React.ReactNode`     | `null`                    | Optional trigger to initiate the scan/upload (e.g., a button or label). |
-| `uploadButtonId`    | `(string`             | `"upload-qr"`             | Custom ID for upload button.                                            |
-| `uploadButtonStyle` | `React.CSSProperties` | `"upload-button-default"` | Inline style object to apply custom styling to the upload button.       |
-| `isEnableUpload`    | `boolean`             | `true`                    | Enables/disables QR-CODE image upload.                                  |
-| `isEnableScan`      | `boolean`             | `true`                    | Enables/disables camera scanning.                                       |
-| `isEnableZoom`      | `boolean`             | `true`                    | Enables camera zoom on mobile devices.                                  |
-
-#### Upload Support
-Upload supports the following image types:
-
-* PNG
-* JPEG
-* JPG
-* PDF
-
-You can customize the upload button’s style using `uploadButtonStyle`, and control its placement with `uploadButtonId`.
-
-#### Callback Behaviour
-* `onVCReceived`: Used when you want the VC sent to a backend and just need a txnId response.
-* `onVCProcessed`: Used for apps that handle VC verification client-side and want full VC + status.
-* `onError`: Handles all runtime, parsing, and scanning errors.
-
-> The component will clean up camera streams and timers on unmount.
- 
-##### Example with `onVCProcessed`
-
-```tsx
-<QRCodeVerification 
-    verifyServiceUrl="https://your-api/verify"
-    onVCProcessed={(vpResult) => { console.log("VC + Status:", vpResult)}}
-    onError={(e) => console.error("Error:", e.message)} 
-    triggerElement={<div className="btn-primary">Verify Now</div>} 
-/>
-```
-
-##### Basic Usage
-
-```tsx
-import {QRCodeVerification} from "@mosip/react-inji-verify-sdk";
-const App = () => {
-  const handleVCReceived = (txnId: string) => {
-    console.log("txnId received from VC submission:", txnId);
+export function KioskScanner() {
+  const handleVerificationResult = (result: VerificationResult) => {
+    if (result.verificationStatus) {
+      console.info("✅ Credential valid", result);
+    } else {
+      console.warn("❌ Credential rejected", result.verificationErrorCode, result.verificationMessage);
+    }
   };
-  const handleError = (error: Error) => {
-    console.error("Verification Error:", error.message);
-  };
+
   return (
     <QRCodeVerification
-      verifyServiceUrl="https://your-backend/verify"
-      onVCReceived={handleVCReceived}
-      onError={handleError}
-      triggerElement={<button>Start Verification</button>}
+      triggerElement={<button>Scan credential</button>}
+      onVerificationResult={handleVerificationResult}
+      onError={(error) => console.error("Scanner error", error)}
+      credentialFormat={CredentialFormat.LDP_VC}
+      isEnableUpload
+      isEnableScan
+      isEnableZoom
     />
   );
-};
+}
 ```
 
-#### Redirect Behavior
+What happens under the hood:
 
-When using **Online Share QR Code**, the user is redirected to the client (issuer) server for processing, and then sent **back to the RP’s root path (`/`)** with the `vp_token` in the **URL fragment**:
+- `readBarcodes` (WASM) powers the camera workflow and performs throttled frame sampling to keep CPU under control.
+- Uploads accept PNG, JPEG, JPG, and PDF files; PDF pages are rasterised before QR detection.
+- After decoding, the payload is passed to `CredentialsVerifier` or `PresentationVerifier` depending on whether a VP or a VC was scanned.
+- The verifier automatically checks revocation status via `isVCRevoked` when the credential includes an `id`.
+
+## Offline toolkit recipes
+
+### Programmatic credential verification
+
+```ts
+import {
+  CredentialsVerifier,
+  CredentialFormat,
+  VerificationResult
+} from "@mosip/react-inji-verify-sdk";
+
+async function verifyCredential(vcJson: string): Promise<VerificationResult> {
+  const verifier = new CredentialsVerifier();
+  return verifier.verify(vcJson, CredentialFormat.LDP_VC);
+}
+```
+
+`VerificationResult.verificationErrorCode` maps directly to the constants exported by the offline verifier. The verifier returns structured error codes such as:
+
+| Code | Raised when |
+| --- | --- |
+| `ERR_SIGNATURE_VERIFICATION_FAILED` | The cryptographic proof on the VC/VP failed, or the signature suite is unsupported. |
+| `ERR_OFFLINE_DEPENDENCIES_MISSING` | Required JSON-LD contexts, issuer keys, or revocation entries were not seeded before going offline. |
+| `ERR_PUBLIC_KEY_RESOLUTION_FAILED` | The verifier couldn't resolve the referenced verification method (e.g., DID document fetch returns 404). |
+| `ERR_EMPTY_VC` | Input string was null/empty or not valid JSON. |
+| `ERR_VC_EXPIRED` | `expirationDate`/`validUntil` window is in the past. |
+| `VC_REVOKED` | The credential ID matched an entry in the cached revocation list. |
+
+
+### Seeding caches from a backend service
+
+```ts
+import { OrgResolver, SDKCacheManager } from "@mosip/react-inji-verify-sdk";
+
+// Server: generate a bundle once (e.g. during organisation onboarding)
+const bundle = await OrgResolver.buildBundleFromId("did:web:issuer.example.com#key-1", [
+  "https://www.w3.org/ns/credentials/v2",
+  "https://w3id.org/security/v2"
+]);
+
+// Client / Worker: prime caches before going offline
+await SDKCacheManager.primeFromServer(bundle);
+```
+
+Use `SDKCacheManager.syncFromServer(bundle, organizationId)` when you need to replace data atomically (for example after rotating issuer keys). Cached contexts live in IndexedDB, so subsequent verifications never hit the network.
+
+### Revocation management helpers
+
+```ts
+import {
+  replaceRevokedVCsForOrganization,
+  replacePublicKeysForOrganization,
+  isVCRevoked
+} from "@mosip/react-inji-verify-sdk";
+
+await replacePublicKeysForOrganization("org-123", keyList);
+await replaceRevokedVCsForOrganization("org-123", revokedEntries);
+
+if (await isVCRevoked("urn:uuid:credential-id")) {
+  // surface a domain-specific message to the operator
+}
+```
+
+## Architecture overview
+
+1. **Decode intake** – `QRCodeVerification` uses `zxing-wasm` to decode camera frames or uploaded files. The component throttles frames and automatically falls back to upload when camera access fails.
+2. **Format detection** – Decoded payloads are inspected to distinguish stand-alone VCs from Verifiable Presentations. Presentations are delegated to `PresentationVerifier` which, in turn, invokes `CredentialsVerifier` for each embedded VC.
+3. **Signature validation** – The verifier selects an algorithm-specific verifier (`Ed25519`, `noble-secp256k1`, or `RsaSignatureVerifier`). JSON-LD canonicalisation is handled by `jsonld-signatures` with an offline document loader.
+4. **Cache interaction** – `PublicKeyService` and `OfflineDocumentLoader` retrieve data from IndexedDB. Cache misses while offline trigger explicit error codes so the UI can prompt a sync.
+5. **Result modelling** – Verification outcomes are wrapped in `VerificationResult` objects (with payload echoing the credential) to simplify UI rendering and auditing.
+
+
+
+## Local development
+
+```bash
+# install workspace dependencies
+pnpm install
+
+# build the SDK (emits dist/ via webpack + tsc declarations)
+pnpm --filter @mosip/react-inji-verify-sdk run build
+
+# run unit tests (Jest + Testing Library)
+pnpm --filter @mosip/react-inji-verify-sdk run test
+```
+
+The webpack config targets `es2017` modules with CSS extraction enabled, while TypeScript emits declaration files (`dist/**/*.d.ts`) for consumers.
+
+## Publishing to an internal registry
+
+`npm link` / `yarn link` do not work because the package relies on peer dependencies. For local testing we recommend [Verdaccio](https://verdaccio.org/docs/what-is-verdaccio/):
+
+```bash
+# bump patch version, build artifacts, and publish to Verdaccio
+pnpm --filter @mosip/react-inji-verify-sdk run localPublish
+# defaults to http://localhost:4873 – update the script or command to match your registry port
+```
+
+## Compatibility
+
+- ✅ React 19 (matching peer dependency)
+- ✅ Modern evergreen browsers (Chromium, Firefox, Safari)
+- ⚠️ Server-side rendering (Next.js, Remix) requires client-only guards around scanner components
+- ❌ React Native and other non-DOM runtimes are not supported out of the box
+
+## Project structure
 
 ```
-https://your-rp-domain.com/#vp_token=<base64url-encoded-token>
+src/
+├── components/
+│   └── qrcode-verification/         # Camera + upload scanner UI
+├── services/
+│   └── offline-verifier/            # Core verification logic, caches, public key resolvers
+├── utils/                           # QR decoding, offline document loader, constants
+└── index.ts                         # Barrel exports for components + services
 ```
 
+Unit tests live under `__tests__/` and mirror the component/service layout.
 
-### Compatibility & Scope
+## References & further reading
 
-##### Supported
+- MOSIP [`vc-verifier`](https://github.com/mosip/vc-verifier) – original Kotlin implementation
+- MOSIP [`inji-verify-sdk`](https://github.com/mosip/inji-verify/tree/master/inji-verify-sdk)
+- [W3C Verifiable Credentials Data Model 1.1](https://www.w3.org/TR/vc-data-model-1.1/)
+- [W3C Verifiable Credentials Data Model 2.0](https://www.w3.org/TR/vc-data-model-2.0/)
 
-- ✅ ReactJS (with TypeScript)
-
-- ✅ Modern React projects (17+)
-
-##### Not Supported
-
-- ❌ React Native
-
-- ❌ Angular, Vue, or other frontend frameworks
-
-- ❌ SSR frameworks like Next.js without customization

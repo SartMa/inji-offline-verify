@@ -23,6 +23,7 @@ import {
   concatBytes,
   resolveSecp256k1PublicKeyBytes,
 } from '../../utils/VerificationMethodUtils.js';
+import { RsaSignatureVerifier } from './RsaSignatureVerifier.js';
 import { buildEcVerificationDocuments } from '../../signature/ecDataIntegrity.js';
 
 /**
@@ -41,11 +42,13 @@ import { buildEcVerificationDocuments } from '../../signature/ecDataIntegrity.js
 export class LdpVerifier {
   private readonly logger = console;
   private readonly publicKeyService: PublicKeyService;
+  private readonly rsaVerifier: RsaSignatureVerifier;
 
   constructor() {
     // The PublicKeyService is now an internal part of the SDK.
     // It will use the SDK's cache to resolve keys.
     this.publicKeyService = new PublicKeyService();
+    this.rsaVerifier = new RsaSignatureVerifier(this.publicKeyService, this.logger);
   }
 
   /**
@@ -61,6 +64,14 @@ export class LdpVerifier {
       this.logger.info('🔍 Starting credential verification process');
 
       const vcJsonLdObject = JSON.parse(credential);
+      const contextList = Array.isArray(vcJsonLdObject['@context']) ? vcJsonLdObject['@context'] : [vcJsonLdObject['@context']];
+      const contextUris = (contextList || []).filter((ctx: any) => typeof ctx === 'string');
+      this.logger.info('📄 Credential summary', {
+        id: vcJsonLdObject.id ?? 'N/A',
+        issuer: vcJsonLdObject.issuer ?? 'N/A',
+        proofType: vcJsonLdObject.proof?.type ?? (Array.isArray(vcJsonLdObject.proof) ? vcJsonLdObject.proof.map((p: any) => p.type) : 'N/A'),
+        contextUris,
+      });
 
       // OFFLINE PREFLIGHT: ensure all @context URLs are present in cache to surface a friendly error early
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -83,10 +94,17 @@ export class LdpVerifier {
       }
 
       const proofs = Array.isArray(proof) ? proof : [proof];
+      this.logger.info(`🧾 Found ${proofs.length} proof(s) to verify`);
 
       // STEP 2: Verify EACH proof. For a credential to be valid, ALL its signatures must be valid.
       for (const singleProof of proofs) {
         this.logger.info(`🔐 Verifying proof of type: ${singleProof.type}`);
+        this.logger.info('   Proof metadata', {
+          verificationMethod: singleProof.verificationMethod,
+          proofPurpose: singleProof.proofPurpose,
+          created: singleProof.created,
+          contextOverride: singleProof['@context'] ? 'yes' : 'no',
+        });
 
         // We pass the full VC object and the specific proof to be verified.
         const isProofValid = await this.verifySingleProof(vcJsonLdObject, singleProof);
@@ -132,6 +150,10 @@ export class LdpVerifier {
       case 'EcdsaSecp256k1Signature2019':
         this.logger.info('🔐 Using noble secp256k1 verifier for EcdsaSecp256k1Signature2019');
         return this.verifyEcdsaWithNoble(vcObject, proof);
+
+      case 'RsaSignature2018':
+      case 'JsonWebSignature2020':
+        return this.rsaVerifier.verify(vcObject, proof);
 
       case 'DataIntegrityProof':
         if (proof.cryptosuite === 'ecdsa-rdfc-2019') {

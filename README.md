@@ -322,7 +322,7 @@ The complete offline verification process from QR code scanning to evidence logg
 
 **Key Steps:**
 - Worker scans QR code containing verifiable credential
-- System parses credential format (LDP or mDoc) and requests cached public key
+- System parses credential format (LDP) and requests cached public key
 - Cryptographic signature verification performed using cached materials
 - Verification result stored in IndexedDB with "Pending" sync status
 - Result displayed to worker with success/failure indication

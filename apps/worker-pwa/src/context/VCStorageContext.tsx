@@ -148,7 +148,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
     const { children = null } = props || {};
     // REMOVED: const [db, setDb] = useState<IDBDatabase | null>(null);
     const { isAuthenticated, isLoading } = useAuth();
-    const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const [isOnline, setIsOnline] = useState(false); // Start with false, will be updated by connectivity check
     const [stats, setStats] = useState<Stats>(() => ({ ...EMPTY_STATS }));
     const [historicalStats, setHistoricalStats] = useState<HistoricalStats[]>([]);
     const [logs, setLogs] = useState<LogItem[]>([]);
@@ -322,7 +322,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         }
 
         // If online, immediately refresh with new setting
-        if (navigator.onLine) {
+        if (isOnline) {
             refreshHistoricalLogs();
         } else {
             // If offline, just refresh from IndexedDB with current data
@@ -352,7 +352,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
             const allLocalLogItems = convertRecordsToLogItems(localRecords);
             const latestLocalLogItems = allLocalLogItems.slice(-50).reverse();
 
-            if (!navigator.onLine) {
+            if (!isOnline) {
                 console.log('Offline: Using IndexedDB logs only (includes cached historical data)');
                 setLogs(latestLocalLogItems);
                 setDailyStats(processLogsForDailyStats(allLocalLogItems, historicalLogsDays));
@@ -466,35 +466,100 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         }
     }, []);
 
-    // Online/offline detection
+    // Enhanced network connectivity detection
+    const checkNetworkConnectivity = async (): Promise<boolean> => {
+        try {
+            // First check navigator.onLine for basic network interface status
+            if (!navigator.onLine) {
+                return false;
+            }
+
+            // Then do an actual network request to verify internet connectivity
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2000); // 1 second timeout
+
+            const response = await fetch('/healthz', {
+                method: 'HEAD',
+                cache: 'no-store',
+                signal: controller.signal,
+            });
+
+            clearTimeout(timeoutId);
+            return response.ok;
+        } catch (error) {
+            // Network request failed - we're offline or have connectivity issues
+            return false;
+        }
+    };
+
+    // Online/offline detection with enhanced network checking
     useEffect(() => {
+        let connectivityCheckInterval: NodeJS.Timeout;
+
+        const updateConnectionStatus = async () => {
+            const isConnected = await checkNetworkConnectivity();
+            
+            setIsOnline(prevIsOnline => {
+                if (isConnected && !prevIsOnline) {
+                    console.log('Connection restored');
+                } else if (!isConnected && prevIsOnline) {
+                    console.log('Connection lost');
+                }
+                return isConnected;
+            });
+        };
+
         const handleOnline = () => {
-            setIsOnline(true);
-            console.log('Connection restored');
-            syncToServer();
+            console.log('Network interface online');
+            // Verify actual connectivity
+            updateConnectionStatus();
         };
 
         const handleOffline = () => {
+            console.log('Network interface offline');
             setIsOnline(false);
-            console.log('Connection lost');
         };
 
+        // Initial connectivity check
+        updateConnectionStatus();
+
+        // Listen to browser network events
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
-        // Set up periodic sync (every 30 seconds if online)
-        const syncInterval = setInterval(() => {
-            if (navigator.onLine) {
-                syncToServer();
-            }
+        // Periodic connectivity verification (every 30 seconds)
+        connectivityCheckInterval = setInterval(async () => {
+            await updateConnectionStatus();
         }, 30000);
 
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
-            clearInterval(syncInterval);
+            if (connectivityCheckInterval) {
+                clearInterval(connectivityCheckInterval);
+            }
         };
-    }, []); // REMOVED: db from dependency array
+    }, []); // Remove isOnline dependency to prevent recreation
+
+    // Separate effect to handle sync when coming online
+    useEffect(() => {
+        if (isOnline && isAuthenticated) {
+            console.log('Online status changed to true - triggering sync');
+            syncToServer().catch(error => {
+                console.warn('Auto-sync on online failed:', error);
+            });
+        }
+    }, [isOnline, isAuthenticated]);
+
+    // Trigger sync when coming back online
+    useEffect(() => {
+        if (isOnline && isAuthenticated) {
+            console.log('Online status changed to true - triggering sync');
+            syncToServer().catch(error => {
+                console.warn('Auto-sync on online failed:', error);
+            });
+        }
+    }, [isOnline, isAuthenticated]);
 
     // Update UI data periodically
     const updateStats = async () => {
@@ -557,7 +622,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         
         // Refresh hybrid logs periodically when online to keep aggregates in sync
         const logsInterval = setInterval(() => {
-            if (navigator.onLine && !isLoadingHistoricalLogs) {
+            if (isOnline && !isLoadingHistoricalLogs) {
                 loadHybridLogs('periodic-refresh');
             }
         }, 300000);
@@ -566,7 +631,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
             clearInterval(interval);
             clearInterval(logsInterval);
         };
-    }, [isAuthenticated, isLoadingHistoricalLogs, historicalLogsDays]); // Re-setup intervals when loading state or days change
+    }, [isAuthenticated, isLoadingHistoricalLogs, historicalLogsDays, isOnline]); // Re-setup intervals when loading state, days, or online status change
 
     // Core storage functions now use dbService
     const storeVerificationResult = async (jsonData: any): Promise<number | undefined> => {
@@ -601,7 +666,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         loadHybridLogs('post-store-refresh').catch(() => {}); // Refresh hybrid logs to show new entry
 
         // If online, trigger an immediate sync (fire-and-forget)
-        if (navigator.onLine) {
+        if (isOnline) {
             try { void syncToServer(); } catch {}
             registerBackgroundSync();
         }

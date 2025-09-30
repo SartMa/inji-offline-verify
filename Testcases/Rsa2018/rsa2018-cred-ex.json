@@ -1,0 +1,47 @@
+{
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1",
+    {
+      "@version": 1.1
+    },
+    "https://www.w3.org/ns/odrl.jsonld",
+    {
+      "ex": "https://example.org/examples#",
+      "schema": "http://schema.org/",
+      "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+      "alumniOf": {
+        "@id": "schema:alumniOf",
+        "@type": "rdf:HTML"
+      },
+      "degree": "ex:degree",
+      "degreeType": "ex:degreeType",
+      "degreeSchool": "ex:degreeSchool",
+      "givenName": "schema:givenName",
+      "familyName": "schema:familyName"
+    }
+  ],
+  "id": "https://sartma.github.io/tryingsomethinglol/credentials/expired-alumni",
+  "type": [
+    "VerifiableCredential",
+    "AlumniCredential"
+  ],
+  "issuer": "did:web:sartma.github.io:tryingsomethinglol",
+  "issuanceDate": "2020-01-01T12:00:00Z",
+  "expirationDate": "2022-01-01T12:00:00Z",
+  "credentialSubject": {
+    "id": "did:example:holder321",
+    "givenName": "Bob",
+    "familyName": "Brown",
+    "alumniOf": "Example University"
+  },
+  "proof": {
+    "@context": [
+      "https://w3id.org/security/v2"
+    ],
+    "type": "RsaSignature2018",
+    "created": "2020-01-02T12:10:00Z",
+    "proofPurpose": "assertionMethod",
+    "verificationMethod": "did:web:sartma.github.io:tryingsomethinglol#key-1",
+    "jws": "eyJhbGciOiJSUzI1NiIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..okm48ovkZu_ioRDSDxGErvqpKtt2_yE04tHG1WURuRAM_lrPebb4C8f5hyBeS7O5pxuoKnB9LL5gl9x5I8c0RQ9fwt6HwD1zy0qVvWyZLPeMjoP_nsIPUVzznTa2hAkL2qBkYLNVWU5axdD0iSUiNSRDAn65naGVzkdvvqIXZ6TkN-oiDU4tPDVYE5_fMVF75zkq8Q7SUsV7em3qMXz0lroXEBWqadzuRxJHcsPwQMFFru0W4ELwquPHY-1BQ-h_C_Ny4wLz2BmGFxeskuY__QQH8vH-8ObcJdXLjUBjSXgb5PtJ2a-qj0muNlOIwS3WLIP7ZkMWup2u7dnMNpTeAg"
+  }
+}

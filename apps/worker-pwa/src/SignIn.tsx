@@ -17,6 +17,7 @@ import Alert from '@mui/material/Alert';
 import { styled } from '@mui/material/styles';
 import ForgotPassword from '@inji-offline-verify/shared-ui/src/components/ForgotPassword';
 import { AppTheme, ColorModeSelect } from '@inji-offline-verify/shared-ui/src/theme';
+import { InjiPortalIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons';
 import { useAuth } from './context/AuthContext.tsx';
 import { login } from './services/authService';
 import { WorkerCacheService } from './services/WorkerCacheService';
@@ -197,6 +198,7 @@ export default function SignIn(props: {
       <SignInContainer direction="column" justifyContent="space-between">
         <ColorModeSelect sx={{ position: 'fixed', top: '1rem', right: '1rem' }} />
         <Card variant="outlined">
+          <InjiPortalIcon />
           <Typography
             component="h1"
             variant="h4"

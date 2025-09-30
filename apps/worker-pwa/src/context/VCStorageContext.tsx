@@ -208,14 +208,59 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         }
     });
 
-    const convertRecordsToLogItems = (records: any[]): LogItem[] =>
-        records.map((rec: any, idx: number) => ({
-            id: typeof rec.sno === 'number' ? rec.sno : idx + 1,
-            status: rec.verification_status === 'SUCCESS' ? 'success' : 'failure',
-            synced: !!rec.synced,
-            timestamp: rec.verified_at ? Date.parse(rec.verified_at) : Date.now(),
-            hash: rec.vc_hash || '-',
-        }));
+    const convertRecordsToLogItems = (records: any[]): LogItem[] => {
+        const parseRecordTimestamp = (rec: any): number => {
+            const candidates = [rec?.verified_at, rec?.created_at, rec?.timestamp];
+
+            for (const candidate of candidates) {
+                if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+                    return candidate;
+                }
+
+                if (typeof candidate === 'string') {
+                    const parsed = Date.parse(candidate);
+                    if (!Number.isNaN(parsed)) {
+                        return parsed;
+                    }
+                }
+            }
+
+            return Number.NaN;
+        };
+
+        const items = records.map((rec: any, idx: number) => {
+            const timestamp = parseRecordTimestamp(rec);
+            const status: LogItem['status'] = rec.verification_status === 'SUCCESS' ? 'success' : 'failure';
+
+            return {
+                originalIndex: idx,
+                log: {
+                    id: 0,
+                    status,
+                    synced: !!rec.synced,
+                    timestamp,
+                    hash: rec.vc_hash || '-',
+                },
+            };
+        });
+
+        const sortedByTimestamp = [...items].sort((a, b) => {
+            const aTime = Number.isFinite(a.log.timestamp) ? a.log.timestamp : Number.NEGATIVE_INFINITY;
+            const bTime = Number.isFinite(b.log.timestamp) ? b.log.timestamp : Number.NEGATIVE_INFINITY;
+
+            if (aTime !== bTime) {
+                return aTime - bTime;
+            }
+
+            return a.originalIndex - b.originalIndex;
+        });
+
+        sortedByTimestamp.forEach((item, index) => {
+            item.log.id = index + 1;
+        });
+
+        return items.map((item) => item.log);
+    };
 
     const processLogsForDailyStats = (logItems: LogItem[], days: number): DailyStat[] => {
         if (!days || days < 1) {

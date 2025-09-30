@@ -1,5 +1,38 @@
 // import * as React from 'react';
 import SvgIcon from '@mui/material/SvgIcon';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+
+export function InjiPortalIcon() {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1, // Reduced the gap for a tighter look
+      }}
+    >
+      <img 
+        src="/assets/inji_logo.png" 
+        alt="Inji Logo" 
+        style={{ 
+          height: '21px', // <-- Made the logo smaller
+          display: 'block' 
+        }} 
+      />
+      <Typography
+        variant="h6"
+        component="span"
+        sx={{
+          fontWeight: 'bold',
+          fontSize: '1.25rem', // <-- Made the font smaller
+        }}
+      >
+        Inji Portal
+      </Typography>
+    </Box>
+  );
+}
 
 export function SitemarkIcon() {
   return (

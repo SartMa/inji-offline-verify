@@ -152,7 +152,6 @@ export class LdpVerifier {
         return this.verifyEcdsaWithNoble(vcObject, proof);
 
       case 'RsaSignature2018':
-      case 'JsonWebSignature2020':
         return this.rsaVerifier.verify(vcObject, proof);
 
       case 'DataIntegrityProof':

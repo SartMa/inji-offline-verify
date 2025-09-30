@@ -47,10 +47,12 @@ Whether you are scanning credentials inside a kiosk or embedding the verifier in
 
 | Credential format | Signature suites implemented | Offline support | Testing status |
 | --- | --- | --- | --- |
-| `ldp_vc` | `Ed25519Signature2018`, `Ed25519Signature2020`, `EcdsaSecp256k1Signature2019` | Fully offline once JSON-LD contexts and verification methods are cached. | Actively exercised in worker/PWA flows. |
-| `ldp_vc` | `RsaSignature2018`, `JsonWebSignature2020` | Requires cached PEM/JWK material. Logic exists but relies on online fetch fallback if caches are empty. | Implementation present; **not yet validated end-to-end** – treat as experimental. |
+| `ldp_vc` | `Ed25519Signature2018`, `Ed25519Signature2020`, `EcdsaSecp256k1Signature2019`, `RsaSignature2018*` | Fully offline once JSON-LD contexts and verification methods are cached. | Actively exercised in worker/PWA flows. |
+| `ldp_vc` | `JsonWebSignature2020` | Requires cached PEM/JWK material. Logic exists but relies on online fetch fallback if caches are empty. | Implementation present; **not yet validated end-to-end** – treat as experimental. |
 | `mso_mdoc` | COSE `ES256` (COSE_Sign1) validity window checks | Works offline when COSE payload is provided; signature verification parity still under review. | Ported from Kotlin; **manual production testing pending**. |
 | Verifiable Presentation | `Ed25519Signature2020` | Requires cached contexts and keys. Fails gracefully with `ERR_OFFLINE_DEPENDENCIES_MISSING` when prerequisites are absent. | Used in wallet integration smoke tests. |
+
+*Detached JWS (`b64=false`, `crit:["b64"]`); supports `RS256` / `PS256` and offline canonicalisation via `https://w3id.org/security/v2`.
 
 The TypeScript implementation mirrors MOSIP's Kotlin verifier while adding IndexedDB caching, granular error mapping, and optional online fallbacks for missing artefacts.
 

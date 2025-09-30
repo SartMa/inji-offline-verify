@@ -4,7 +4,6 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import CssBaseline from '@mui/material/CssBaseline';
-import Divider from '@mui/material/Divider';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormLabel from '@mui/material/FormLabel';
 import FormControl from '@mui/material/FormControl';
@@ -15,10 +14,10 @@ import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
 import { styled } from '@mui/material/styles';
 import { AppTheme, ColorModeSelect } from '@inji-offline-verify/shared-ui/src/theme';
-import { GoogleIcon, FacebookIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons';
 import { registerOrganization, confirmRegistration } from '../../services/registrationService';
 import { getApiHost } from '@inji-offline-verify/shared-auth';
 import OTPVerificationDialog from '../../components/OTPVerificationDialog';
+import { InjiPortalIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons';
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -317,6 +316,7 @@ export default function SignUp({ disableCustomTheme, onSwitchToSignIn }: SignUpP
       <SignUpContainer direction="column" justifyContent="space-between">
         <ColorModeSelect sx={{ position: 'fixed', top: '1rem', right: '1rem' }} />
         <Card variant="outlined">
+          <InjiPortalIcon />
           <Typography
             component="h1"
             variant="h4"

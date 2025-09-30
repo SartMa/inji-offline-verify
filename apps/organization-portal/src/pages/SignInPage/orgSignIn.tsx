@@ -8,7 +8,6 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import FormLabel from '@mui/material/FormLabel';
 import FormControl from '@mui/material/FormControl';
 import Link from '@mui/material/Link';
-import Divider from '@mui/material/Divider';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
@@ -19,6 +18,7 @@ import { styled } from '@mui/material/styles';
 import ForgotPassword from '@inji-offline-verify/shared-ui/src/components/ForgotPassword';
 import { AppTheme, ColorModeSelect } from '@inji-offline-verify/shared-ui/src/theme';
 import { useAuth, loginorg } from '@inji-offline-verify/shared-auth';
+import { InjiPortalIcon } from '@inji-offline-verify/shared-ui/src/components/CustomIcons';
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -261,6 +261,7 @@ export default function OrgSignIn({ disableCustomTheme, onSwitchToSignUp, onSwit
       <SignInContainer direction="column" justifyContent="space-between">
         <ColorModeSelect sx={{ position: 'fixed', top: '1rem', right: '1rem' }} />
         <Card variant="outlined">
+          <InjiPortalIcon />
           <Typography
             component="h1"
             variant="h4"

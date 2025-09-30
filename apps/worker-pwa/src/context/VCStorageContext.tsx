@@ -277,7 +277,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         }
 
         // If online, immediately refresh with new setting
-        if (navigator.onLine) {
+        if (isOnline) {
             refreshHistoricalLogs();
         } else {
             // If offline, just refresh from IndexedDB with current data
@@ -307,7 +307,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
             const allLocalLogItems = convertRecordsToLogItems(localRecords);
             const latestLocalLogItems = allLocalLogItems.slice(-50).reverse();
 
-            if (!navigator.onLine) {
+            if (!isOnline) {
                 console.log('Offline: Using IndexedDB logs only (includes cached historical data)');
                 setLogs(latestLocalLogItems);
                 setDailyStats(processLogsForDailyStats(allLocalLogItems, historicalLogsDays));
@@ -453,16 +453,15 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
 
         const updateConnectionStatus = async () => {
             const isConnected = await checkNetworkConnectivity();
-            const wasOnline = isOnline;
-
-            setIsOnline(isConnected);
-
-            if (isConnected && !wasOnline) {
-                console.log('Connection restored');
-                syncToServer();
-            } else if (!isConnected && wasOnline) {
-                console.log('Connection lost');
-            }
+            
+            setIsOnline(prevIsOnline => {
+                if (isConnected && !prevIsOnline) {
+                    console.log('Connection restored');
+                } else if (!isConnected && prevIsOnline) {
+                    console.log('Connection lost');
+                }
+                return isConnected;
+            });
         };
 
         const handleOnline = () => {
@@ -484,13 +483,8 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         window.addEventListener('offline', handleOffline);
 
         // Periodic connectivity verification (every 30 seconds)
-        connectivityCheckInterval = setInterval(() => {
-            updateConnectionStatus();
-            
-            // Also sync if we're online
-            if (isOnline) {
-                syncToServer();
-            }
+        connectivityCheckInterval = setInterval(async () => {
+            await updateConnectionStatus();
         }, 30000);
 
         return () => {
@@ -500,7 +494,27 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
                 clearInterval(connectivityCheckInterval);
             }
         };
-    }, []); // REMOVED: db from dependency array
+    }, []); // Remove isOnline dependency to prevent recreation
+
+    // Separate effect to handle sync when coming online
+    useEffect(() => {
+        if (isOnline && isAuthenticated) {
+            console.log('Online status changed to true - triggering sync');
+            syncToServer().catch(error => {
+                console.warn('Auto-sync on online failed:', error);
+            });
+        }
+    }, [isOnline, isAuthenticated]);
+
+    // Trigger sync when coming back online
+    useEffect(() => {
+        if (isOnline && isAuthenticated) {
+            console.log('Online status changed to true - triggering sync');
+            syncToServer().catch(error => {
+                console.warn('Auto-sync on online failed:', error);
+            });
+        }
+    }, [isOnline, isAuthenticated]);
 
     // Update UI data periodically
     const updateStats = async () => {
@@ -563,7 +577,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         
         // Refresh hybrid logs periodically when online to keep aggregates in sync
         const logsInterval = setInterval(() => {
-            if (navigator.onLine && !isLoadingHistoricalLogs) {
+            if (isOnline && !isLoadingHistoricalLogs) {
                 loadHybridLogs('periodic-refresh');
             }
         }, 300000);
@@ -572,7 +586,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
             clearInterval(interval);
             clearInterval(logsInterval);
         };
-    }, [isAuthenticated, isLoadingHistoricalLogs, historicalLogsDays]); // Re-setup intervals when loading state or days change
+    }, [isAuthenticated, isLoadingHistoricalLogs, historicalLogsDays, isOnline]); // Re-setup intervals when loading state, days, or online status change
 
     // Core storage functions now use dbService
     const storeVerificationResult = async (jsonData: any): Promise<number | undefined> => {
@@ -607,7 +621,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         loadHybridLogs('post-store-refresh').catch(() => {}); // Refresh hybrid logs to show new entry
 
         // If online, trigger an immediate sync (fire-and-forget)
-        if (navigator.onLine) {
+        if (isOnline) {
             try { void syncToServer(); } catch {}
             registerBackgroundSync();
         }

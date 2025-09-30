@@ -85,7 +85,7 @@ All mandatory requirements from the MOSIP Inji Verify problem statement have bee
 | **Task** | **Description** |
 |----------|-----------------|
 | **DID Resolution (Limited Offline)** | Advanced caching strategies for DIDs enabling offline resolution for frequently used issuers |
-| **Proof-of-Concept Native Mobile** | PWA provides native-like mobile experience with installability and offline capabilities on Android/iOS |
+| **Proof-of-Concept Native Mobile** | PWA provides native-like mobile experience with installability and offline capabilities on Android/iOS ([APP README](https://github.com/SartMa/inji-offline-app/blob/master/README.md)) |
 | **Performance Benchmarking** | Comprehensive performance measurement of offline verification (74ms average) and sync processes with 1,500+ sample analysis |
 | **Offline Credential Presentation** | Complete offline credential presentation with QR code generation and VP creation for other offline verifiers |
 
@@ -135,7 +135,6 @@ All mandatory requirements from the MOSIP Inji Verify problem statement have bee
    ```env
    DJANGO_SECRET_KEY=your-secret-key-here
    SENDGRID_API_KEY=your-sendgrid-key
-   DATABASE_URL=postgresql://user:pass@db:5432/inji_verify
    ```
 
 3. **Launch the stack**:
@@ -193,35 +192,6 @@ pnpm test
    # Organization Portal  
    pnpm nx dev organization-portal
    ```
-### Environment Variables
-
-
-```env
-# Django Backend
-DJANGO_SECRET_KEY=your-256-bit-secret
-DEBUG=False
-ALLOWED_HOSTS=api.yourdomain.com,localhost
-DATABASE_URL=postgresql://user:pass@host:5432/db
-
-# Email Configuration  
-EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
-EMAIL_HOST=smtp.sendgrid.net
-EMAIL_PORT=587
-EMAIL_HOST_USER=apikey
-EMAIL_HOST_PASSWORD=your-sendgrid-api-key
-EMAIL_USE_TLS=True
-DEFAULT_FROM_EMAIL=noreply@yourdomain.com
-
-# CORS & Frontend URLs
-CORS_ALLOWED_ORIGINS=https://org.yourdomain.com,https://worker.yourdomain.com
-FRONTEND_ORG_URL=https://org.yourdomain.com
-FRONTEND_WORKER_URL=https://worker.yourdomain.com
-
-# Optional: Analytics & Monitoring
-SENTRY_DSN=your-sentry-dsn
-REDIS_URL=redis://localhost:6379
-```   
-
 ---
 
 ## Deployment
@@ -307,6 +277,7 @@ inji-offline-verify/
   - Organization and user management APIs
   - Health checks and monitoring endpoints
 - **Technology**: Django 4.2, Django REST Framework, PostgreSQL
+- **Documentation**: [Backend Guide](./server/README.md) (Refer this for Detailed Readme of Backend)
 
 ### Inji Verify SDK
 - **Purpose**: Core cryptographic verification engine for offline credential validation
@@ -352,7 +323,7 @@ The complete offline verification process from QR code scanning to evidence logg
 
 **Key Steps:**
 - Worker scans QR code containing verifiable credential
-- System parses credential format (LDP or mDoc) and requests cached public key
+- System parses credential format (LDP) and requests cached public key
 - Cryptographic signature verification performed using cached materials
 - Verification result stored in IndexedDB with "Pending" sync status
 - Result displayed to worker with success/failure indication
@@ -387,7 +358,6 @@ Intelligent synchronization system that handles both automatic background sync a
 | **Hybrid Log Refresh** | 1,138 ms | 5% faster | 1,200 ms |
 | **QR Verification** | 74 ms | 91% faster | 800 ms |
 | **IndexedDB Writes** | 4.4 ms | 26% faster | 6.0 ms |
-| **Background Sync** | 234 ms | 15% faster | 275 ms |
 
 ### Benchmark Methodology
 

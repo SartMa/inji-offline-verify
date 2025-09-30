@@ -431,7 +431,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
 
             // Then do an actual network request to verify internet connectivity
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 2000); // 1 second timeout
 
             const response = await fetch('/healthz', {
                 method: 'HEAD',

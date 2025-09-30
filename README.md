@@ -277,6 +277,7 @@ inji-offline-verify/
   - Organization and user management APIs
   - Health checks and monitoring endpoints
 - **Technology**: Django 4.2, Django REST Framework, PostgreSQL
+- **Documentation**: [Backend Guide](./server/README.md) (Refer this for Detailed Readme of Backend)
 
 ### Inji Verify SDK
 - **Purpose**: Core cryptographic verification engine for offline credential validation

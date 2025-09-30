@@ -148,7 +148,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
     const { children = null } = props || {};
     // REMOVED: const [db, setDb] = useState<IDBDatabase | null>(null);
     const { isAuthenticated, isLoading } = useAuth();
-    const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const [isOnline, setIsOnline] = useState(false); // Start with false, will be updated by connectivity check
     const [stats, setStats] = useState<Stats>(() => ({ ...EMPTY_STATS }));
     const [historicalStats, setHistoricalStats] = useState<HistoricalStats[]>([]);
     const [logs, setLogs] = useState<LogItem[]>([]);
@@ -421,25 +421,74 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         }
     }, []);
 
-    // Online/offline detection
+    // Enhanced network connectivity detection
+    const checkNetworkConnectivity = async (): Promise<boolean> => {
+        try {
+            // First check navigator.onLine for basic network interface status
+            if (!navigator.onLine) {
+                return false;
+            }
+
+            // Then do an actual network request to verify internet connectivity
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+            const response = await fetch('/healthz', {
+                method: 'HEAD',
+                cache: 'no-store',
+                signal: controller.signal,
+            });
+
+            clearTimeout(timeoutId);
+            return response.ok;
+        } catch (error) {
+            // Network request failed - we're offline or have connectivity issues
+            return false;
+        }
+    };
+
+    // Online/offline detection with enhanced network checking
     useEffect(() => {
+        let connectivityCheckInterval: NodeJS.Timeout;
+
+        const updateConnectionStatus = async () => {
+            const isConnected = await checkNetworkConnectivity();
+            const wasOnline = isOnline;
+
+            setIsOnline(isConnected);
+
+            if (isConnected && !wasOnline) {
+                console.log('Connection restored');
+                syncToServer();
+            } else if (!isConnected && wasOnline) {
+                console.log('Connection lost');
+            }
+        };
+
         const handleOnline = () => {
-            setIsOnline(true);
-            console.log('Connection restored');
-            syncToServer();
+            console.log('Network interface online');
+            // Verify actual connectivity
+            updateConnectionStatus();
         };
 
         const handleOffline = () => {
+            console.log('Network interface offline');
             setIsOnline(false);
-            console.log('Connection lost');
         };
 
+        // Initial connectivity check
+        updateConnectionStatus();
+
+        // Listen to browser network events
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
-        // Set up periodic sync (every 30 seconds if online)
-        const syncInterval = setInterval(() => {
-            if (navigator.onLine) {
+        // Periodic connectivity verification (every 30 seconds)
+        connectivityCheckInterval = setInterval(() => {
+            updateConnectionStatus();
+            
+            // Also sync if we're online
+            if (isOnline) {
                 syncToServer();
             }
         }, 30000);
@@ -447,7 +496,9 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
-            clearInterval(syncInterval);
+            if (connectivityCheckInterval) {
+                clearInterval(connectivityCheckInterval);
+            }
         };
     }, []); // REMOVED: db from dependency array
 

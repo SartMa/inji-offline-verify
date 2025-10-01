@@ -220,100 +220,101 @@ class StatusListCredentialSerializer(serializers.ModelSerializer):
     class Meta:
         model = StatusListCredential
         fields = [
-            'id', 'status_list_id', 'issuer', 'status_purpose',
-            'full_credential', 'created_at', 'updated_at'
+            'id', 'status_list_id', 'issuer', 'purposes', 'version', 'issuance_date',
+            'encoded_list_hash', 'full_credential', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'version', 'encoded_list_hash']
 
 
 class StatusListCredentialUpsertSerializer(serializers.Serializer):
-    """Serializer for adding StatusList credentials from full credential JSON payload"""
+    """Upsert serializer with version bump & hash detection."""
     organization_id = serializers.UUIDField()
     status_list_credential = serializers.JSONField()
 
     def validate(self, attrs):
-        # Validate organization exists
         try:
             org = Organization.objects.get(id=attrs['organization_id'])
         except Organization.DoesNotExist:
             raise serializers.ValidationError({'organization_id': 'Organization not found'})
-        
+
         credential_data = attrs['status_list_credential']
-        
-        # Validate this is a BitstringStatusListCredential
-        credential_type = credential_data.get('type', [])
-        if not isinstance(credential_type, list):
-            credential_type = [credential_type]
-        
-        if 'BitstringStatusListCredential' not in credential_type:
-            raise serializers.ValidationError({
-                'status_list_credential': 'Credential must be of type BitstringStatusListCredential'
-            })
-        
-        # Extract required fields from StatusList credential JSON
+        if not isinstance(credential_data, dict):
+            raise serializers.ValidationError({'status_list_credential': 'Must be a JSON object'})
+
+        ctype = credential_data.get('type', [])
+        if not isinstance(ctype, list):
+            ctype = [ctype]
+        if 'BitstringStatusListCredential' not in ctype:
+            raise serializers.ValidationError({'status_list_credential': 'Credential must include BitstringStatusListCredential in type'})
+
         status_list_id = credential_data.get('id')
         if not status_list_id:
-            raise serializers.ValidationError({
-                'status_list_credential': 'StatusList credential must contain an "id" field'
-            })
-        
+            raise serializers.ValidationError({'status_list_credential': 'Missing id'})
+
         issuer = credential_data.get('issuer')
         if not issuer:
-            raise serializers.ValidationError({
-                'status_list_credential': 'StatusList credential must contain an "issuer" field'
-            })
-        
-        # Handle issuer as string or object
+            raise serializers.ValidationError({'status_list_credential': 'Missing issuer'})
         if isinstance(issuer, dict):
             issuer = issuer.get('id', '')
-        
-        # Extract credentialSubject
-        credential_subject = credential_data.get('credentialSubject', {})
-        if not isinstance(credential_subject, dict):
-            raise serializers.ValidationError({
-                'status_list_credential': 'StatusList credential must contain a valid credentialSubject'
-            })
-        
-        # Validate required credentialSubject fields
-        status_purpose = credential_subject.get('statusPurpose', 'revocation')
-        encoded_list = credential_subject.get('encodedList')
+
+        subj = credential_data.get('credentialSubject', {})
+        if not isinstance(subj, dict):
+            raise serializers.ValidationError({'status_list_credential': 'credentialSubject must be object'})
+        encoded_list = subj.get('encodedList')
         if not encoded_list:
-            raise serializers.ValidationError({
-                'status_list_credential': 'credentialSubject must contain an "encodedList" field'
-            })
-        
-        attrs['organization'] = org
-        attrs['status_list_id'] = status_list_id
-        attrs['issuer'] = issuer
-        attrs['status_purpose'] = status_purpose
-        attrs['full_credential'] = credential_data
-        
+            raise serializers.ValidationError({'status_list_credential': 'credentialSubject.encodedList required'})
+
+        # purposes normalization
+        raw_purpose = subj.get('statusPurpose')
+        purposes = raw_purpose if isinstance(raw_purpose, list) else [raw_purpose] if raw_purpose else []
+
+        # issuance date optional
+        issuance_date = credential_data.get('issuanceDate') or credential_data.get('issuance_date')
+
+        # compute hash
+        import hashlib
+        encoded_hash = hashlib.sha256(encoded_list.encode('utf-8')).hexdigest()
+
+        attrs.update({
+            'organization': org,
+            'status_list_id': status_list_id,
+            'issuer': issuer,
+            'purposes': purposes,
+            'encoded_list_hash': encoded_hash,
+            'issuance_date': issuance_date,
+            'full_credential': credential_data,
+        })
         return attrs
 
-    def create(self, validated_data):
-        # Check if a StatusList credential with the same ID already exists for this organization
-        existing = StatusListCredential.objects.filter(
-            organization=validated_data['organization'],
-            status_list_id=validated_data['status_list_id']
-        ).first()
-        
+    def create(self, validated):
+        org = validated['organization']
+        status_list_id = validated['status_list_id']
+        existing = StatusListCredential.objects.filter(organization=org, status_list_id=status_list_id).first()
         if existing:
-            existing.issuer = validated_data['issuer']
-            existing.status_purpose = validated_data['status_purpose']
-            existing.full_credential = validated_data['full_credential']
-            existing.save(update_fields=[
-                'issuer', 'status_purpose', 'full_credential', 'updated_at'
-            ])
+            # no change?
+            if existing.encoded_list_hash == validated['encoded_list_hash']:
+                return existing  # version unchanged
+            # bump version
+            existing.bump_version(validated['full_credential'])
+            existing.issuer = validated['issuer']
+            existing.encoded_list_hash = validated['encoded_list_hash']
+            existing.save(update_fields=['issuer', 'encoded_list_hash', 'updated_at'])
             return existing
-        else:
-            # Create new credential
-            return StatusListCredential.objects.create(
-                organization=validated_data['organization'],
-                status_list_id=validated_data['status_list_id'],
-                issuer=validated_data['issuer'],
-                status_purpose=validated_data['status_purpose'],
-                full_credential=validated_data['full_credential']
-            )
+        # create new
+        from django.utils.dateparse import parse_datetime
+        issuance_dt = None
+        if validated.get('issuance_date'):
+            issuance_dt = parse_datetime(validated['issuance_date'])
+        return StatusListCredential.objects.create(
+            organization=org,
+            status_list_id=status_list_id,
+            issuer=validated['issuer'],
+            purposes=validated['purposes'],
+            version=1,
+            issuance_date=issuance_dt,
+            encoded_list_hash=validated['encoded_list_hash'],
+            full_credential=validated['full_credential']
+        )
 
 
 class StatusListCredentialListResponseSerializer(serializers.Serializer):

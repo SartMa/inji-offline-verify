@@ -6,6 +6,7 @@ from .models import (
     PendingOrganizationRegistration,
     JsonLdContext,
     StatusListCredential,
+    StatusListCredentialHistory,
 )
 
 @admin.register(JsonLdContext)
@@ -43,7 +44,22 @@ class PendingOrganizationRegistrationAdmin(admin.ModelAdmin):
 
 @admin.register(StatusListCredential)
 class StatusListCredentialAdmin(admin.ModelAdmin):
-    list_display = ("status_list_id", "organization", "issuer", "status_purpose", "updated_at")
-    list_filter = ("status_purpose", "organization")
+    list_display = ("status_list_id", "organization", "issuer", "purposes_display", "version", "encoded_list_hash_short", "updated_at")
+    list_filter = ("organization", "issuer")
     search_fields = ("status_list_id", "issuer", "organization__name")
-    readonly_fields = ("created_at", "updated_at")
+    readonly_fields = ("version", "encoded_list_hash", "issuance_date", "created_at", "updated_at")
+
+    def purposes_display(self, obj):
+        return ", ".join(obj.purposes or [])
+    purposes_display.short_description = "Purposes"
+
+    def encoded_list_hash_short(self, obj):
+        return (obj.encoded_list_hash[:12] + "…") if obj.encoded_list_hash else ""
+    encoded_list_hash_short.short_description = "Hash"
+
+
+@admin.register(StatusListCredentialHistory)
+class StatusListCredentialHistoryAdmin(admin.ModelAdmin):
+    list_display = ("status_list_id", "organization", "version", "archived_at", "issuance_date")
+    search_fields = ("status_list_id", "organization__name")
+    readonly_fields = ("status_list_current", "organization", "status_list_id", "issuer", "purposes", "version", "issuance_date", "encoded_list_hash", "full_credential", "archived_at")

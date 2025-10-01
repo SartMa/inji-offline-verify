@@ -93,6 +93,55 @@ class OrganizationPublicKeysView(APIView):
         return Response(payload, status=status.HTTP_200_OK)
 
 
+class StatusListCredentialUpsertView(APIView):
+    """Upsert StatusList credential with versioning semantics."""
+    permission_classes = [permissions.IsAuthenticated, IsOrganizationAdmin]
+
+    def post(self, request, *args, **kwargs):
+        serializer = StatusListCredentialUpsertSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        obj = serializer.save()
+        out = StatusListCredentialSerializer(obj).data
+        # indicate whether version bumped by comparing hash maybe (client can diff)
+        return Response(out, status=status.HTTP_201_CREATED if obj.version == 1 else status.HTTP_200_OK)
+
+
+class StatusListCredentialListView(APIView):
+    """List latest status list credentials for an organization."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        org_id = request.query_params.get('organization_id')
+        if not org_id:
+            return Response({'detail': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            org = Organization.objects.get(id=org_id)
+        except Organization.DoesNotExist:
+            return Response({'detail': 'Organization not found'}, status=status.HTTP_404_NOT_FOUND)
+        qs = StatusListCredential.objects.filter(organization=org).order_by('status_list_id')
+        data = StatusListCredentialSerializer(qs, many=True).data
+        return Response({'organization_id': org_id, 'status_list_credentials': data}, status=status.HTTP_200_OK)
+
+
+class StatusListCredentialManifestView(APIView):
+    """Lightweight manifest for sync (id, purposes, version, hash, updated)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        org_id = request.query_params.get('organization_id')
+        if not org_id:
+            return Response({'detail': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            org = Organization.objects.get(id=org_id)
+        except Organization.DoesNotExist:
+            return Response({'detail': 'Organization not found'}, status=status.HTTP_404_NOT_FOUND)
+        manifest = list(StatusListCredential.objects.filter(organization=org).values(
+            'status_list_id', 'purposes', 'version', 'encoded_list_hash', 'updated_at'
+        ))
+        return Response({'organization_id': org_id, 'manifest': manifest}, status=status.HTTP_200_OK)
+
+
 class OrganizationPublicKeyDetailView(APIView):
     """Delete a specific public key by key_id."""
     permission_classes = [permissions.IsAuthenticated, IsOrganizationAdminFromMembership]

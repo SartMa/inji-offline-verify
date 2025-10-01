@@ -2,16 +2,6 @@
 
 
 ## Table of Contents
-
-- [Overview](#overview### Bonus Tasks - All Delivered
-
-| **Task** | **Description** |
-|----------|-----------------|--|
-| **DID Resolution (Limited Offline)** | Advanced caching strategies for DIDs enabling offline resolution for frequently used issuers |
-| **Proof-of-Concept Native Mobile** | PWA provides native-like mobile experience with installability and offline capabilities on Android/iOS ([APP README](https://github.com/SartMa/inji-offline-app/blob/master/README.md)) |
-| **Performance Benchmarking** | Comprehensive performance measurement of offline verification (74ms average) and sync processes with 1,500+ sample analysis |
-| **Offline Credential Presentation** | Complete offline credential presentation with QR code generation and VP creation for other offline verifiers |
-| **Bitstring Status List Credentials** | Full W3C BitstringStatusList implementation with versioning, history tracking, and efficient offline revocation checking ([IMPLEMENTATION GUIDE](./packages/inji-verify-sdk/BITSTRING_STATUS_LIST.md)) |y Features](#key-features)
 - [Quick Start](#quick-start)
 - [Local Development](#local-development)
 - [Deployment](#deployment)
@@ -80,7 +70,7 @@ All mandatory requirements from the MOSIP Inji Verify problem statement have bee
 ### Good-to-Have Tasks - All Completed
 | **Task** | **Description** |
 |----------|-----------------|
-| **Revocation Handling (Pre-cached)** | Pre-cached revocation lists with whitelist/blacklist of known revoked VCs and issuers for offline checks |
+| **Revocation Handling (Pre-cached)** | Pre-cached revocation lists with whitelist/blacklist of known revoked VCs and issuers for offline checks. Includes W3C BitstringStatusList implementation ([IMPLEMENTATION GUIDE](./packages/inji-verify-sdk/BITSTRING_STATUS_LIST.md)) |
 | **Configurable Sync Endpoint** | Configurable backend endpoints through environment variables and organization settings |
 | **Filtering/Searching Logs** | Advanced filtering and search capabilities through verification history with date ranges and status filters |
 | **Export Logs** | Export functionality for local logs in CSV/JSON formats with comprehensive data export |
@@ -92,9 +82,9 @@ All mandatory requirements from the MOSIP Inji Verify problem statement have bee
 | **Task** | **Description** |
 |----------|-----------------|
 | **DID Resolution (Limited Offline)** | Advanced caching strategies for DIDs enabling offline resolution for frequently used issuers |
-| **Proof-of-Concept Native Mobile** | PWA provides native-like mobile experience with installability and offline capabilities on Android/iOS ([APP README](https://github.com/SartMa/inji-offline-app/blob/master/README.md)) |
+| **Proof-of-Concept Native Mobile** | PWA provides native-like mobile experience with installability and offline capabilities on Android/iOS ([NATIVE APP README](https://github.com/SartMa/inji-offline-app/blob/master/README.md)) |
 | **Performance Benchmarking** | Comprehensive performance measurement of offline verification (74ms average) and sync processes with 1,500+ sample analysis |
-| **Offline Credential Presentation** | Complete offline credential presentation with QR code generation and VP creation for other offline verifiers |
+| **Offline Credential Presentation** | Offline VP verification |
 
 ### Technical Capabilities
 
@@ -381,12 +371,30 @@ Intelligent synchronization system that handles both automatic background sync a
 
 | Component | Documentation | Description |
 |-----------|---------------|-------------|
-| **Organization Portal** | [README.md](./apps/organization-portal/README.md) | Admin interface setup and usage |
-| **Worker PWA** | [README.md](./apps/worker-pwa/README.md) | PWA architecture and offline capabilities |
-| **Backend Server** | [README.md](./server/README.md) | Django REST API and authentication |
-| **Inji Verify SDK** | [README.md](./packages/inji-verify-sdk/README.md) | Core verification engine documentation |
-| **Bitstring Status List** | [BITSTRING_STATUS_LIST.md](./packages/inji-verify-sdk/BITSTRING_STATUS_LIST.md) | W3C BitstringStatusList implementation guide |
+| **Organization Portal** | [OrgREADME.md](./apps/organization-portal/README.md) | Admin interface setup and usage |
+| **Worker PWA** | [WorkerREADME.md](./apps/worker-pwa/README.md) | PWA architecture and offline capabilities |
+| **Backend Server** | [ServerREADME.md](./server/README.md) | Django REST API and authentication |
+| **Inji Verify SDK** | [SDKREADME.md](./packages/inji-verify-sdk/README.md) | Core verification engine documentation |
+| **Bitstring Status List** | [RevocationHandling.md](./packages/inji-verify-sdk/BITSTRING_STATUS_LIST.md) | W3C BitstringStatusList implementation guide |
 | **Performance Engineering** | [Performance Benchmark Report](./apps/worker-pwa/performance_benchmarking/docs/performance-benchmark-2025-09-27.md) | Detailed performance analysis |
+| **App README** | [AppREADME.md](./README.md) | Proof of Concept App Documentation |
+
+### Test Cases
+
+The repository includes comprehensive test cases for validating different credential formats and signature types. These test cases cover various scenarios including valid credentials, invalid credentials, expired credentials, and revocation status testing.
+
+| Test Category | Description | Sample Count |
+|---------------|-------------|--------------|
+| **Ed25519-2018 Signatures** | Legacy Ed25519 signature validation test cases | 1 sample |
+| **Ed25519-2020 Signatures** | Modern Ed25519 signature test cases including valid, invalid, and expired credentials | 6 samples |
+| **RSA 2018 Signatures** | RSA-based signature validation test cases | 4 samples |
+| **ECDSA Signatures** | ECDSA P-256, P-384, and Secp256k1 signature test cases | 3 samples |
+| **Verifiable Presentations** | VP format validation with Ed25519-2020 signatures | 2 samples |
+| **Revocation Testing** | Status list and revocation validation test cases including revoked and valid credentials | 5 samples |
+
+**Access Test Cases**: [View Test Cases Folder](./Testcases/)
+
+Each test case includes both the JSON credential file and a corresponding screenshot showing the expected verification result in the application interface.
 
 ### Additional Resources
 

@@ -11,6 +11,5 @@ export { PublicKeyService } from './services/offline-verifier/publicKey/PublicKe
 export { SDKCacheManager } from './services/offline-verifier/cache/SDKCacheManager';
 export { OrgResolver } from './services/offline-verifier/cache/utils/OrgResolver';
 export type { CacheBundle } from './services/offline-verifier/cache/utils/OrgResolver';
-export { isVCRevoked, putRevokedVCs, replaceRevokedVCsForOrganization, replacePublicKeysForOrganization } from './services/offline-verifier/cache/utils/CacheHelper';
-export type { CachedRevokedVC } from './services/offline-verifier/cache/utils/CacheHelper';
+export { replacePublicKeysForOrganization } from './services/offline-verifier/cache/utils/CacheHelper';
 // ...existing code...

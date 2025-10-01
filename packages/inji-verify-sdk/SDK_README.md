@@ -60,10 +60,12 @@ Whether you are scanning credentials inside a kiosk or embedding the verifier in
 | --- | --- | --- | --- | --- | --- |
 | `ldp_vc` | `Ed25519Signature2018`<br/>`Ed25519Signature2020` | Ed25519 elliptic curve digital signatures | `@digitalbazaar/ed25519-signature-2018`<br/>`@digitalbazaar/ed25519-signature-2020`<br/>`jsonld-signatures` | Fully offline once JSON-LD contexts and verification methods are cached. | ✅ Actively exercised in worker/PWA flows. |
 | `ldp_vc` | `EcdsaSecp256k1Signature2019` | ECDSA with secp256k1 curve (Bitcoin/Ethereum compatible) | `@noble/secp256k1`<br/>`@noble/hashes`<br/>`jsonld-signatures` | Fully offline with noble-secp256k1 library | ✅ Production ready with noble cryptography. |
-| `ldp_vc` | `RsaSignature2018`<br/>`JsonWebSignature2020` | RSA PKCS#1 v1.5 with SHA-256<br/>JWS (JSON Web Signature) format | `jsonld-signatures`<br/>Browser Web Crypto API<br/>Custom RSA verifier | Requires cached PEM/JWK material. Logic exists but relies on online fetch fallback if caches are empty. | ⚠️ Implementation present; **not yet validated end-to-end** – treat as experimental. |
+| `ldp_vc` | `RsaSignature2018*` | RSA PKCS#1 v1.5 with SHA-256| `jsonld-signatures`<br/> Browser `Web Crypto` API Custom RSA verifier | Requires cached PEM/JWK material. Logic exists but relies on online fetch fallback if caches are empty. | Verified |
 | `ldp_vc` | `DataIntegrityProof`<br/>(cryptosuite: `ecdsa-rdfc-2019`) | ECDSA with P-256/P-384 curves + RDF Dataset Canonicalization | `@digitalbazaar/vc`<br/>`@digitalbazaar/data-integrity`<br/>`@digitalbazaar/ecdsa-rdfc-2019-cryptosuite` | Fully offline once verification methods are cached | ✅ Active implementation with ECDSA cryptosuite support. |
 | `mso_mdoc` | COSE `ES256` (COSE_Sign1) | ECDSA with P-256 curve in COSE format | Custom COSE implementation<br/>Browser Web Crypto API | Works offline when COSE payload is provided; signature verification parity still under review. | ⚠️ Ported from Kotlin; **manual production testing pending**. |
 | Verifiable Presentation | `Ed25519Signature2020` | Ed25519 elliptic curve digital signatures | `@digitalbazaar/vc`<br/>`@digitalbazaar/ed25519-signature-2020`<br/>`@digitalbazaar/ed25519-verification-key-2020` | Requires cached contexts and keys. Fails gracefully with `ERR_OFFLINE_DEPENDENCIES_MISSING` when prerequisites are absent. | ⚠️ **Limited testing** - Only Ed25519Signature2020 VP examples verified.|
+
+*Detached JWS (`b64=false`, `crit:["b64"]`); supports `RS256` / `PS256` and offline canonicalisation via `https://w3id.org/security/v2`.
 
 The TypeScript implementation mirrors MOSIP's Kotlin verifier while adding IndexedDB caching, granular error mapping, and optional online fallbacks for missing artefacts.
 

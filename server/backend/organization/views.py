@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework.views import APIView
 from django.db import transaction
-from .models import Organization, OrganizationDID, PublicKey, RevokedVC
+from .models import Organization, OrganizationDID, PublicKey, StatusListCredential
 from .permissions import IsOrganizationAdmin, IsOrganizationAdminFromMembership
 from .models import JsonLdContext
 from .serializers import JsonLdContextSerializer
@@ -16,9 +16,9 @@ from .serializers import (
     PublicKeyListResponseSerializer,
     OrganizationSerializer,
     OrganizationLoginSerializer,
-    RevokedVCSerializer,
-    RevokedVCUpsertSerializer,
-    RevokedVCListResponseSerializer,
+    StatusListCredentialSerializer,
+    StatusListCredentialUpsertSerializer,
+    StatusListCredentialListResponseSerializer,
 )
 from worker.models import OrganizationMember
 from rest_framework.permissions import IsAuthenticated
@@ -91,6 +91,55 @@ class OrganizationPublicKeysView(APIView):
             'keys': keys,
         }
         return Response(payload, status=status.HTTP_200_OK)
+
+
+class StatusListCredentialUpsertView(APIView):
+    """Upsert StatusList credential with versioning semantics."""
+    permission_classes = [permissions.IsAuthenticated, IsOrganizationAdmin]
+
+    def post(self, request, *args, **kwargs):
+        serializer = StatusListCredentialUpsertSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        obj = serializer.save()
+        out = StatusListCredentialSerializer(obj).data
+        # indicate whether version bumped by comparing hash maybe (client can diff)
+        return Response(out, status=status.HTTP_201_CREATED if obj.version == 1 else status.HTTP_200_OK)
+
+
+class StatusListCredentialListView(APIView):
+    """List latest status list credentials for an organization."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        org_id = request.query_params.get('organization_id')
+        if not org_id:
+            return Response({'detail': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            org = Organization.objects.get(id=org_id)
+        except Organization.DoesNotExist:
+            return Response({'detail': 'Organization not found'}, status=status.HTTP_404_NOT_FOUND)
+        qs = StatusListCredential.objects.filter(organization=org).order_by('status_list_id')
+        data = StatusListCredentialSerializer(qs, many=True).data
+        return Response({'organization_id': org_id, 'status_list_credentials': data}, status=status.HTTP_200_OK)
+
+
+class StatusListCredentialManifestView(APIView):
+    """Lightweight manifest for sync (id, purposes, version, hash, updated)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        org_id = request.query_params.get('organization_id')
+        if not org_id:
+            return Response({'detail': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            org = Organization.objects.get(id=org_id)
+        except Organization.DoesNotExist:
+            return Response({'detail': 'Organization not found'}, status=status.HTTP_404_NOT_FOUND)
+        manifest = list(StatusListCredential.objects.filter(organization=org).values(
+            'status_list_id', 'purposes', 'version', 'encoded_list_hash', 'updated_at'
+        ))
+        return Response({'organization_id': org_id, 'manifest': manifest}, status=status.HTTP_200_OK)
 
 
 class OrganizationPublicKeyDetailView(APIView):
@@ -429,8 +478,8 @@ class OrganizationPublicKeyUpsertView(APIView):
 #         raise ValueError('Unsupported DID method')
 
 
-class OrganizationRevokedVCsView(APIView):
-    """Return all revoked VCs for a given organization."""
+class OrganizationStatusListCredentialsView(APIView):
+    """Return all StatusList credentials for a given organization."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
@@ -443,87 +492,76 @@ class OrganizationRevokedVCsView(APIView):
         except Organization.DoesNotExist:
             return Response({'detail': 'Organization not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        qs = RevokedVC.objects.filter(organization=org).order_by('-revoked_at')
-        serializer = RevokedVCSerializer(qs, many=True)
+        qs = StatusListCredential.objects.filter(organization=org).order_by('-created_at')
+        serializer = StatusListCredentialSerializer(qs, many=True)
         return Response({
             'organization_id': str(org.id), 
-            'revoked_vcs': serializer.data
+            'status_list_credentials': serializer.data
         }, status=status.HTTP_200_OK)
 
 
-class OrganizationRevokedVCUpsertView(APIView):
+class OrganizationStatusListCredentialUpsertView(APIView):
     """
-    Upsert a revoked VC under an organization.
+    Upsert a StatusList credential under an organization.
     Requires organization_id in body and ADMIN membership in that org.
     Body:
       - organization_id: UUID
-      - vc_json: Full VC JSON object (we extract id, issuer, subject)
-      - reason: Optional reason for revocation
+      - status_list_credential: Full StatusList credential JSON object
     """
     permission_classes = [permissions.IsAuthenticated, IsOrganizationAdmin]
 
     def post(self, request, *args, **kwargs):
-        serializer = RevokedVCUpsertSerializer(data=request.data)
+        serializer = StatusListCredentialUpsertSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         organization_id = serializer.validated_data['organization_id']
-        
+        organization = serializer.validated_data['organization']
+
         # Check user permission for this organization
         try:
             org_member = OrganizationMember.objects.select_related('organization').get(
-                user=request.user, 
+                user=request.user,
                 organization_id=organization_id,
                 role__in=['ADMIN', 'OWNER']
             )
         except OrganizationMember.DoesNotExist:
-            return Response({'detail': 'You do not have permission to manage revoked VCs for this organization'}, 
+            return Response({'detail': 'You do not have permission to manage StatusList credentials for this organization'}, 
                           status=status.HTTP_403_FORBIDDEN)
         
         try:
-            # Check if VC is already revoked
-            existing = RevokedVC.objects.filter(
-                organization_id=organization_id,
-                vc_id=serializer.validated_data['vc_id']
-            ).first()
+            was_existing = StatusListCredential.objects.filter(
+                organization=organization,
+                status_list_id=serializer.validated_data['status_list_id']
+            ).exists()
+
+            # Create or update the StatusList credential
+            status_list_credential = serializer.save()
             
-            if existing:
-                # Update existing revocation record
-                existing.reason = serializer.validated_data.get('reason', existing.reason)
-                existing.metadata = serializer.validated_data['vc_json']
-                existing.save()
-                
-                return Response({
-                    'id': str(existing.id),
-                    'vc_id': existing.vc_id,
-                    'issuer': existing.issuer,
-                    'message': 'Revoked VC updated successfully'
-                }, status=status.HTTP_200_OK)
-            else:
-                # Create new revocation record
-                revoked_vc = serializer.save()
-                
-                return Response({
-                    'id': str(revoked_vc.id),
-                    'vc_id': revoked_vc.vc_id,
-                    'issuer': revoked_vc.issuer,
-                    'message': 'VC added to revocation list successfully'
-                }, status=status.HTTP_201_CREATED)
+            action = 'updated' if was_existing else 'created'
+            
+            return Response({
+                'id': str(status_list_credential.id),
+                'status_list_id': status_list_credential.status_list_id,
+                'issuer': status_list_credential.issuer,
+                'status_purpose': status_list_credential.status_purpose,
+                'message': f'StatusList credential {action} successfully'
+            }, status=status.HTTP_201_CREATED if action == 'created' else status.HTTP_200_OK)
                 
         except Exception as e:
             return Response({
-                'detail': f'Failed to add revoked VC: {str(e)}'
+                'detail': f'Failed to add StatusList credential: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class OrganizationRevokedVCDetailView(APIView):
-    """Delete a specific revoked VC by vc_id."""
+class OrganizationStatusListCredentialDetailView(APIView):
+    """Delete a specific StatusList credential by status_list_id."""
     permission_classes = [permissions.IsAuthenticated, IsOrganizationAdminFromMembership]
 
-    def delete(self, request, vc_id, *args, **kwargs):
+    def delete(self, request, status_list_id, *args, **kwargs):
         try:
-            # URL decode the vc_id parameter
-            decoded_vc_id = unquote(vc_id)
+            # URL decode the status_list_id parameter
+            decoded_status_list_id = unquote(status_list_id)
             
             # Get the user's organization from their membership
             org_member = OrganizationMember.objects.select_related('organization').get(
@@ -532,17 +570,20 @@ class OrganizationRevokedVCDetailView(APIView):
             )
             org = org_member.organization
             
-            # Find the revoked VC
-            revoked_vc = RevokedVC.objects.get(vc_id=decoded_vc_id, organization=org)
+            # Find the StatusList credential
+            status_list_credential = StatusListCredential.objects.get(
+                status_list_id=decoded_status_list_id, 
+                organization=org
+            )
             
-            # Delete the revoked VC
-            revoked_vc.delete()
+            # Delete the StatusList credential
+            status_list_credential.delete()
             
-            return Response({'message': 'Revoked VC removed successfully'}, status=status.HTTP_200_OK)
+            return Response({'message': 'StatusList credential removed successfully'}, status=status.HTTP_200_OK)
             
         except OrganizationMember.DoesNotExist:
-            return Response({'detail': 'You do not have permission to delete revoked VCs'}, status=status.HTTP_403_FORBIDDEN)
-        except RevokedVC.DoesNotExist:
-            return Response({'detail': 'Revoked VC not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'You do not have permission to delete StatusList credentials'}, status=status.HTTP_403_FORBIDDEN)
+        except StatusListCredential.DoesNotExist:
+            return Response({'detail': 'StatusList credential not found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            return Response({'detail': f'Failed to delete revoked VC: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'detail': f'Failed to delete StatusList credential: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

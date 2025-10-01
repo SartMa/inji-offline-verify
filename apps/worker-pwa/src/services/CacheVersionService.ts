@@ -9,7 +9,7 @@ export interface CacheVersion {
   organizationId: string;
   publicKeysHash: string;
   contextsHash: string;
-  revokedVCsHash: string;
+  statusListsHash?: string;
   lastModified: string;
   version: number;
 }
@@ -27,7 +27,7 @@ export interface ServerCacheInfo {
       count: number;
       last_modified: string | null;
     };
-    revoked_vcs: {
+    status_list_credentials?: {
       count: number;
       last_modified: string | null;
     };
@@ -98,13 +98,13 @@ export class CacheVersionService {
     organizationId: string,
     publicKeys: any[],
     contexts: any[],
-    revokedVCs: any[]
+    statusListCredentials: any[] = []
   ): void {
     const version: CacheVersion = {
       organizationId,
       publicKeysHash: this.generateHash(publicKeys),
       contextsHash: this.generateHash(contexts),
-      revokedVCsHash: this.generateHash(revokedVCs),
+      statusListsHash: this.generateHash(statusListCredentials || []),
       lastModified: new Date().toISOString(),
       version: Date.now()
     };

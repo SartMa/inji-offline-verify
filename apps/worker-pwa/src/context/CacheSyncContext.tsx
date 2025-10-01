@@ -3,7 +3,7 @@
  */
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
-import { CacheSyncService } from '../services/CacheSyncService';
+import { CacheSyncService, type CacheSyncEventPayload } from '../services/CacheSyncService';
 import { BackgroundSyncService } from '../services/BackgroundSyncService';
 import { useAuth } from './AuthContext';
 
@@ -93,21 +93,22 @@ export function CacheSyncProvider({ children }: CacheSyncProviderProps) {
 
   // Listen for background sync events
   useEffect(() => {
-    const handleBackgroundSync = (event: CustomEvent) => {
-      const { type, payload } = event.detail;
-      
+    const handleBackgroundSync = (event: CustomEvent<{ type: string; payload: CacheSyncEventPayload }>) => {
+      const { type, payload } = event.detail ?? {};
+      if (!payload) return;
+
       switch (type) {
         case 'cache_updated':
-          setLastSyncTime(Date.now());
+          setLastSyncTime(payload.timestamp ?? Date.now());
           setIsSyncing(false);
           setSyncError(null);
-          console.log('[CacheSyncProvider] Cache updated via background sync:', payload);
+          console.log('[CacheSyncProvider] Cache updated via background sync:', payload.result);
           break;
-        
+
         case 'sync_error':
           setIsSyncing(false);
-          setSyncError(payload.error || 'Sync failed');
-          console.error('[CacheSyncProvider] Background sync error:', payload);
+          setSyncError(payload.result.error || 'Sync failed');
+          console.error('[CacheSyncProvider] Background sync error:', payload.result);
           break;
       }
     };

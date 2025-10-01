@@ -2,8 +2,8 @@
  * IndexedDB schema used by the SDK-managed cache.
  */
 export const DB_NAME = 'SDKCache';
-export const DB_VERSION = 6; // bump on schema change - add controller index for key store
+export const DB_VERSION = 7; // bump on schema change - added status list credential store
 export const CONTEXT_STORE = 'contexts';
 export const KEY_STORE = 'public_keys';
-export const REVOKED_VC_STORE = 'revoked_vcs';
 export const KEY_INDEX_CONTROLLER = 'controller'; // DID (no fragment)
+export const STATUS_LIST_STORE = 'status_list_credentials';

@@ -3,12 +3,17 @@
  * for efficient cache updates even when the app is in background
  */
 
+import { CacheSyncService } from './CacheSyncService';
+import type { CacheSyncEventPayload, SyncResult, SyncItemsUpdated } from './CacheSyncService';
+
 export interface BackgroundSyncOptions {
   enabled: boolean;
   intervalMinutes: number;
   maxRetries: number;
   organizationId: string;
 }
+
+type BackgroundSyncEventType = 'cache_updated' | 'sync_error';
 
 export class BackgroundSyncService {
   private static instance: BackgroundSyncService;
@@ -51,25 +56,45 @@ export class BackgroundSyncService {
   }
 
   private handleServiceWorkerMessage(event: MessageEvent): void {
-    const { type, payload } = event.data;
-    
+    const { type, payload } = event.data ?? {};
+
     switch (type) {
-      case 'SYNC_COMPLETE':
-        console.log('[BackgroundSyncService] Background sync completed:', payload);
-        // Notify main app that cache has been updated
-        this.notifyMainApp('cache_updated', payload);
+      case 'SYNC_COMPLETE': {
+        const result = this.normalizeResult(payload, { success: true });
+        const organizationId = payload?.organizationId ?? this.options.organizationId;
+        const timestamp = typeof payload?.timestamp === 'number' ? payload.timestamp : Date.now();
+        console.log('[BackgroundSyncService] Background sync completed:', result);
+        CacheSyncService.getInstance().recordSyncMetadata(organizationId, result, timestamp);
+        this.notifyMainApp('cache_updated', {
+          organizationId,
+          result,
+          timestamp
+        });
         break;
-      
-      case 'SYNC_ERROR':
-        console.error('[BackgroundSyncService] Background sync failed:', payload);
+      }
+
+      case 'SYNC_ERROR': {
+        const result = this.normalizeResult(payload, {
+          success: false,
+          error: payload?.error ?? payload?.message ?? 'Background sync failed'
+        });
+        const organizationId = payload?.organizationId ?? this.options.organizationId;
+        const timestamp = typeof payload?.timestamp === 'number' ? payload.timestamp : Date.now();
+        console.error('[BackgroundSyncService] Background sync failed:', result);
+        this.notifyMainApp('sync_error', {
+          organizationId,
+          result,
+          timestamp
+        });
         break;
-      
+      }
+
       default:
         break;
     }
   }
 
-  private notifyMainApp(type: string, payload: any): void {
+  private notifyMainApp(type: BackgroundSyncEventType, payload: CacheSyncEventPayload): void {
     // Dispatch custom event to notify the main app
     window.dispatchEvent(new CustomEvent('background-sync', {
       detail: { type, payload }
@@ -227,5 +252,24 @@ export class BackgroundSyncService {
    */
   public removeEventListener(callback: (event: CustomEvent) => void): void {
     window.removeEventListener('background-sync', callback as EventListener);
+  }
+
+  private normalizeResult(raw: any, overrides: { success: boolean; error?: string }): SyncResult {
+    const normalizedCounts: SyncItemsUpdated = {
+      publicKeys: this.normalizeCount(raw?.itemsUpdated?.publicKeys ?? raw?.publicKeys ?? raw?.updatedPublicKeys ?? raw?.publicKeysCount),
+      contexts: this.normalizeCount(raw?.itemsUpdated?.contexts ?? raw?.contexts ?? raw?.updatedContexts ?? raw?.contextsCount),
+      statusLists: this.normalizeCount(raw?.itemsUpdated?.statusLists ?? raw?.statusLists ?? raw?.updatedStatusLists ?? raw?.statusListCredentials ?? raw?.statusListCount)
+    };
+
+    return {
+      success: overrides.success,
+      itemsUpdated: normalizedCounts,
+      error: overrides.success ? undefined : overrides.error ?? (typeof raw?.error === 'string' ? raw.error : undefined)
+    };
+  }
+
+  private normalizeCount(value: unknown): number {
+    const num = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(num) && num >= 0 ? Math.trunc(num) : 0;
   }
 }

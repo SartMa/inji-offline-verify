@@ -1,4 +1,4 @@
-import { DB_NAME, DB_VERSION, CONTEXT_STORE, KEY_STORE, REVOKED_VC_STORE, KEY_INDEX_CONTROLLER } from '../constants/CacheConstants';
+import { CONTEXT_STORE, KEY_STORE, KEY_INDEX_CONTROLLER, STATUS_LIST_STORE } from '../constants/CacheConstants';
 import { dbService } from '../DBService'; // Import the singleton instance
 
 export type CachedPublicKey = {
@@ -12,15 +12,6 @@ export type CachedPublicKey = {
   purpose?: string;
   is_active?: boolean;
   organization_id?: string | null;
-};
-
-export type CachedRevokedVC = {
-  vc_id: string;                  // Verifiable Credential ID
-  issuer: string;                 // Issuer DID
-  subject?: string;               // Subject DID (optional)
-  reason?: string;                // Reason for revocation
-  revoked_at: string;             // When it was revoked
-  organization_id: string;        // Organization ID (required for proper scoping)
 };
 
 export async function putContexts(contexts: { url: string; document: any; organization_id?: string | null }[]): Promise<void> {
@@ -82,9 +73,9 @@ export async function putPublicKeys(keys: CachedPublicKey[]): Promise<void> {
       key_id: k.key_id,
       key_type: k.key_type ?? 'Ed25519VerificationKey2020',
       public_key_multibase: k.public_key_multibase,
-  public_key_hex: k.public_key_hex,
-  public_key_jwk: k.public_key_jwk,
-  public_key_pem: k.public_key_pem,
+      public_key_hex: k.public_key_hex,
+      public_key_jwk: k.public_key_jwk,
+      public_key_pem: k.public_key_pem,
       controller: k.controller.split('#')[0],
       purpose: k.purpose ?? 'assertion',
       is_active: k.is_active ?? true,
@@ -112,71 +103,6 @@ export async function getAnyKeyForDid(did: string): Promise<any | null> {
   // For now, assuming the index exists.
   const result = await db.getFromIndex(KEY_STORE, KEY_INDEX_CONTROLLER, did);
   return result ?? null;
-}
-
-export async function putRevokedVCs(revokedVCs: CachedRevokedVC[]): Promise<void> {
-  if (!revokedVCs?.length) return;
-  const db = await dbService.getDB(); // Use the singleton
-  const tx = db.transaction([REVOKED_VC_STORE], 'readwrite');
-  const store = tx.objectStore(REVOKED_VC_STORE);
-  await Promise.all(revokedVCs.map(vc => {
-    if (!vc.vc_id || !vc.issuer) throw new Error('putRevokedVCs: vc_id and issuer are required');
-    return store.put({
-      vc_id: vc.vc_id,
-      issuer: vc.issuer,
-      subject: vc.subject ?? null,
-      reason: vc.reason ?? null,
-      revoked_at: vc.revoked_at,
-      organization_id: vc.organization_id ?? null
-    });
-  }));
-  await tx.done;
-}
-
-export async function isVCRevoked(vcId: string): Promise<boolean> {
-  const db = await dbService.getDB(); // Use the singleton
-  const result = await db.get(REVOKED_VC_STORE, vcId);
-  return !!result;
-}
-
-export async function getRevokedVCInfo(vcId: string): Promise<CachedRevokedVC | null> {
-  const db = await dbService.getDB(); // Use the singleton
-  return await db.get(REVOKED_VC_STORE, vcId) ?? null;
-}
-
-export async function replaceRevokedVCsForOrganization(organizationId: string, revokedVCs: CachedRevokedVC[]): Promise<void> {
-  const db = await dbService.getDB();
-  
-  // First, get all existing revoked VCs for this organization
-  const tx1 = db.transaction(REVOKED_VC_STORE, 'readonly');
-  const store1 = tx1.objectStore(REVOKED_VC_STORE);
-  const index = store1.index('organization_id');
-  const existingVCs = await index.getAll(organizationId);
-  await tx1.done;
-  
-  // Delete all existing VCs for this organization
-  if (existingVCs.length > 0) {
-    const tx2 = db.transaction(REVOKED_VC_STORE, 'readwrite');
-    const store2 = tx2.objectStore(REVOKED_VC_STORE);
-    
-    for (const vc of existingVCs) {
-      await store2.delete(vc.vc_id);
-    }
-    await tx2.done;
-  }
-  
-  // Add the new VCs
-  if (revokedVCs.length > 0) {
-    const tx3 = db.transaction(REVOKED_VC_STORE, 'readwrite');
-    const store3 = tx3.objectStore(REVOKED_VC_STORE);
-    
-    for (const revokedVC of revokedVCs) {
-      await store3.put(revokedVC);
-    }
-    await tx3.done;
-  }
-  
-  console.log(`[CacheHelper] Replaced ${existingVCs.length} existing revoked VCs with ${revokedVCs.length} new VCs for organization ${organizationId}`);
 }
 
 export async function replacePublicKeysForOrganization(organizationId: string, publicKeys: CachedPublicKey[]): Promise<void> {
@@ -209,10 +135,10 @@ export async function replacePublicKeysForOrganization(organizationId: string, p
       await store3.put({
         key_id: publicKey.key_id,
         key_type: publicKey.key_type ?? 'Ed25519VerificationKey2020',
-          public_key_multibase: publicKey.public_key_multibase,
-          public_key_hex: publicKey.public_key_hex,
-          public_key_jwk: publicKey.public_key_jwk,
-          public_key_pem: publicKey.public_key_pem,
+        public_key_multibase: publicKey.public_key_multibase,
+        public_key_hex: publicKey.public_key_hex,
+        public_key_jwk: publicKey.public_key_jwk,
+        public_key_pem: publicKey.public_key_pem,
         controller: publicKey.controller.split('#')[0],
         purpose: publicKey.purpose ?? 'assertion',
         is_active: publicKey.is_active ?? true,
@@ -223,4 +149,70 @@ export async function replacePublicKeysForOrganization(organizationId: string, p
   }
   
   console.log(`[CacheHelper] Replaced ${existingKeys.length} existing public keys with ${publicKeys.length} new keys for organization ${organizationId}`);
+}
+
+// ---------------- Status List Credential Helpers -----------------
+export interface CachedStatusListCredential {
+  status_list_id: string; // credential.id
+  issuer: string;
+  status_purpose: string; // e.g., revocation
+  full_credential: any;   // full JSON document
+  organization_id: string;
+  cachedAt?: number;
+}
+
+export async function putStatusListCredentials(creds: CachedStatusListCredential[]): Promise<void> {
+  if (!creds?.length) return;
+  const db = await dbService.getDB();
+  const tx = db.transaction(STATUS_LIST_STORE, 'readwrite');
+  const store = tx.objectStore(STATUS_LIST_STORE);
+  const now = Date.now();
+  for (const c of creds) {
+    if (!c.status_list_id) throw new Error('putStatusListCredentials: status_list_id required');
+    await store.put({ ...c, cachedAt: now });
+  }
+  await tx.done;
+}
+
+export async function replaceStatusListCredentialsForOrganization(organizationId: string, creds: CachedStatusListCredential[]): Promise<void> {
+  const db = await dbService.getDB();
+  // Fetch existing for org
+  const tx1 = db.transaction(STATUS_LIST_STORE, 'readonly');
+  const store1 = tx1.objectStore(STATUS_LIST_STORE);
+  let existing: any[] = [];
+  try {
+    const idx = store1.index('organization_id');
+    existing = await idx.getAll(organizationId);
+  } catch {
+    existing = [];
+  }
+  await tx1.done;
+
+  if (existing.length) {
+    const tx2 = db.transaction(STATUS_LIST_STORE, 'readwrite');
+    const store2 = tx2.objectStore(STATUS_LIST_STORE);
+    for (const e of existing) await store2.delete(e.status_list_id);
+    await tx2.done;
+  }
+
+  if (creds.length) {
+    const tx3 = db.transaction(STATUS_LIST_STORE, 'readwrite');
+    const store3 = tx3.objectStore(STATUS_LIST_STORE);
+    const now = Date.now();
+    for (const c of creds) {
+      await store3.put({ ...c, cachedAt: now });
+    }
+    await tx3.done;
+  }
+  console.log(`[CacheHelper] Replaced ${existing.length} existing status list credentials with ${creds.length} new credentials for organization ${organizationId}`);
+}
+
+export async function getStatusListCredentialById(statusListId: string): Promise<CachedStatusListCredential | null> {
+  const db = await dbService.getDB();
+  try {
+    const res = await db.get(STATUS_LIST_STORE, statusListId);
+    return res || null;
+  } catch {
+    return null;
+  }
 }

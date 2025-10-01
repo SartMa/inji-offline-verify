@@ -3,7 +3,7 @@
  * - Used by Worker app to seed the SDK-managed IndexedDB cache from a CacheBundle.
  * - Also supports deriving cache directly from a VC if needed (online one-time).
  */
-import { CachedPublicKey, CachedRevokedVC, putContexts, putPublicKeys, putRevokedVCs, replaceRevokedVCsForOrganization, replacePublicKeysForOrganization, getContext, replaceContextsForOrganization } from './utils/CacheHelper';
+import { CachedPublicKey, putContexts, putPublicKeys, replacePublicKeysForOrganization, getContext, replaceContextsForOrganization, putStatusListCredentials, replaceStatusListCredentialsForOrganization } from './utils/CacheHelper';
 import type { CacheBundle } from './utils/OrgResolver';
 import { PublicKeyGetterFactory } from '../publicKey/PublicKeyGetterFactory';
 import { base58btc } from 'multiformats/bases/base58';
@@ -57,9 +57,21 @@ export class SDKCacheManager {
       }
       if (docs.length) await putContexts(docs);
     }
-    // 3) revoked VCs
-    if (bundle.revokedVCs?.length) {
-      await putRevokedVCs(bundle.revokedVCs as CachedRevokedVC[]);
+
+    // 3) status list credentials (optional, treat like other org-scoped artifacts if present)
+    const sl = (bundle as any).statusListCredentials as Array<any> | undefined;
+    if (sl?.length) {
+      try {
+        await putStatusListCredentials(sl.map(c => ({
+          status_list_id: c.status_list_id || c.id || c.credentialId || c.statusListId,
+          issuer: c.issuer,
+          status_purpose: c.status_purpose || c.statusPurpose || c.credentialSubject?.statusPurpose || 'revocation',
+          full_credential: c.full_credential || c.fullCredential || c.credential || c,
+          organization_id: c.organization_id || c.organizationId || null,
+        })).filter(c => !!c.status_list_id));
+      } catch (e) {
+        console.warn('[SDKCacheManager] Failed to prime status list credentials:', e);
+      }
     }
   }
 
@@ -68,7 +80,7 @@ export class SDKCacheManager {
     // 1) keys - REPLACE instead of add for proper sync
     await replacePublicKeysForOrganization(organizationId, (bundle.publicKeys as CachedPublicKey[]) || []);
     
-    // 2) contexts - REPLACE by organization (to mirror public keys & revoked VCs behavior)
+  // 2) contexts - REPLACE by organization to mirror public keys behavior
     if (bundle.contexts?.length) {
       await replaceContextsForOrganization(organizationId, bundle.contexts);
     } else if (bundle.contextUrls?.length && typeof navigator !== 'undefined' && navigator.onLine) {
@@ -81,8 +93,22 @@ export class SDKCacheManager {
       }
       if (docs.length) await replaceContextsForOrganization(organizationId, docs);
     }
-    // 3) revoked VCs - REPLACE instead of add for proper sync
-    await replaceRevokedVCsForOrganization(organizationId, (bundle.revokedVCs as CachedRevokedVC[]) || []);
+
+    // 3) status list credentials - replace for organization if provided
+    const sl = (bundle as any).statusListCredentials as Array<any> | undefined;
+    if (sl) {
+      try {
+        await replaceStatusListCredentialsForOrganization(organizationId, sl.map(c => ({
+          status_list_id: c.status_list_id || c.id || c.credentialId || c.statusListId,
+          issuer: c.issuer,
+            status_purpose: c.status_purpose || c.statusPurpose || c.credentialSubject?.statusPurpose || 'revocation',
+          full_credential: c.full_credential || c.fullCredential || c.credential || c,
+          organization_id: organizationId,
+        })).filter(c => !!c.status_list_id));
+      } catch (e) {
+        console.warn('[SDKCacheManager] Failed to sync status list credentials:', e);
+      }
+    }
   }
 
   // Optional: derive cache from a VC (one-time, while online)

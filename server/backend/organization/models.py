@@ -149,40 +149,38 @@ class JsonLdContext(models.Model):
         return f"{self.organization_id} :: {self.url}"
 
 
-class RevokedVC(models.Model):
+class StatusListCredential(models.Model):
     """
-    Revoked Verifiable Credential data scoped to an Organization.
-    This is used for pre-cached revocation checks during offline verification.
+    BitstringStatusList Credential data scoped to an Organization.
+    We keep only essential metadata to support lookups and cache the full credential once.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="revoked_vcs"
+        Organization, on_delete=models.CASCADE, related_name="status_list_credentials"
     )
-    vc_id = models.CharField(max_length=1000, help_text="Verifiable Credential ID (from credential.id)")
+    status_list_id = models.CharField(max_length=1000, help_text="StatusList credential identifier (credential.id)")
     issuer = models.CharField(max_length=500, help_text="Issuer DID")
-    subject = models.CharField(max_length=500, null=True, blank=True, help_text="Subject DID (if available)")
-    reason = models.CharField(max_length=255, null=True, blank=True, help_text="Reason for revocation")
-    revoked_at = models.DateTimeField(auto_now_add=True, help_text="When the VC was marked as revoked")
-    metadata = models.JSONField(null=True, blank=True, help_text="Additional revocation metadata")
+    status_purpose = models.CharField(max_length=50, default="revocation", help_text="Purpose from credentialSubject.statusPurpose")
+    full_credential = models.JSONField(help_text="Complete StatusList credential JSON document")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         indexes = [
-            models.Index(fields=["organization"], name="idx_revokedvc_org"),
-            models.Index(fields=["vc_id"], name="idx_revokedvc_id"),
-            models.Index(fields=["issuer"], name="idx_revokedvc_issuer"),
-            models.Index(fields=["subject"], name="idx_revokedvc_subject"),
+            models.Index(fields=["organization"], name="idx_statuslist_org"),
+            models.Index(fields=["status_list_id"], name="idx_statuslist_id"),
+            models.Index(fields=["issuer"], name="idx_statuslist_issuer"),
+            models.Index(fields=["status_purpose"], name="idx_statuslist_purpose"),
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=["organization", "vc_id"], name="uniq_revokedvc_org_id"
+                fields=["organization", "status_list_id"], name="uniq_statuslist_org_id"
             )
         ]
-        verbose_name = "Revoked Verifiable Credential"
-        verbose_name_plural = "Revoked Verifiable Credentials"
+        verbose_name = "StatusList Credential"
+        verbose_name_plural = "StatusList Credentials"
 
     def __str__(self):
-        return f"{self.vc_id} (revoked by {self.organization.name})"
+        return f"{self.status_list_id} ({self.status_purpose} by {self.organization.name})"
 
 

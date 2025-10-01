@@ -3,7 +3,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Organization, OrganizationDID, PublicKey, PendingOrganizationRegistration, JsonLdContext, RevokedVC
+from .models import Organization, OrganizationDID, PublicKey, PendingOrganizationRegistration, JsonLdContext, StatusListCredential
 from worker.models import OrganizationMember
 from datetime import datetime, timedelta, timezone as dt_timezone
 import random, string
@@ -216,21 +216,20 @@ class JsonLdContextSerializer(serializers.ModelSerializer):
         fields = ['id', 'organization', 'url', 'document', 'created_at', 'updated_at']
 
 
-class RevokedVCSerializer(serializers.ModelSerializer):
+class StatusListCredentialSerializer(serializers.ModelSerializer):
     class Meta:
-        model = RevokedVC
+        model = StatusListCredential
         fields = [
-            'id', 'vc_id', 'issuer', 'subject', 'reason', 'revoked_at', 
-            'metadata', 'created_at', 'updated_at'
+            'id', 'status_list_id', 'issuer', 'status_purpose',
+            'full_credential', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'revoked_at', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
-class RevokedVCUpsertSerializer(serializers.Serializer):
-    """Serializer for adding revoked VCs from full VC JSON payload"""
+class StatusListCredentialUpsertSerializer(serializers.Serializer):
+    """Serializer for adding StatusList credentials from full credential JSON payload"""
     organization_id = serializers.UUIDField()
-    vc_json = serializers.JSONField()
-    reason = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    status_list_credential = serializers.JSONField()
 
     def validate(self, attrs):
         # Validate organization exists
@@ -239,58 +238,84 @@ class RevokedVCUpsertSerializer(serializers.Serializer):
         except Organization.DoesNotExist:
             raise serializers.ValidationError({'organization_id': 'Organization not found'})
         
-        vc_data = attrs['vc_json']
-        print(f"DEBUG: Received vc_data: {vc_data}")  # Debug line
+        credential_data = attrs['status_list_credential']
         
-        # Handle nested VC structure - check if VC is nested under 'credential' key
-        if 'credential' in vc_data and isinstance(vc_data['credential'], dict):
-            vc_credential = vc_data['credential']
-            print(f"DEBUG: Using nested credential: {vc_credential.get('id', 'NO_ID')}")  # Debug line
-        else:
-            vc_credential = vc_data
-            print(f"DEBUG: Using root level VC: {vc_credential.get('id', 'NO_ID')}")  # Debug line
+        # Validate this is a BitstringStatusListCredential
+        credential_type = credential_data.get('type', [])
+        if not isinstance(credential_type, list):
+            credential_type = [credential_type]
         
-        # Extract required fields from VC JSON
-        vc_id = vc_credential.get('id')
-        if not vc_id:
-            raise serializers.ValidationError({'vc_json': f'VC JSON must contain an "id" field. Checked credential structure: {vc_credential.keys() if isinstance(vc_credential, dict) else "not a dict"}'})
+        if 'BitstringStatusListCredential' not in credential_type:
+            raise serializers.ValidationError({
+                'status_list_credential': 'Credential must be of type BitstringStatusListCredential'
+            })
         
-        issuer = vc_credential.get('issuer')
+        # Extract required fields from StatusList credential JSON
+        status_list_id = credential_data.get('id')
+        if not status_list_id:
+            raise serializers.ValidationError({
+                'status_list_credential': 'StatusList credential must contain an "id" field'
+            })
+        
+        issuer = credential_data.get('issuer')
         if not issuer:
-            raise serializers.ValidationError({'vc_json': 'VC JSON must contain an "issuer" field (either at root level or under "credential" key)'})
+            raise serializers.ValidationError({
+                'status_list_credential': 'StatusList credential must contain an "issuer" field'
+            })
         
         # Handle issuer as string or object
         if isinstance(issuer, dict):
             issuer = issuer.get('id', '')
         
-        # Extract subject if available
-        subject = None
-        credential_subject = vc_credential.get('credentialSubject', {})
-        if isinstance(credential_subject, dict):
-            subject = credential_subject.get('id')
-        elif isinstance(credential_subject, list) and len(credential_subject) > 0:
-            subject = credential_subject[0].get('id')
+        # Extract credentialSubject
+        credential_subject = credential_data.get('credentialSubject', {})
+        if not isinstance(credential_subject, dict):
+            raise serializers.ValidationError({
+                'status_list_credential': 'StatusList credential must contain a valid credentialSubject'
+            })
+        
+        # Validate required credentialSubject fields
+        status_purpose = credential_subject.get('statusPurpose', 'revocation')
+        encoded_list = credential_subject.get('encodedList')
+        if not encoded_list:
+            raise serializers.ValidationError({
+                'status_list_credential': 'credentialSubject must contain an "encodedList" field'
+            })
         
         attrs['organization'] = org
-        attrs['vc_id'] = vc_id
+        attrs['status_list_id'] = status_list_id
         attrs['issuer'] = issuer
-        attrs['subject'] = subject
-        # Store the extracted VC credential for future reference
-        attrs['vc_credential'] = vc_credential
+        attrs['status_purpose'] = status_purpose
+        attrs['full_credential'] = credential_data
         
         return attrs
 
     def create(self, validated_data):
-        return RevokedVC.objects.create(
+        # Check if a StatusList credential with the same ID already exists for this organization
+        existing = StatusListCredential.objects.filter(
             organization=validated_data['organization'],
-            vc_id=validated_data['vc_id'],
-            issuer=validated_data['issuer'],
-            subject=validated_data.get('subject'),
-            reason=validated_data.get('reason', ''),
-            metadata=validated_data['vc_credential']  # Store the actual VC, not the wrapper
-        )
+            status_list_id=validated_data['status_list_id']
+        ).first()
+        
+        if existing:
+            existing.issuer = validated_data['issuer']
+            existing.status_purpose = validated_data['status_purpose']
+            existing.full_credential = validated_data['full_credential']
+            existing.save(update_fields=[
+                'issuer', 'status_purpose', 'full_credential', 'updated_at'
+            ])
+            return existing
+        else:
+            # Create new credential
+            return StatusListCredential.objects.create(
+                organization=validated_data['organization'],
+                status_list_id=validated_data['status_list_id'],
+                issuer=validated_data['issuer'],
+                status_purpose=validated_data['status_purpose'],
+                full_credential=validated_data['full_credential']
+            )
 
 
-class RevokedVCListResponseSerializer(serializers.Serializer):
+class StatusListCredentialListResponseSerializer(serializers.Serializer):
     organization_id = serializers.UUIDField()
-    revoked_vcs = RevokedVCSerializer(many=True)
+    status_list_credentials = StatusListCredentialSerializer(many=True)

@@ -3,7 +3,8 @@ import { CredentialValidatorConstants } from './constants/CredentialValidatorCon
 import { CredentialVerifierConstants } from './constants/CredentialVerifierConstants.js';
 import { CredentialVerifierFactory } from './credential-verifier/credentialVerifierFactory.js';
 import { VerificationResult } from './data/data.js';
-import { isVCRevoked } from './cache/utils/CacheHelper.js';
+import { RevocationChecker } from './revocation/RevocationChecker';
+import { RevocationErrorCodes } from './revocation/RevocationConstants';
 
 class CredentialsVerifier {
     private logger: Console;
@@ -41,6 +42,13 @@ class CredentialsVerifier {
             );
         }
         
+        let parsedCredential: any = null;
+        try {
+            parsedCredential = JSON.parse(credential);
+        } catch (parseError) {
+            this.logger.warn('Failed to parse credential JSON for payload attachment:', parseError);
+        }
+
         try {
             // Await the async verifier (bug fix)
             const verifySignatureStatus = await credentialVerifier.verify(credential);
@@ -52,27 +60,72 @@ class CredentialsVerifier {
                 );
             }
 
-            // Check revocation status after successful signature verification
+            // Only report "expired" info if signature verification succeeded
+            // After cryptographic verification, perform revocation check if credentialStatus present
+            let revocationPayload: any = null;
             try {
-                const credentialJson = JSON.parse(credential);
-                const vcId = credentialJson.id;
-                if (vcId && await isVCRevoked(vcId)) {
-                    return new VerificationResult(
-                        false,
-                        "Credential has been revoked",
-                        "VC_REVOKED"
-                    );
+                const revChecker = new RevocationChecker();
+                const revResult = await revChecker.check(parsedCredential ?? JSON.parse(credential));
+                if (revResult) {
+                    revocationPayload = revResult;
+                    // Classification vs verification failure: only treat as error if errorCode present
+                    if (revResult.errorCode) {
+                        const payload = parsedCredential
+                            ? { ...parsedCredential, revocation: revResult }
+                            : { revocation: revResult };
+                        return new VerificationResult(
+                            false,
+                            revResult.errorMessage || 'Status list verification failed',
+                            revResult.errorCode,
+                            payload
+                        );
+                    }
+                    // No errorCode: interpret classification
+                    if (!revResult.valid) {
+                        // Map based on purpose
+                        const purpose = revResult.purpose;
+                        let message = revResult.message || CredentialVerifierConstants.ERROR_MESSAGE_VC_REVOKED;
+                        let code = CredentialVerifierConstants.ERROR_CODE_VC_REVOKED;
+                        if (purpose === 'suspension') {
+                            message = revResult.message || 'Credential suspended';
+                            code = 'VC_SUSPENDED';
+                        }
+                        // For refresh/message purposes we do not fail overall verification
+                        if (purpose === 'refresh' || purpose === 'message') {
+                            // Keep verification success, payload will carry advisory status
+                        } else {
+                            const payload = parsedCredential
+                                ? { ...parsedCredential, revocation: revResult }
+                                : { revocation: revResult };
+                            return new VerificationResult(
+                                false,
+                                message,
+                                code,
+                                payload
+                            );
+                        }
+                    }
                 }
-            } catch (revocationError) {
-                // Log warning but don't fail verification if revocation check fails
-                console.warn('[CredentialsVerifier] Revocation check failed:', revocationError);
+            } catch (revErr: any) {
+                // If revocation check itself throws known error, surface as verification failure
+                if (revErr?.code && Object.values(RevocationErrorCodes).includes(revErr.code as any)) {
+                    const payload = parsedCredential
+                        ? { ...parsedCredential, revocation: { error: true, message: revErr.message, code: revErr.code } }
+                        : { revocation: { error: true, message: revErr.message, code: revErr.code } };
+                    return new VerificationResult(false, revErr.message, revErr.code, payload);
+                }
+                // Otherwise log and continue as success (best-effort revocation)
+                this.logger.warn('Revocation check error (non-fatal):', revErr?.message || revErr);
             }
 
-            // Only report "expired" info if signature verification succeeded
+            const successPayload = parsedCredential
+                ? (revocationPayload ? { ...parsedCredential, revocation: revocationPayload } : parsedCredential)
+                : (revocationPayload ? { revocation: revocationPayload } : null);
             return new VerificationResult(
-                true, 
-                validationStatus.validationMessage, 
-                validationStatus.validationErrorCode
+                true,
+                validationStatus.validationMessage,
+                validationStatus.validationErrorCode,
+                successPayload
             );
         } catch (error: any) {
             // Map offline-missing-dependencies to a clear, user-friendly error result

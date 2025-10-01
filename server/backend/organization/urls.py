@@ -21,8 +21,8 @@ urlpatterns = [
     path('api/public-keys/upsert/', views.OrganizationPublicKeyUpsertView.as_view(), name='organization-public-keys-upsert'),
     path('api/public-keys/<path:key_id>/', views.OrganizationPublicKeyDetailView.as_view(), name='organization-public-key-detail'),
     path('api/public-keys/upsert/', views.OrganizationPublicKeyUpsertView.as_view(), name='organization-public-keys-upsert'),
-    # Revoked VCs endpoints
-    path('api/revoked-vcs/', views.OrganizationRevokedVCsView.as_view(), name='organization-revoked-vcs'),
-    path('api/revoked-vcs/upsert/', views.OrganizationRevokedVCUpsertView.as_view(), name='organization-revoked-vcs-upsert'),
-    path('api/revoked-vcs/<path:vc_id>/', views.OrganizationRevokedVCDetailView.as_view(), name='organization-revoked-vc-detail'),
+    # StatusList credentials endpoints
+    path('api/status-list-credentials/', views.OrganizationStatusListCredentialsView.as_view(), name='organization-status-list-credentials'),
+    path('api/status-list-credentials/upsert/', views.OrganizationStatusListCredentialUpsertView.as_view(), name='organization-status-list-credentials-upsert'),
+    path('api/status-list-credentials/<path:status_list_id>/', views.OrganizationStatusListCredentialDetailView.as_view(), name='organization-status-list-credential-detail'),
 ]

@@ -1,5 +1,12 @@
 from django.contrib import admin
-from .models import Organization, OrganizationDID, PublicKey, PendingOrganizationRegistration, JsonLdContext, RevokedVC
+from .models import (
+    Organization,
+    OrganizationDID,
+    PublicKey,
+    PendingOrganizationRegistration,
+    JsonLdContext,
+    StatusListCredential,
+)
 
 @admin.register(JsonLdContext)
 class JsonLdContextAdmin(admin.ModelAdmin):
@@ -34,9 +41,9 @@ class PendingOrganizationRegistrationAdmin(admin.ModelAdmin):
     search_fields = ("org_name", "admin_username", "admin_email")
 
 
-@admin.register(RevokedVC)
-class RevokedVCAdmin(admin.ModelAdmin):
-    list_display = ("vc_id", "organization", "issuer", "subject", "revoked_at")
-    list_filter = ("revoked_at", "organization")
-    search_fields = ("vc_id", "issuer", "subject", "organization__name")
-    readonly_fields = ("revoked_at", "created_at", "updated_at")
+@admin.register(StatusListCredential)
+class StatusListCredentialAdmin(admin.ModelAdmin):
+    list_display = ("status_list_id", "organization", "issuer", "status_purpose", "updated_at")
+    list_filter = ("status_purpose", "organization")
+    search_fields = ("status_list_id", "issuer", "organization__name")
+    readonly_fields = ("created_at", "updated_at")

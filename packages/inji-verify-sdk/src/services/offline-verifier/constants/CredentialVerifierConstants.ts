@@ -49,6 +49,10 @@ const CredentialVerifierConstants = {
     ERROR_CODE_PUBLIC_KEY_RESOLUTION_FAILED: "ERR_PUBLIC_KEY_RESOLUTION_FAILED",
     ERROR_MESSAGE_PUBLIC_KEY_RESOLUTION_FAILED: "Unable to resolve the public key needed for verification.",
 
+    // Revocation specific messaging
+    ERROR_CODE_VC_REVOKED: "VC_REVOKED",
+    ERROR_MESSAGE_VC_REVOKED: "Credential has been revoked by the issuer.",
+
     // This is used to turn public key bytes into a buffer in DER format
     DER_PUBLIC_KEY_PREFIX: "302a300506032b6570032100",
 

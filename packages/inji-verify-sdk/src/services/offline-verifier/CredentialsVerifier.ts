@@ -87,12 +87,15 @@ class CredentialsVerifier {
                         let message = revResult.message || CredentialVerifierConstants.ERROR_MESSAGE_VC_REVOKED;
                         let code = CredentialVerifierConstants.ERROR_CODE_VC_REVOKED;
                         if (purpose === 'suspension') {
-                            message = revResult.message || 'Credential suspended';
-                            code = 'VC_SUSPENDED';
+                            message = revResult.message || CredentialVerifierConstants.ERROR_MESSAGE_VC_SUSPENDED;
+                            code = CredentialVerifierConstants.ERROR_CODE_VC_SUSPENDED;
                         }
                         // For refresh/message purposes we do not fail overall verification
-                        if (purpose === 'refresh' || purpose === 'message') {
-                            // Keep verification success, payload will carry advisory status
+                        if (purpose === 'refresh') {
+                            // Optionally surface advisory code in payload only (do not fail)
+                            revocationPayload = { ...revResult, infoCode: CredentialVerifierConstants.INFO_CODE_VC_REFRESH_AVAILABLE, infoMessage: CredentialVerifierConstants.INFO_MESSAGE_VC_REFRESH_AVAILABLE };
+                        } else if (purpose === 'message') {
+                            revocationPayload = { ...revResult, infoCode: CredentialVerifierConstants.INFO_CODE_VC_STATUS_MESSAGE, infoMessage: CredentialVerifierConstants.INFO_MESSAGE_VC_STATUS_MESSAGE };
                         } else {
                             const payload = parsedCredential
                                 ? { ...parsedCredential, revocation: revResult }

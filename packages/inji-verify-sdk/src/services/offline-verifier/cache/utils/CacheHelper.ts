@@ -152,12 +152,30 @@ export async function replacePublicKeysForOrganization(organizationId: string, p
 }
 
 // ---------------- Status List Credential Helpers -----------------
+const normalizePurposes = (value: any): string[] => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => (typeof v === 'string' ? v : v?.toString?.() ?? ''))
+      .filter((v): v is string => Boolean(v?.trim()))
+      .map((v) => v.trim());
+  }
+  if (typeof value === 'string') {
+    return value.trim() ? [value.trim()] : [];
+  }
+  const serialized = value?.toString?.();
+  return serialized ? [serialized] : [];
+};
+
 export interface CachedStatusListCredential {
   status_list_id: string; // credential.id
   issuer: string;
-  status_purpose: string; // e.g., revocation
+  purposes: string[]; // e.g., ['revocation', 'suspension']
+  version?: number;
+  encoded_list_hash?: string;
   full_credential: any;   // full JSON document
-  organization_id: string;
+  organization_id: string | null;
+  updated_at?: string;
   cachedAt?: number;
 }
 
@@ -169,7 +187,17 @@ export async function putStatusListCredentials(creds: CachedStatusListCredential
   const now = Date.now();
   for (const c of creds) {
     if (!c.status_list_id) throw new Error('putStatusListCredentials: status_list_id required');
-    await store.put({ ...c, cachedAt: now });
+    await store.put({
+      status_list_id: c.status_list_id,
+      issuer: c.issuer,
+      purposes: normalizePurposes(c.purposes),
+      version: typeof c.version === 'number' ? c.version : undefined,
+      encoded_list_hash: c.encoded_list_hash ?? undefined,
+      full_credential: c.full_credential,
+      organization_id: c.organization_id ?? null,
+      updated_at: c.updated_at,
+      cachedAt: now,
+    });
   }
   await tx.done;
 }
@@ -200,7 +228,17 @@ export async function replaceStatusListCredentialsForOrganization(organizationId
     const store3 = tx3.objectStore(STATUS_LIST_STORE);
     const now = Date.now();
     for (const c of creds) {
-      await store3.put({ ...c, cachedAt: now });
+      await store3.put({
+        status_list_id: c.status_list_id,
+        issuer: c.issuer,
+        purposes: normalizePurposes(c.purposes),
+        version: typeof c.version === 'number' ? c.version : undefined,
+        encoded_list_hash: c.encoded_list_hash ?? undefined,
+        full_credential: c.full_credential,
+        organization_id: c.organization_id ?? null,
+        updated_at: c.updated_at,
+        cachedAt: now,
+      });
     }
     await tx3.done;
   }

@@ -10,6 +10,30 @@ import { base58btc } from 'multiformats/bases/base58';
 
 function unique<T>(arr: T[]) { return Array.from(new Set(arr)); }
 
+const normalizePurposes = (value: any): string[] => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => (typeof v === 'string' ? v : v?.toString?.() ?? ''))
+      .filter((v): v is string => Boolean(v?.trim()))
+      .map((v) => v.trim());
+  }
+  if (typeof value === 'string') {
+    return value.trim() ? [value.trim()] : [];
+  }
+  const serialized = value?.toString?.();
+  return serialized ? [serialized] : [];
+};
+
+const normalizeIssuer = (value: any): string => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object') {
+    return value.id || value.did || value.url || '';
+  }
+  return String(value ?? '');
+};
+
 // Helpers to derive multibase when only SPKI bytes are available
 function spkiToRawEd25519(spki: Uint8Array): Uint8Array {
   if (spki.length === 32) return new Uint8Array(spki);
@@ -64,10 +88,13 @@ export class SDKCacheManager {
       try {
         await putStatusListCredentials(sl.map(c => ({
           status_list_id: c.status_list_id || c.id || c.credentialId || c.statusListId,
-          issuer: c.issuer,
-          status_purpose: c.status_purpose || c.statusPurpose || c.credentialSubject?.statusPurpose || 'revocation',
+          issuer: normalizeIssuer(c.issuer),
+          purposes: normalizePurposes(c.purposes ?? c.status_purpose ?? c.statusPurpose ?? c.credentialSubject?.statusPurpose),
+          version: typeof c.version === 'number' ? c.version : undefined,
+          encoded_list_hash: c.encoded_list_hash ?? c.encodedListHash ?? c.hash,
           full_credential: c.full_credential || c.fullCredential || c.credential || c,
           organization_id: c.organization_id || c.organizationId || null,
+          updated_at: c.updated_at ?? c.updatedAt ?? c.full_credential?.updated_at ?? c.full_credential?.updatedAt,
         })).filter(c => !!c.status_list_id));
       } catch (e) {
         console.warn('[SDKCacheManager] Failed to prime status list credentials:', e);
@@ -100,10 +127,13 @@ export class SDKCacheManager {
       try {
         await replaceStatusListCredentialsForOrganization(organizationId, sl.map(c => ({
           status_list_id: c.status_list_id || c.id || c.credentialId || c.statusListId,
-          issuer: c.issuer,
-            status_purpose: c.status_purpose || c.statusPurpose || c.credentialSubject?.statusPurpose || 'revocation',
+          issuer: normalizeIssuer(c.issuer),
+          purposes: normalizePurposes(c.purposes ?? c.status_purpose ?? c.statusPurpose ?? c.credentialSubject?.statusPurpose),
+          version: typeof c.version === 'number' ? c.version : undefined,
+          encoded_list_hash: c.encoded_list_hash ?? c.encodedListHash ?? c.hash,
           full_credential: c.full_credential || c.fullCredential || c.credential || c,
           organization_id: organizationId,
+          updated_at: c.updated_at ?? c.updatedAt ?? c.full_credential?.updated_at ?? c.full_credential?.updatedAt,
         })).filter(c => !!c.status_list_id));
       } catch (e) {
         console.warn('[SDKCacheManager] Failed to sync status list credentials:', e);

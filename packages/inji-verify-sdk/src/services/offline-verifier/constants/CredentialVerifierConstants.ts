@@ -53,6 +53,16 @@ const CredentialVerifierConstants = {
     ERROR_CODE_VC_REVOKED: "VC_REVOKED",
     ERROR_MESSAGE_VC_REVOKED: "Credential has been revoked by the issuer.",
 
+    // Suspension specific messaging
+    ERROR_CODE_VC_SUSPENDED: "VC_SUSPENDED",
+    ERROR_MESSAGE_VC_SUSPENDED: "Credential is currently suspended by the issuer.",
+
+    // Advisory (non-failing) status purposes
+    INFO_CODE_VC_REFRESH_AVAILABLE: "VC_REFRESH_AVAILABLE",
+    INFO_MESSAGE_VC_REFRESH_AVAILABLE: "A refreshed version of this credential is available.",
+    INFO_CODE_VC_STATUS_MESSAGE: "VC_STATUS_MESSAGE_PRESENT",
+    INFO_MESSAGE_VC_STATUS_MESSAGE: "A status message is associated with this credential.",
+
     // This is used to turn public key bytes into a buffer in DER format
     DER_PUBLIC_KEY_PREFIX: "302a300506032b6570032100",
 

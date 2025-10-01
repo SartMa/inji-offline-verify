@@ -297,9 +297,9 @@ export default function AddStatusListCredential() {
     try {
       const text = await file.text();
       JSON.parse(text);
-      setVcJson(text);
+      setStatusListCredential(text);
       setFieldError('');
-      showToast('VC JSON loaded from file', 'success');
+      showToast('StatusList credential JSON loaded from file', 'success');
     } catch {
       setFieldError('Invalid JSON file');
       showToast('Uploaded file is not valid JSON', 'error');
@@ -598,12 +598,12 @@ export default function AddStatusListCredential() {
                                   </IconButton>
                                 </InputAdornment>
                               ),
-                              endAdornment: statusListCredential && (
+                              endAdornment: (
                                 <InputAdornment position="end">
                                   <IconButton
                                     onClick={handleUploadClick}
                                     edge="end"
-                                    aria-label="Upload VC JSON file"
+                                    aria-label="Upload StatusList JSON file"
                                     sx={{ 
                                       color: isDark ? '#a0aec0' : 'text.secondary',
                                       backgroundColor: 'transparent !important',
@@ -632,40 +632,42 @@ export default function AddStatusListCredential() {
                                   >
                                     <UploadFileIcon />
                                   </IconButton>
-                                  {vcJson && (
-                                    <IconButton
-                                      onClick={handleCopyVc}
-                                      edge="end"
-                                      aria-label="Copy VC JSON"
-                                      sx={{ 
-                                        color: isDark ? '#a0aec0' : 'text.secondary',
+                                  <IconButton
+                                    onClick={handleCopyCredential}
+                                    edge="end"
+                                    aria-label="Copy StatusList JSON"
+                                    disabled={!statusListCredential.trim()}
+                                    sx={{ 
+                                      color: isDark ? '#a0aec0' : 'text.secondary',
+                                      backgroundColor: 'transparent !important',
+                                      border: 'none !important',
+                                      boxShadow: 'none !important',
+                                      padding: '8px',
+                                      margin: 0,
+                                      '&:hover': { 
+                                        color: isDark ? '#4299e1' : 'primary.main',
                                         backgroundColor: 'transparent !important',
-                                        border: 'none !important',
                                         boxShadow: 'none !important',
-                                        padding: '8px',
-                                        margin: 0,
-                                        '&:hover': { 
-                                          color: isDark ? '#4299e1' : 'primary.main',
-                                          backgroundColor: 'transparent !important',
-                                          boxShadow: 'none !important',
-                                        },
-                                        '&:focus': {
-                                          backgroundColor: 'transparent !important',
-                                          boxShadow: 'none !important',
-                                          outline: 'none',
-                                        },
-                                        '&:active': {
-                                          backgroundColor: 'transparent !important',
-                                          boxShadow: 'none !important',
-                                        },
-                                        '& .MuiTouchRipple-root': {
-                                          display: 'none',
-                                        }
-                                      }}
-                                    >
-                                      <ContentCopyIcon />
-                                    </IconButton>
-                                  )}
+                                      },
+                                      '&:focus': {
+                                        backgroundColor: 'transparent !important',
+                                        boxShadow: 'none !important',
+                                        outline: 'none',
+                                      },
+                                      '&:active': {
+                                        backgroundColor: 'transparent !important',
+                                        boxShadow: 'none !important',
+                                      },
+                                      '& .MuiTouchRipple-root': {
+                                        display: 'none',
+                                      },
+                                      '&.Mui-disabled': {
+                                        color: isDark ? '#4a5568' : 'rgba(0,0,0,0.26)',
+                                      }
+                                    }}
+                                  >
+                                    <ContentCopyIcon />
+                                  </IconButton>
                                 </InputAdornment>
                               ),
                             }}

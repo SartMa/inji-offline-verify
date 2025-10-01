@@ -1,0 +1,24 @@
+{
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1"
+  ],
+  "type": [
+    "VerifiableCredential"
+  ],
+  "issuer": "did:web:sartma.github.io:tryingsomethinglol",
+  "issuanceDate": "2025-09-29T12:00:00Z",
+  "credentialSubject": {
+    "id": "did:example:holder123",
+    "name": "Sample RSA VC"
+  },
+  "proof": {
+    "@context": [
+      "https://w3id.org/security/v2"
+    ],
+    "type": "RsaSignature2018",
+    "created": "2025-09-30T12:05:00Z",
+    "proofPurpose": "assertionMethod",
+    "verificationMethod": "did:web:sartma.github.io:tryingsomethinglol#key-1",
+    "jws": "eyJhbGciOiJSUzI1NiIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..QKk0ZM9-g0f8jomX3SxOuW7w6MrxjuLzyoSR3zMuA89REcoUJqTi7jkmGs0itl3CcLykuuej0sM0dRVR-_iOhxTjkZOXZpiXto6fud1pZOhfhKfNnkfZlMVCBLwZNAiMz_RsX_AlBSK3q5dIDgGUQwRz1C1uDcWuTzFJJ5bWTvicB3NlgSnWnF2AF8JrzerXnHRfzFX4SenZNAJUrD3_35P9u5A2GLtR2ZigMOqwKxoAyuYGktrWkb64sqe_MngjsD-9PaP0-tzOFyoBQdhUZdYVSbP8k4-C4-9xjJAgFha0rY7QmlBOHGgSbXkbkDwhkNR9QKbfMusJ6UhndmOKZg"
+  }
+}

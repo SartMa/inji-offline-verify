@@ -3,8 +3,15 @@
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Key Features](#key-features)
+- [Overview](#overview### Bonus Tasks - All Delivered
+
+| **Task** | **Description** |
+|----------|-----------------|--|
+| **DID Resolution (Limited Offline)** | Advanced caching strategies for DIDs enabling offline resolution for frequently used issuers |
+| **Proof-of-Concept Native Mobile** | PWA provides native-like mobile experience with installability and offline capabilities on Android/iOS ([APP README](https://github.com/SartMa/inji-offline-app/blob/master/README.md)) |
+| **Performance Benchmarking** | Comprehensive performance measurement of offline verification (74ms average) and sync processes with 1,500+ sample analysis |
+| **Offline Credential Presentation** | Complete offline credential presentation with QR code generation and VP creation for other offline verifiers |
+| **Bitstring Status List Credentials** | Full W3C BitstringStatusList implementation with versioning, history tracking, and efficient offline revocation checking ([IMPLEMENTATION GUIDE](./packages/inji-verify-sdk/BITSTRING_STATUS_LIST.md)) |y Features](#key-features)
 - [Quick Start](#quick-start)
 - [Local Development](#local-development)
 - [Deployment](#deployment)
@@ -374,9 +381,11 @@ Intelligent synchronization system that handles both automatic background sync a
 
 | Component | Documentation | Description |
 |-----------|---------------|-------------|
-| **Organization Portal** | [apps/organization-portal/README.md](./apps/organization-portal/README.md) | Admin interface setup and usage |
-| **Worker PWA** | [apps/worker-pwa/README.md](./apps/worker-pwa/README.md) | PWA architecture and offline capabilities |
-| **Inji Verify SDK** | [packages/inji-verify-sdk/README.md](./packages/inji-verify-sdk/README.md) | Core verification engine documentation |
+| **Organization Portal** | [README.md](./apps/organization-portal/README.md) | Admin interface setup and usage |
+| **Worker PWA** | [README.md](./apps/worker-pwa/README.md) | PWA architecture and offline capabilities |
+| **Backend Server** | [README.md](./server/README.md) | Django REST API and authentication |
+| **Inji Verify SDK** | [README.md](./packages/inji-verify-sdk/README.md) | Core verification engine documentation |
+| **Bitstring Status List** | [BITSTRING_STATUS_LIST.md](./packages/inji-verify-sdk/BITSTRING_STATUS_LIST.md) | W3C BitstringStatusList implementation guide |
 | **Performance Engineering** | [Performance Benchmark Report](./apps/worker-pwa/performance_benchmarking/docs/performance-benchmark-2025-09-27.md) | Detailed performance analysis |
 
 ### Additional Resources

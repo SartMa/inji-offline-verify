@@ -50,7 +50,70 @@ const formatErrorCodeForDisplay = (code?: string | null) => {
   return [code];
 };
 
-const CredentialField = ({ label, value }: { label: string; value: any }) => {
+// Helper to check if a value should be treated as a simple value
+const isSimpleValue = (value: any): boolean => {
+  return (
+    value === null ||
+    value === undefined ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  );
+};
+
+// Helper to format simple values and arrays for display
+const formatValue = (value: any): string => {
+  if (value === null || value === undefined) {
+    return 'N/A';
+  }
+  
+  if (Array.isArray(value)) {
+    // Check if array contains only simple values
+    if (value.every(isSimpleValue)) {
+      return value.join(', ');
+    }
+    // If array contains complex objects, show as JSON
+    return JSON.stringify(value, null, 2);
+  }
+  
+  return String(value);
+};
+
+// Helper to flatten nested objects into field entries
+const flattenObject = (
+  obj: Record<string, any>,
+  parentKey: string = ''
+): Array<{ key: string; value: any; isNested: boolean }> => {
+  const result: Array<{ key: string; value: any; isNested: boolean }> = [];
+  
+  Object.entries(obj).forEach(([key, value]) => {
+    // Skip 'id' field at root level
+    if (!parentKey && key.toLowerCase() === 'id') {
+      return;
+    }
+    
+    const newKey = parentKey ? `${parentKey}.${key}` : key;
+    
+    // If it's an object (but not an array), recursively flatten it
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      result.push(...flattenObject(value, newKey).map(item => ({
+        ...item,
+        isNested: true
+      })));
+    } else {
+      // It's a simple value or array, add it as a field
+      result.push({ key: newKey, value, isNested: !!parentKey });
+    }
+  });
+  
+  return result;
+};
+
+const CredentialField = ({ label, value, isNested = false }: { label: string; value: any; isNested?: boolean }) => {
+  const isUrl = isURL(value);
+  const formattedValue = isUrl ? String(value) : formatValue(value);
+  const isMultiline = formattedValue.includes('\n');
+  
   return (
     <Box 
       sx={{ 
@@ -63,19 +126,21 @@ const CredentialField = ({ label, value }: { label: string; value: any }) => {
         <Typography 
           variant="body2" 
           sx={{ 
-            color: 'var(--template-palette-text-secondary)',
+            color: isNested ? 'var(--template-palette-text-secondary)' : 'var(--template-palette-text-secondary)',
             fontWeight: 700,
             fontSize: { xs: '0.85rem', sm: '0.9rem' },
             minWidth: 'fit-content',
             textTransform: 'capitalize',
             lineHeight: 1.4,
-            letterSpacing: '0.2px'
+            letterSpacing: '0.2px',
+            opacity: isNested ? 0.9 : 1,
           }}
         >
           {label}:
         </Typography>
         <Typography 
           variant="body2" 
+          component={isMultiline ? 'pre' : 'span'}
           sx={{ 
             fontWeight: 600,
             wordBreak: 'break-word',
@@ -83,10 +148,12 @@ const CredentialField = ({ label, value }: { label: string; value: any }) => {
             lineHeight: 1.4,
             fontSize: { xs: '0.9rem', sm: '0.95rem' },
             flex: 1,
-            letterSpacing: '0.1px'
+            letterSpacing: '0.1px',
+            whiteSpace: isMultiline ? 'pre-wrap' : 'normal',
+            fontFamily: isMultiline ? 'monospace' : 'inherit',
           }}
         >
-          {isURL(value) ? (
+          {isUrl ? (
             <Box 
               component="a" 
               href={value} 
@@ -106,7 +173,7 @@ const CredentialField = ({ label, value }: { label: string; value: any }) => {
                 },
               }}
             >
-              {String(value)}
+              {formattedValue}
               <Launch 
                 className="launch-icon"
                 sx={{ 
@@ -116,7 +183,7 @@ const CredentialField = ({ label, value }: { label: string; value: any }) => {
               />
             </Box>
           ) : (
-            String(value)
+            formattedValue
           )}
         </Typography>
       </Box>
@@ -612,18 +679,20 @@ export default function VerificationResultModal({ open, onClose, result }: Props
                   gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, 
                   gap: 1.5 
                 }}>
-                  {Object.entries(subject)
-                    .filter(([key]) => key.toLowerCase() !== 'id')
-                    .map(([key, value], index) => (
-                      <Box 
-                        key={key} 
-                        sx={{ 
-                          pl: { xs: 0, sm: index % 2 === 0 ? 4.5 : 0 }
-                        }}
-                      >
-                        <CredentialField label={formatLabel(key)} value={value} />
-                      </Box>
-                    ))}
+                  {flattenObject(subject).map((field, index) => (
+                    <Box 
+                      key={field.key} 
+                      sx={{ 
+                        pl: { xs: 0, sm: index % 2 === 0 ? 4.5 : 0 }
+                      }}
+                    >
+                      <CredentialField 
+                        label={formatLabel(field.key)} 
+                        value={field.value}
+                        isNested={field.isNested}
+                      />
+                    </Box>
+                  ))}
                 </Box>
               </Box>
             </>

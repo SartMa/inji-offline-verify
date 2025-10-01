@@ -228,7 +228,7 @@ const FeatureCard = styled(Paper)(({ theme }) => ({
   },
 }));
 
-export default function AddRevokedVC() {
+export default function AddStatusListCredential() {
   const theme = useTheme();
   const { mode } = useColorScheme();
   const isDark = mode === 'dark';
@@ -239,17 +239,12 @@ export default function AddRevokedVC() {
     message: '',
     severity: 'success' as 'success' | 'error'
   });
-  const [vcJson, setVcJson] = useState('');
-  const [reason, setReason] = useState('');
+  const [statusListCredential, setStatusListCredential] = useState('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const onChangeVc = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setVcJson(e.target.value);
+  const onChangeCredential = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setStatusListCredential(e.target.value);
     if (fieldError) setFieldError('');
-  };
-
-  const onChangeReason = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setReason(e.target.value);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -271,11 +266,11 @@ export default function AddRevokedVC() {
     });
   };
 
-  const handleCopyVc = async () => {
-    if (!vcJson) return;
+  const handleCopyCredential = async () => {
+    if (!statusListCredential) return;
     try {
-      await navigator.clipboard.writeText(vcJson);
-      showToast('VC JSON copied to clipboard!', 'success');
+      await navigator.clipboard.writeText(statusListCredential);
+      showToast('StatusList credential copied to clipboard!', 'success');
     } catch {
       showToast('Failed to copy', 'error');
     }
@@ -341,27 +336,44 @@ export default function AddRevokedVC() {
   };
 
   const validateInput = () => {
-    if (!vcJson.trim()) {
-      setFieldError('Paste complete VC JSON to add to revocation list');
+    if (!statusListCredential.trim()) {
+      setFieldError('Paste complete StatusList credential JSON');
       return false;
     }
     try {
-      const parsed = JSON.parse(vcJson);
+      const parsed = JSON.parse(statusListCredential);
       
-      // Handle nested VC structure - check if VC is nested under 'credential' key
-      let vcCredential;
-      if (parsed.credential && typeof parsed.credential === 'object') {
-        vcCredential = parsed.credential;
-      } else {
-        vcCredential = parsed;
-      }
+      // Validate this is a BitstringStatusListCredential
+      const credentialType = parsed.type || [];
+      const types = Array.isArray(credentialType) ? credentialType : [credentialType];
       
-      if (!vcCredential.id) {
-        setFieldError('VC JSON must contain an "id" field (either at root level or under "credential" key)');
+      if (!types.includes('BitstringStatusListCredential')) {
+        setFieldError('Credential must be of type BitstringStatusListCredential');
         return false;
       }
-      if (!vcCredential.issuer) {
-        setFieldError('VC JSON must contain an "issuer" field (either at root level or under "credential" key)');
+      
+      if (!parsed.id) {
+        setFieldError('StatusList credential must contain an "id" field');
+        return false;
+      }
+      if (!parsed.issuer) {
+        setFieldError('StatusList credential must contain an "issuer" field');
+        return false;
+      }
+      
+      const credentialSubject = parsed.credentialSubject;
+      if (!credentialSubject || typeof credentialSubject !== 'object') {
+        setFieldError('StatusList credential must contain a valid credentialSubject');
+        return false;
+      }
+      
+      if (!credentialSubject.encodedList) {
+        setFieldError('credentialSubject must contain an "encodedList" field');
+        return false;
+      }
+      
+      if (!parsed.issuanceDate) {
+        setFieldError('StatusList credential must contain an "issuanceDate" field');
         return false;
       }
     } catch {
@@ -378,7 +390,7 @@ export default function AddRevokedVC() {
 
     let parsed: any;
     try {
-      parsed = JSON.parse(vcJson);
+      parsed = JSON.parse(statusListCredential);
     } catch {
       showToast('Invalid JSON', 'error');
       setSubmitting(false);
@@ -393,14 +405,13 @@ export default function AddRevokedVC() {
     }
 
     try {
-      // Submit revoked VC to backend
+      // Submit StatusList credential to backend
       const payload = {
         organization_id,
-        vc_json: parsed,
-        reason: reason.trim() || undefined
+        status_list_credential: parsed
       };
 
-      const res = await authenticatedFetch(`/organization/api/revoked-vcs/upsert/`, {
+      const res = await authenticatedFetch(`/organization/api/status-list-credentials/upsert/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -410,16 +421,15 @@ export default function AddRevokedVC() {
 
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j?.detail || j?.error || 'Failed to add revoked VC');
+        throw new Error(j?.detail || j?.error || 'Failed to add StatusList credential');
       }
 
       const result = await res.json();
-      showToast(`${result.message || 'VC added to revocation list successfully'}`, 'success');
-      setVcJson('');
-      setReason('');
+      showToast(`${result.message || 'StatusList credential added successfully'}`, 'success');
+      setStatusListCredential('');
     } catch (e: any) {
-      console.error('AddRevokedVC submission error:', e);
-      showToast(e?.message || 'Failed to add revoked VC', 'error');
+      console.error('AddStatusListCredential submission error:', e);
+      showToast(e?.message || 'Failed to add StatusList credential', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -476,10 +486,10 @@ export default function AddRevokedVC() {
                         },
                       }} />
                       <Typography variant="h3" sx={{ fontWeight: 800, color: isDark ? '#ffffff' : 'text.primary', mb: 1 }}>
-                        ADD REVOKED VC
+                        ADD STATUS LIST CREDENTIAL
                       </Typography>
                       <Typography variant="h6" sx={{ color: isDark ? '#a0aec0' : 'text.secondary', fontWeight: 400 }}>
-                        Add a Verifiable Credential to the revocation list for offline checks
+                        Add a BitstringStatusList credential for offline revocation checks
                       </Typography>
                     </Box>
                   </Box>
@@ -491,10 +501,10 @@ export default function AddRevokedVC() {
                         <Box sx={{ textAlign: 'center' }}>
                           <SecurityIcon sx={{ fontSize: 40, color: isDark ? '#e53e3e' : 'error.main', mb: 2 }} />
                           <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, color: isDark ? '#ffffff' : 'text.primary' }}>
-                            Revocation Security
+                            Status List Security
                           </Typography>
                           <Typography variant="body2" sx={{ color: isDark ? '#a0aec0' : 'text.secondary' }}>
-                            Protect against compromised or invalid credentials through revocation lists
+                            Secure BitstringStatusList credentials for efficient revocation checks
                           </Typography>
                         </Box>
                       </FeatureCard>
@@ -504,10 +514,10 @@ export default function AddRevokedVC() {
                         <Box sx={{ textAlign: 'center' }}>
                           <VerifiedIcon sx={{ fontSize: 40, color: isDark ? '#48bb78' : 'success.main', mb: 2 }} />
                           <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, color: isDark ? '#ffffff' : 'text.primary' }}>
-                            Offline Verification
+                            Offline Ready
                           </Typography>
                           <Typography variant="body2" sx={{ color: isDark ? '#a0aec0' : 'text.secondary' }}>
-                            Workers can check revocation status without internet connectivity
+                            Check credential status using cached StatusList without internet
                           </Typography>
                         </Box>
                       </FeatureCard>
@@ -517,10 +527,10 @@ export default function AddRevokedVC() {
                         <Box sx={{ textAlign: 'center' }}>
                           <WarningIcon sx={{ fontSize: 40, color: isDark ? '#ed8936' : 'warning.main', mb: 2 }} />
                           <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, color: isDark ? '#ffffff' : 'text.primary' }}>
-                            Immediate Effect
+                            W3C Standard
                           </Typography>
                           <Typography variant="body2" sx={{ color: isDark ? '#a0aec0' : 'text.secondary' }}>
-                            Revoked credentials are immediately cached for worker verification
+                            Uses BitstringStatusList standard for efficient status management
                           </Typography>
                         </Box>
                       </FeatureCard>
@@ -533,10 +543,10 @@ export default function AddRevokedVC() {
                       <Box sx={{ textAlign: 'center', mb: 3 }}>
                         <BlockIcon sx={{ fontSize: 48, color: isDark ? '#e53e3e' : 'error.main', mb: 2 }} />
                         <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, color: isDark ? '#ffffff' : 'text.primary' }}>
-                          Enter VC Information
+                          Enter StatusList Credential
                         </Typography>
                         <Typography variant="body1" sx={{ color: isDark ? '#a0aec0' : 'text.secondary' }}>
-                          Paste or upload the complete VC JSON to add it to the revocation list
+                          Paste the complete BitstringStatusList credential JSON
                         </Typography>
                       </Box>
 
@@ -547,12 +557,12 @@ export default function AddRevokedVC() {
                             fullWidth
                             multiline
                             rows={1}
-                            value={vcJson}
-                            onChange={onChangeVc}
+                            value={statusListCredential}
+                            onChange={onChangeCredential}
                             onKeyDown={handleKeyDown}
-                            placeholder='Paste complete VC JSON starting with {"id": "...", "type": [...], ...} *'
+                            placeholder='Paste complete StatusList credential JSON starting with {"@context": [...], "id": "...", "type": ["VerifiableCredential", "BitstringStatusListCredential"], ...} *'
                             error={!!fieldError}
-                            helperText={fieldError || 'Paste the entire VC JSON object. The system will extract the VC ID and issuer information.'}
+                            helperText={fieldError || 'Paste the entire BitstringStatusList credential JSON object. The system will extract the status list information.'}
                             InputProps={{
                               startAdornment: (
                                 <InputAdornment position="start">
@@ -588,7 +598,7 @@ export default function AddRevokedVC() {
                                   </IconButton>
                                 </InputAdornment>
                               ),
-                              endAdornment: (
+                              endAdornment: statusListCredential && (
                                 <InputAdornment position="end">
                                   <IconButton
                                     onClick={handleUploadClick}
@@ -726,22 +736,6 @@ export default function AddRevokedVC() {
                             onChange={handleFileChange}
                           />
                         </Grid>
-                        <Grid size={{ xs: 12 }}>
-                          <StyledTextField
-                            fullWidth
-                            value={reason}
-                            onChange={onChangeReason}
-                            placeholder='Optional: Reason for revocation (e.g., "Credential compromised", "User terminated")'
-                            helperText='Provide an optional reason for why this credential is being revoked'
-                            InputProps={{
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  <WarningIcon />
-                                </InputAdornment>
-                              ),
-                            }}
-                          />
-                        </Grid>
                       </Grid>
 
                       {/* Submit Button - Matching AddWorker exactly */}
@@ -755,7 +749,7 @@ export default function AddRevokedVC() {
                         <Button
                           onClick={handleSubmit}
                           variant="contained"
-                          disabled={submitting || !vcJson.trim()}
+                          disabled={submitting || !statusListCredential.trim()}
                           startIcon={<BlockIcon />}
                           sx={{
                             borderRadius: '12px',
@@ -786,7 +780,7 @@ export default function AddRevokedVC() {
                             },
                           }}
                         >
-                          {submitting ? 'Adding to Revocation List...' : 'Add to Revocation List'}
+                          {submitting ? 'Adding StatusList Credential...' : 'Add StatusList Credential'}
                         </Button>
                       </Box>
                     </Stack>

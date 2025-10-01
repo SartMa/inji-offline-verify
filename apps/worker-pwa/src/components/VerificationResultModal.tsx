@@ -191,13 +191,16 @@ const CredentialField = ({ label, value, isNested = false }: { label: string; va
   );
 };
 
-const StatusIcon = ({ isVerified, isExpired }: { isVerified: boolean; isExpired: boolean }) => {
+const StatusIcon = ({ isVerified, isExpired, isRevoked }: { isVerified: boolean; isExpired: boolean; isRevoked: boolean }) => {
   if (isVerified) {
     return isExpired ? (
       <Warning sx={{ fontSize: 24, color: '#D98C00' }} />
     ) : (
       <CheckCircle sx={{ fontSize: 24, color: '#10B981' }} />
     );
+  }
+  if (isRevoked) {
+    return <ErrorIcon sx={{ fontSize: 24, color: '#DC2626' }} />;
   }
   return <ErrorIcon sx={{ fontSize: 24, color: '#EF4444' }} />;
 };
@@ -216,6 +219,8 @@ export default function VerificationResultModal({ open, onClose, result }: Props
 
   // A VC is considered "verified" if it has a valid status
   const isVerified: boolean = !!result.verificationStatus;
+
+  const isRevoked = result.verificationErrorCode === 'VC_REVOKED';
 
   const isOfflineDepsMissing = result.verificationErrorCode === 'ERR_OFFLINE_DEPENDENCIES_MISSING';
 
@@ -239,6 +244,15 @@ export default function VerificationResultModal({ open, onClose, result }: Props
         statusText: 'VERIFIED'
       };
     }
+    if (isRevoked) {
+      return {
+        primary: '#DC2626',
+        secondary: '#7F1D1D',
+        background: 'linear-gradient(135deg, #DC2626 0%, #7F1D1D 100%)',
+        chip: 'error' as const,
+        statusText: 'REVOKED'
+      };
+    }
     return {
       primary: '#EF4444',
       secondary: '#DC2626',
@@ -256,7 +270,9 @@ export default function VerificationResultModal({ open, onClose, result }: Props
       : 'Verification Successful!'
     : isOfflineDepsMissing
       ? 'Offline data required to verify'
-      : 'Verification Failed!';
+      : isRevoked
+        ? 'Credential has been revoked'
+        : 'Verification Failed!';
 
   const credential = (result as any).payload as any | undefined;
   const credentialType: string | undefined = Array.isArray(credential?.type)
@@ -337,7 +353,7 @@ export default function VerificationResultModal({ open, onClose, result }: Props
             justifyContent: 'center',
             mb: 0.5
           }}>
-            <StatusIcon isVerified={isVerified} isExpired={isExpired} />
+            <StatusIcon isVerified={isVerified} isExpired={isExpired} isRevoked={isRevoked} />
           </Box>
           
           <Typography 
@@ -365,7 +381,9 @@ export default function VerificationResultModal({ open, onClose, result }: Props
               ? isExpired 
                 ? 'Valid signature but expired'
                 : 'Successfully verified'
-              : 'Could not be verified'
+              : isRevoked
+                ? (result.verificationMessage || 'Credential revoked by issuer')
+                : 'Could not be verified'
             }
           </Typography>
         </Box>
@@ -393,7 +411,11 @@ export default function VerificationResultModal({ open, onClose, result }: Props
           },
         }}>
           <Chip 
-            icon={isVerified ? (isExpired ? <AccessTime /> : <Verified />) : <Shield />}
+            icon={isVerified 
+              ? (isExpired ? <AccessTime /> : <Verified />)
+              : isRevoked
+                ? <ErrorIcon sx={{ fontSize: 16 }} />
+                : <Shield />}
             label={statusColors.statusText}
             color={statusColors.chip}
             size="small"
@@ -478,7 +500,13 @@ export default function VerificationResultModal({ open, onClose, result }: Props
                     fontSize: { xs: '0.85rem', sm: '0.9rem' },
                     lineHeight: 1.2
                   }}>
-                    {isVerified ? 'Valid signature' : (isOfflineDepsMissing ? 'Cannot verify offline' : 'Invalid signature')}
+                    {isVerified
+                      ? 'Valid signature'
+                      : isOfflineDepsMissing
+                        ? 'Cannot verify offline'
+                        : isRevoked
+                          ? 'Credential revoked'
+                          : 'Invalid signature'}
                   </Typography>
                 </Box>
               </Box>
@@ -558,35 +586,37 @@ export default function VerificationResultModal({ open, onClose, result }: Props
                     </Typography>
                     <Box
                       sx={{
-                        backgroundColor: alpha(theme.palette.error.main, 0.1),
-                        px: 0.75,
-                        py: 0.6,
-                        borderRadius: '4px',
+                        mt: 0.75,
                         display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'flex-start',
-                        gap: 0.3,
-                        width: '100%'
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 1,
+                        flexWrap: 'wrap'
                       }}
                     >
-                      {formatErrorCodeForDisplay(result.verificationErrorCode).map((segment, index) => (
-                        <Typography
-                          key={`${segment}-${index}`}
-                          variant="body2"
-                          sx={{
-                            fontWeight: 600,
-                            fontFamily: 'monospace',
-                            color: theme.palette.error.main,
-                            fontSize: { xs: '0.75rem', sm: '0.8rem' },
-                            lineHeight: 1.2,
-                            textAlign: 'left',
-                            wordBreak: 'break-word',
-                            whiteSpace: 'normal'
-                          }}
-                        >
-                          {segment}
-                        </Typography>
-                      ))}
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: alpha(theme.palette.error.main, 0.8),
+                          fontWeight: 600,
+                          textTransform: 'uppercase'
+                        }}
+                      >
+                        Code
+                      </Typography>
+                      <Chip
+                        label={result.verificationErrorCode}
+                        size="small"
+                        color="error"
+                        variant="outlined"
+                        sx={{
+                          fontWeight: 700,
+                          fontFamily: 'monospace',
+                          letterSpacing: '0.4px',
+                          backgroundColor: alpha(theme.palette.error.main, 0.12),
+                          color: theme.palette.error.main
+                        }}
+                      />
                     </Box>
                   </Box>
                 </Box>

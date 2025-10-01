@@ -7,7 +7,7 @@
  */
 import { PublicKeyGetterFactory } from '../../publicKey/PublicKeyGetterFactory';
 import { base58btc } from 'multiformats/bases/base58';
-import type { CachedPublicKey, CachedRevokedVC } from './CacheHelper';
+import type { CachedPublicKey } from './CacheHelper';
 import { Base64Utils } from '../../utils/Base64Utils.js';
 import { bytesToHex } from '../../publicKey/Utils.js';
 
@@ -17,8 +17,6 @@ export type CacheBundle = {
   contexts?: Array<{ url: string; document: any }>;
   // If you cannot provide documents, you can include URLs; Worker may fetch them once (online)
   contextUrls?: string[];
-  // Revoked VCs for offline revocation checking
-  revokedVCs?: CachedRevokedVC[];
 };
 
 function unique<T>(arr: T[]) { return Array.from(new Set(arr)); }

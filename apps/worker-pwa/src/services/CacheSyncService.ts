@@ -1,6 +1,6 @@
 /**
  * CacheSyncService - Handles automatic synchronization of organization data
- * (contexts, public keys, revoked VCs) when network is available
+ * (contexts, public keys) when network is available
  */
 
 import { SDKCacheManager } from '../../../../packages/inji-verify-sdk/src/services/offline-verifier/cache/SDKCacheManager';
@@ -9,20 +9,29 @@ import { NetworkService } from './NetworkService';
 import type { NetworkStatusListener } from './NetworkService';
 import { NetworkManager } from '../network/NetworkManager';
 
-interface SyncMetadata {
+export interface SyncItemsUpdated {
+  publicKeys: number;
+  contexts: number;
+  statusLists?: number; // number of status list credentials updated
+}
+
+export interface SyncMetadata {
   lastSyncTime: number;
   lastSyncVersion?: string;
   organizationId: string;
+  lastItemsUpdated?: SyncItemsUpdated;
 }
 
-interface SyncResult {
+export interface SyncResult {
   success: boolean;
-  itemsUpdated: {
-    publicKeys: number;
-    contexts: number;
-    revokedVCs: number;
-  };
+  itemsUpdated: SyncItemsUpdated;
   error?: string;
+}
+
+export interface CacheSyncEventPayload {
+  organizationId: string;
+  result: SyncResult;
+  timestamp: number;
 }
 
 export class CacheSyncService implements NetworkStatusListener {
@@ -51,7 +60,22 @@ export class CacheSyncService implements NetworkStatusListener {
       const stored = localStorage.getItem('cache_sync_metadata');
       if (stored) {
         const data = JSON.parse(stored);
-        this.lastSyncMetadata = new Map(Object.entries(data));
+        const entries = Object.entries(data).map(([orgId, value]) => {
+          const meta = (value ?? {}) as Partial<SyncMetadata> & { lastItemsUpdated?: Partial<SyncItemsUpdated> };
+          const normalized: SyncMetadata = {
+            organizationId: typeof meta.organizationId === 'string' && meta.organizationId.length > 0 ? meta.organizationId : orgId,
+            lastSyncTime: typeof meta.lastSyncTime === 'number' ? meta.lastSyncTime : Number(meta.lastSyncTime) || 0,
+            lastSyncVersion: meta.lastSyncVersion,
+            lastItemsUpdated: meta.lastItemsUpdated
+              ? {
+                  publicKeys: Number(meta.lastItemsUpdated.publicKeys) || 0,
+                  contexts: Number(meta.lastItemsUpdated.contexts) || 0,
+                }
+              : undefined,
+          };
+          return [orgId, normalized] as const;
+        });
+        this.lastSyncMetadata = new Map(entries);
       }
     } catch (error) {
       console.warn('[CacheSyncService] Failed to load sync metadata:', error);
@@ -60,7 +84,14 @@ export class CacheSyncService implements NetworkStatusListener {
 
   private saveSyncMetadata(): void {
     try {
-      const data = Object.fromEntries(this.lastSyncMetadata);
+      const data = Object.fromEntries(
+        Array.from(this.lastSyncMetadata.entries()).map(([orgId, meta]) => [orgId, {
+          organizationId: meta.organizationId,
+          lastSyncTime: meta.lastSyncTime,
+          lastSyncVersion: meta.lastSyncVersion,
+          lastItemsUpdated: meta.lastItemsUpdated,
+        }])
+      );
       localStorage.setItem('cache_sync_metadata', JSON.stringify(data));
     } catch (error) {
       console.warn('[CacheSyncService] Failed to save sync metadata:', error);
@@ -79,14 +110,14 @@ export class CacheSyncService implements NetworkStatusListener {
   /**
    * Notify app that cache has updated so UI can refresh without reload
    */
-  private notifyCacheUpdated(organizationId: string, itemsUpdated: { publicKeys: number; contexts: number; revokedVCs: number }): void {
+  private notifyCacheUpdated(organizationId: string, result: SyncResult): void {
     try {
       window.dispatchEvent(new CustomEvent('background-sync', {
         detail: {
           type: 'cache_updated',
           payload: {
             organizationId,
-            itemsUpdated,
+            result,
             timestamp: Date.now()
           }
         }
@@ -193,11 +224,7 @@ export class CacheSyncService implements NetworkStatusListener {
    */
   public async syncOrganization(organizationId: string): Promise<SyncResult> {
     if (!this.networkService.getIsOnline()) {
-      return {
-        success: false,
-        itemsUpdated: { publicKeys: 0, contexts: 0, revokedVCs: 0 },
-        error: 'No network connection'
-      };
+      return this.createFailureResult('No network connection');
     }
 
     const lastSync = this.lastSyncMetadata.get(organizationId);
@@ -207,7 +234,7 @@ export class CacheSyncService implements NetworkStatusListener {
     if (lastSync && !this.networkService.shouldSync(lastSync.lastSyncTime, 10 * 1000)) {
       return {
         success: true,
-        itemsUpdated: { publicKeys: 0, contexts: 0, revokedVCs: 0 }
+        itemsUpdated: { publicKeys: 0, contexts: 0, statusLists: 0 }
       };
     }
 
@@ -217,37 +244,29 @@ export class CacheSyncService implements NetworkStatusListener {
       // Fetch latest data from server
       const bundle = await this.fetchOrganizationData(organizationId);
       
-      // Update the cache with new data using sync method (replaces instead of adds)
-      await SDKCacheManager.syncFromServer(bundle, organizationId);
-
-      // Update sync metadata
-      this.lastSyncMetadata.set(organizationId, {
-        lastSyncTime: now,
-        organizationId
-      });
-      this.saveSyncMetadata();
-
       const result: SyncResult = {
         success: true,
         itemsUpdated: {
           publicKeys: bundle.publicKeys?.length || 0,
           contexts: bundle.contexts?.length || 0,
-          revokedVCs: bundle.revokedVCs?.length || 0
+          statusLists: (bundle as any).statusListCredentials?.length || 0
         }
       };
 
+      // Update the cache with new data using sync method (replaces instead of adds)
+      await SDKCacheManager.syncFromServer(bundle, organizationId);
+
+      // Update sync metadata
+      this.recordSyncMetadata(organizationId, result, now);
+
       // Broadcast cache update so UI can reflect changes without reload
-      this.notifyCacheUpdated(organizationId, result.itemsUpdated);
+      this.notifyCacheUpdated(organizationId, result);
 
       return result;
 
     } catch (error) {
       console.error(`[CacheSyncService] Sync failed for organization ${organizationId}:`, error);
-      return {
-        success: false,
-        itemsUpdated: { publicKeys: 0, contexts: 0, revokedVCs: 0 },
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
+      return this.createFailureResult(error instanceof Error ? error.message : 'Unknown error');
     } finally {
       this.isSyncing = false;
     }
@@ -258,11 +277,7 @@ export class CacheSyncService implements NetworkStatusListener {
    */
   public async forceSyncOrganization(organizationId: string): Promise<SyncResult> {
     if (!this.networkService.getIsOnline()) {
-      return {
-        success: false,
-        itemsUpdated: { publicKeys: 0, contexts: 0, revokedVCs: 0 },
-        error: 'No network connection'
-      };
+      return this.createFailureResult('No network connection');
     }
 
     this.isSyncing = true;
@@ -276,33 +291,24 @@ export class CacheSyncService implements NetworkStatusListener {
 
       // Update sync metadata
       const now = Date.now();
-      this.lastSyncMetadata.set(organizationId, {
-        lastSyncTime: now,
-        organizationId
-      });
-      this.saveSyncMetadata();
-
       const result: SyncResult = {
         success: true,
         itemsUpdated: {
           publicKeys: bundle.publicKeys?.length || 0,
-          contexts: bundle.contexts?.length || 0,
-          revokedVCs: bundle.revokedVCs?.length || 0
+          contexts: bundle.contexts?.length || 0
         }
       };
 
+      this.recordSyncMetadata(organizationId, result, now);
+
       // Broadcast cache update so UI can reflect changes without reload
-      this.notifyCacheUpdated(organizationId, result.itemsUpdated);
+      this.notifyCacheUpdated(organizationId, result);
 
       return result;
 
     } catch (error) {
       console.error(`[CacheSyncService] Force sync failed for organization ${organizationId}:`, error);
-      return {
-        success: false,
-        itemsUpdated: { publicKeys: 0, contexts: 0, revokedVCs: 0 },
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
+      return this.createFailureResult(error instanceof Error ? error.message : 'Unknown error');
     } finally {
       this.isSyncing = false;
     }
@@ -337,23 +343,35 @@ export class CacheSyncService implements NetworkStatusListener {
           organization_id: organizationId,
         }))
       : [];
+    
+      // Fetch status list credentials (optional endpoint)
+      let statusListCredentials: any[] = [];
+      try {
+        const slRes = await NetworkManager.fetch(`/organization/api/status-list-credentials/?organization_id=${encodeURIComponent(organizationId)}`, { method: 'GET' });
+        if (slRes.ok) {
+          const slJson = await slRes.json();
+          if (Array.isArray(slJson?.status_list_credentials)) {
+            statusListCredentials = slJson.status_list_credentials.map((c: any) => ({
+              status_list_id: c.status_list_id || c.statusListId || c.id,
+              issuer: c.issuer,
+              status_purpose: c.status_purpose || c.statusPurpose || c.credentialSubject?.statusPurpose || 'revocation',
+              full_credential: c.full_credential || c.fullCredential || c.credential || c,
+              organization_id: organizationId
+            })).filter((c: any) => !!c.status_list_id);
+          }
+        } else {
+          console.log('[CacheSyncService] Status list credentials endpoint returned', slRes.status);
+        }
+      } catch (e) {
+        console.warn('[CacheSyncService] Failed to fetch status list credentials (non-fatal):', e);
+      }
 
-    // Fetch revoked VCs
-    const rvcRes = await NetworkManager.fetch(`/organization/api/revoked-vcs/?organization_id=${encodeURIComponent(organizationId)}`, { method: 'GET' });
-    if (!rvcRes.ok) throw new Error(`Failed to fetch revoked VCs (${rvcRes.status})`);
-    const rvcJson = await rvcRes.json();
-    const revokedVCs = Array.isArray(rvcJson?.revoked_vcs)
-      ? rvcJson.revoked_vcs.map((vc: any) => ({
-          vc_id: vc.vc_id,
-          issuer: vc.issuer,
-          subject: vc.subject,
-          reason: vc.reason,
-          revoked_at: vc.revoked_at,
-          organization_id: organizationId,
-        }))
-      : [];
-
-    return { publicKeys, contexts, revokedVCs };
+      // Return extended bundle including status list credentials for SDKCacheManager
+      return {
+        publicKeys,
+        contexts,
+        statusListCredentials
+      } as any;
   }
 
   /**
@@ -377,7 +395,7 @@ export class CacheSyncService implements NetworkStatusListener {
     if (!orgId) {
       return {
         success: false,
-        itemsUpdated: { publicKeys: 0, contexts: 0, revokedVCs: 0 },
+        itemsUpdated: { publicKeys: 0, contexts: 0, statusLists: 0 },
         error: 'No current organization found'
       };
     }
@@ -391,6 +409,30 @@ export class CacheSyncService implements NetworkStatusListener {
    */
   public getSyncStatus(organizationId: string): SyncMetadata | null {
     return this.lastSyncMetadata.get(organizationId) || null;
+  }
+
+  public recordSyncMetadata(organizationId: string, result: SyncResult, timestamp: number = Date.now()): void {
+    const existing = this.lastSyncMetadata.get(organizationId);
+    const counts: SyncItemsUpdated = {
+      publicKeys: result.itemsUpdated.publicKeys,
+      contexts: result.itemsUpdated.contexts,
+      statusLists: result.itemsUpdated.statusLists ?? 0
+    };
+    this.lastSyncMetadata.set(organizationId, {
+      organizationId,
+      lastSyncTime: timestamp,
+      lastSyncVersion: existing?.lastSyncVersion,
+      lastItemsUpdated: counts,
+    });
+    this.saveSyncMetadata();
+  }
+
+  private createFailureResult(message: string): SyncResult {
+    return {
+      success: false,
+      itemsUpdated: { publicKeys: 0, contexts: 0, statusLists: 0 },
+      error: message
+    };
   }
 
   /**

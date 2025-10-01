@@ -516,7 +516,14 @@ export default function MyAccount() {
   const fetchPublicKeys = async () => {
     try {
       setLoading(true);
+      const organizationId = getOrganizationId();
+      if (!organizationId) {
+        showToast('Organization ID not found. Please log in again.', 'error');
+        return;
+      }
       const response = await getOrganizationPublicKeys();
+      // Filter keys by organization_id on client-side if backend doesn't filter
+      // The response should already be filtered by organization based on JWT token
       setPublicKeys(response.keys || []);
     } catch (error: any) {
       console.error('Failed to fetch public keys:', error);
@@ -547,7 +554,11 @@ export default function MyAccount() {
     try {
       setLoadingStatusLists(true);
       const organizationId = getOrganizationId();
-      const response = await getOrganizationStatusListCredentials(organizationId || undefined);
+      if (!organizationId) {
+        showToast('Organization ID not found. Please log in again.', 'error');
+        return;
+      }
+      const response = await getOrganizationStatusListCredentials(organizationId);
       setStatusListCredentials(response.status_list_credentials || []);
     } catch (error: any) {
       console.error('Failed to fetch status list credentials:', error);

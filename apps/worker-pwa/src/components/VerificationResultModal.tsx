@@ -41,14 +41,14 @@ const isURL = (value: any) => {
   return typeof value === 'string' && (value.startsWith('http://') || value.startsWith('https://'));
 };
 
-const formatErrorCodeForDisplay = (code?: string | null) => {
-  if (!code) {
-    return [];
-  }
+// // const formatErrorCodeForDisplay = (code?: string | null) => {
+// //   if (!code) {
+// //     return [];
+// //   }
 
-  // Return the full error code as a single line
-  return [code];
-};
+//   // Return the full error code as a single line
+//   return [code];
+// };
 
 // Helper to check if a value should be treated as a simple value
 const isSimpleValue = (value: any): boolean => {

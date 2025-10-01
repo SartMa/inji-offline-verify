@@ -100,8 +100,29 @@ class OrganizationRegistrationSerializer(serializers.Serializer):
             expires_at=expires_at,
         )
         # Send email (console backend logs it). In production configure real backend.
-        subject = 'Your registration OTP'
-        message = f"Your OTP code is {otp}. It will expire in 10 minutes."
+        subject = 'Complete Your INJI Offline Verifier Organization Registration'
+        message = f"""Welcome to INJI Offline Verifier Platform!
+
+Thank you for registering your organization "{validated_data['org_name']}" with our secure credential verification platform.
+
+Your One-Time Password (OTP) for completing the registration is: {otp}
+
+This OTP will expire in 10 minutes for security purposes.
+
+Next Steps:
+1. Return to the registration page
+2. Enter this OTP code to verify your email address
+3. Complete your organization setup
+
+About INJI Offline Verifier:
+Our platform enables trusted, cryptographically-assured credential verification anywhere, anytime—even when the network is unavailable. Perfect for organizations managing field operations where network connectivity is unreliable.
+
+If you did not request this registration, please ignore this email.
+
+For support, please contact our team.
+
+Best regards,
+INJI Offline Verifier Team"""
         delivered = False
         try:
             sent = send_mail(subject, message, getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@example.com'), [pending.admin_email])

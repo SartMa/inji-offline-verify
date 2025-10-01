@@ -168,6 +168,17 @@ function buildCachedPublicKey(pk: any, keyId: string): CachedPublicKey {
     return cached;
   }
 
+  if (algorithm === 'RSA' || pk?.keyType?.includes?.('Rsa')) {
+    if (pk?.jwk) {
+      cached.public_key_jwk = pk.jwk;
+    }
+    if (pk?.pem) {
+      (cached as any).public_key_pem = pk.pem;
+    }
+    return cached;
+  }
+
+  // Generic fallback for any other key types
   if (pk?.jwk) {
     cached.public_key_jwk = pk.jwk;
   }

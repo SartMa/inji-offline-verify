@@ -1,0 +1,51 @@
+{
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1",
+    {
+      "@version": 1.1
+    },
+    "https://www.w3.org/ns/odrl.jsonld",
+    {
+      "ex": "https://example.org/examples#",
+      "schema": "http://schema.org/",
+      "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+      "alumniOf": {
+        "@id": "schema:alumniOf",
+        "@type": "rdf:HTML"
+      },
+      "degree": "ex:degree",
+      "degreeType": "ex:degreeType",
+      "degreeSchool": "ex:degreeSchool",
+      "givenName": "schema:givenName",
+      "familyName": "schema:familyName"
+    }
+  ],
+  "id": "https://sartma.github.io/tryingsomethinglol/credentials/valid-alumni",
+  "type": [
+    "VerifiableCredential",
+    "AlumniCredential"
+  ],
+  "issuer": "did:web:sartma.github.io:tryingsomethinglol",
+  "issuanceDate": "2025-09-29T12:00:00Z",
+  "expirationDate": "2026-09-29T12:00:00Z",
+  "credentialSubject": {
+    "id": "did:example:holder789",
+    "givenName": "Alice",
+    "familyName": "Anderson",
+    "alumniOf": "Example University",
+    "degree": {
+      "degreeType": "Bachelor of Technology",
+      "degreeSchool": "Example University"
+    }
+  },
+  "proof": {
+    "@context": [
+      "https://w3id.org/security/v2"
+    ],
+    "type": "RsaSignature2018",
+    "created": "2025-10-01T12:05:00Z",
+    "proofPurpose": "assertionMethod",
+    "verificationMethod": "did:web:sartma.github.io:tryingsomethinglol#key-1",
+    "jws": "eyJhbGciOiJSUzI1NiIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..WczZLoex13zs544eGgii0MMDwq7fp0FKLS7OrXLJbDYrHNJDylr2mqtvClkL8mf02P8y94hBn0ixxzEyaOpZwM7WQ2VrLo20mw6xvDLfOmw4XosevAmbh0Tc1zGBMDh-dRcV2PTj7AgPIuza8TVNwCdsyXxVQrOCuVmicvd1fPKpwJYZHq8nP2OTq5chOlgGC4LWNmFWuocJRuW1ddQbHvoIfBCggGdA_CQK2POCYF2Zi8xWw-sLhDpHW_bY8C9fyzalfLgsihxpdPnHaMX04RNaiMsTAki4kSOQrUxodq9HZiMpwXDKGOlu_H88ZQz8ll2VB1ZCntxzv4vPpAUQng"
+  }
+}

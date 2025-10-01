@@ -345,7 +345,12 @@ export default function SignIn(props: {
               control={<Checkbox value="remember" color="primary" />}
               label="Remember me"
             />
-            <ForgotPassword open={open} handleClose={handleClose} />
+            <ForgotPassword
+              open={open}
+              handleClose={handleClose}
+              onSuccess={(message) => showToast(message, 'success')}
+              onError={(message) => showToast(message, 'error')}
+            />
             <Button
               type="submit"
               fullWidth

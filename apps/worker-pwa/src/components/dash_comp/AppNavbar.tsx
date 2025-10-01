@@ -8,8 +8,8 @@ import { tabsClasses } from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import SideMenuMobile from './SideMenuMobile';
-import MenuButton from './MenuButton';
-import ColorModeIconDropdown from '../../theme/dash_theme/ColorModeIconDropdown';
+import MenuButton from '@inji-offline-verify/shared-ui/src/components/MenuButton';
+import ColorModeIconDropdown from '@inji-offline-verify/shared-ui/src/theme/ColorModeIconDropdown';
 
 const Toolbar = styled(MuiToolbar)({
   width: '100%',

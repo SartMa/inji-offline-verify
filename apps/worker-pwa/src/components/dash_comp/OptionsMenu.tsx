@@ -7,7 +7,7 @@ import ListItemText from '@mui/material/ListItemText';
 import ListItemIcon, { listItemIconClasses } from '@mui/material/ListItemIcon';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
-import MenuButton from './MenuButton';
+import MenuButton from '@inji-offline-verify/shared-ui/src/components/MenuButton';
 import { useAuth } from '../../context/AuthContext';
 
 const MenuItem = styled(MuiMenuItem)({

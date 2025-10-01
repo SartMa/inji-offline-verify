@@ -11,7 +11,7 @@ import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import PersonIcon from '@mui/icons-material/Person';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
-import MenuButton from './MenuButton';
+import MenuButton from '@inji-offline-verify/shared-ui/src/components/MenuButton';
 import { logoutService } from '../../services/logoutService';
 import { useNavigate } from 'react-router-dom';
 

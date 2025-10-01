@@ -6,7 +6,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
-import MenuButton from './MenuButton';
+import MenuButton from '@inji-offline-verify/shared-ui/src/components/MenuButton';
 import MenuContent from './MenuContent';
 import { useAuth } from '../../context/AuthContext';
 

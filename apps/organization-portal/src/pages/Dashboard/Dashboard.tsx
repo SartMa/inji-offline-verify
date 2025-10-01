@@ -11,14 +11,14 @@ import AppNavbar from '../../components/dash_comp/AppNavbar';
 import Header from '../../components/dash_comp/Header';
 import MainGrid from '../../components/dash_comp/MainGrid';
 import SideMenu from '../../components/dash_comp/SideMenu';
-import AppTheme from '../../theme/dash_theme/AppTheme';
+import AppTheme from '@inji-offline-verify/shared-ui/src/theme/AppTheme';
 import { SidebarProvider } from '../../components/dash_comp/SidebarContext';
 import {
   chartsCustomizations,
   dataDisplayCustomizations,
   datePickersCustomizations,
   treeViewCustomizations,
-} from '../../theme/dash_theme/customizations';
+} from '@inji-offline-verify/shared-ui/src/theme/customizations';
 
 const xThemeComponents = {
   ...chartsCustomizations,

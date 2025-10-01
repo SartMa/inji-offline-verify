@@ -28,7 +28,7 @@ import AppNavbar from '../../components/dash_comp/AppNavbar';
 import Header from '../../components/dash_comp/Header';
 import SideMenu from '../../components/dash_comp/SideMenu';
 import { SidebarProvider } from '../../components/dash_comp/SidebarContext';
-import AppTheme from '../../theme/dash_theme/AppTheme';
+import AppTheme from '@inji-offline-verify/shared-ui/src/theme/AppTheme';
 import OfflineIndicator from '../../components/OfflineIndicator';
 
 // SDK component

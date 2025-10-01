@@ -11,6 +11,7 @@ import VerificationLogsPage from "../pages/VerificationLogsPage";
 import MyAccount from "../pages/MyAccount/MyAccount";
 import OrgSignIn from "../pages/SignInPage/orgSignIn";
 import SignUp from "../pages/SignUpPage/SignUp";
+import OrganizationResetPassword from "../pages/ResetPassword";
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -107,6 +108,7 @@ export function App() {
             </PublicRoute>
           } 
         />
+        <Route path="/reset-password" element={<OrganizationResetPassword />} />
         
         {/* Protected routes */}
         <Route 

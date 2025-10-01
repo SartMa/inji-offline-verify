@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import Settings from './pages/Settings/Settings';
 import VPVerification from './pages/VPVerification';
 import SignIn from './SignIn.tsx';
+import ResetPasswordPage from './pages/ResetPassword';
 import './App.css';
 
 // Root redirect component - redirects based on authentication status
@@ -81,6 +82,7 @@ function AppContent() {
       {/* Root redirect based on authentication */}
       <Route path="/" element={<RootRedirect />} />
       <Route path="/signin" element={<SignIn />} />
+  <Route path="/reset-password" element={<ResetPasswordPage />} />
       
       {/* Protected routes */}
       <Route 

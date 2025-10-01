@@ -10,7 +10,7 @@ import AppNavbar from '../../components/dash_comp/AppNavbar';
 import Header from '../../components/dash_comp/Header';
 import SideMenu from '../../components/dash_comp/SideMenu';
 import { SidebarProvider } from '../../components/dash_comp/SidebarContext';
-import AppTheme from '../../theme/dash_theme/AppTheme';
+import AppTheme from '@inji-offline-verify/shared-ui/src/theme/AppTheme';
 
 // Worker-specific components
 import SystemStatus from '../../components/SystemStatus';
@@ -24,7 +24,7 @@ import {
   dataDisplayCustomizations,
   datePickersCustomizations,
   treeViewCustomizations,
-} from '../../theme/dash_theme/customizations';
+} from '@inji-offline-verify/shared-ui/src/theme/customizations';
 
 const xThemeComponents = {
   ...chartsCustomizations,

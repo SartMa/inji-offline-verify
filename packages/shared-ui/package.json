@@ -8,9 +8,20 @@
   "peerDependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@mui/material": "^7.3.2",
-    "@mui/icons-material": "^7.3.2",
+    "@inji-offline-verify/shared-auth": "workspace:*",
+  "@mui/icons-material": "^7.3.2",
+  "@mui/material": "^7.3.2",
+  "@mui/x-charts": "^8.12.0",
+  "@mui/x-date-pickers": "^8.12.0",
+  "@mui/x-date-pickers-pro": "^8.12.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@inji-offline-verify/shared-auth": "workspace:*",
+    "@mui/x-charts": "^8.12.0",
+    "@mui/x-date-pickers": "^8.12.0",
+    "@mui/x-date-pickers-pro": "^8.12.0",
+    "@types/node": "^20.19.9"
   }
 }

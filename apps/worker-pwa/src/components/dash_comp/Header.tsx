@@ -4,8 +4,8 @@ import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Link from '@mui/material/Link';
-import MenuButton from './MenuButton';
-import ColorModeIconDropdown from '../../theme/dash_theme/ColorModeIconDropdown';
+import MenuButton from '@inji-offline-verify/shared-ui/src/components/MenuButton';
+import ColorModeIconDropdown from '@inji-offline-verify/shared-ui/src/theme/ColorModeIconDropdown';
 import { useAuth } from '../../context/AuthContext';
 
 export default function Header() {

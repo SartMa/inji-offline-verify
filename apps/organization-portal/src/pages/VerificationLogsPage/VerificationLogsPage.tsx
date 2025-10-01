@@ -15,7 +15,7 @@ import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import AppNavbar from '../../components/dash_comp/AppNavbar';
 import SideMenu from '../../components/dash_comp/SideMenu';
-import AppTheme from '../../theme/dash_theme/AppTheme';
+import AppTheme from '@inji-offline-verify/shared-ui/src/theme/AppTheme';
 import { SidebarProvider } from '../../components/dash_comp/SidebarContext';
 import VerificationLogsTable from '../../components/VerificationLogsTable';
 import { VerificationLog } from '../../services/logsService';

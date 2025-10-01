@@ -123,9 +123,6 @@ export default function MainGrid({ orgId }: MainGridProps) {
             )}
           </Box>
         ))}
-        {/* <Box>
-          <HighlightedCard />
-        </Box> */}
       </Box>
       <Box
         sx={{
@@ -138,12 +135,6 @@ export default function MainGrid({ orgId }: MainGridProps) {
           mb: 2,
         }}
       >
-        {/* <Box>
-          <SessionsChart />
-        </Box>
-        <Box>
-          <PageViewsBarChart />
-        </Box> */}
       </Box>
       <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
         {organizationName ? `${organizationName} Members` : 'Organization Members'}
@@ -182,12 +173,6 @@ export default function MainGrid({ orgId }: MainGridProps) {
             </Box>
           )}
         </Box>
-        {/* <Box>
-          <Stack gap={2} direction={{ xs: 'column', sm: 'row', lg: 'column' }}>
-            <CustomizedTreeView />
-            <ChartUserByCountry />
-          </Stack>
-        </Box> */}
       </Box>
     </Box>
   );

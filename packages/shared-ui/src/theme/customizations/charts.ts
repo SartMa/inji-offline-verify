@@ -1,14 +1,12 @@
-import { Theme } from '@mui/material/styles';
+import type { Theme } from '@mui/material/styles';
 import { axisClasses, legendClasses, chartsGridClasses } from '@mui/x-charts';
 import type { ChartsComponents } from '@mui/x-charts/themeAugmentation';
-// import { gray } from '../.././theme/themePrimitives';
 import { gray } from '../themePrimitives';
 
-/* eslint-disable import/prefer-default-export */
 export const chartsCustomizations: ChartsComponents<Theme> = {
   MuiChartsAxis: {
     styleOverrides: {
-      root: ({ theme }) => ({
+      root: ({ theme }: { theme: Theme }) => ({
         [`& .${axisClasses.line}`]: {
           stroke: gray[300],
         },
@@ -32,12 +30,12 @@ export const chartsCustomizations: ChartsComponents<Theme> = {
   },
   MuiChartsTooltip: {
     styleOverrides: {
-      mark: ({ theme }) => ({
+      mark: ({ theme }: { theme: Theme }) => ({
         ry: 6,
         boxShadow: 'none',
         border: `1px solid ${(theme.vars || theme).palette.divider}`,
       }),
-      table: ({ theme }) => ({
+      table: ({ theme }: { theme: Theme }) => ({
         border: `1px solid ${(theme.vars || theme).palette.divider}`,
         borderRadius: theme.shape.borderRadius,
         background: 'hsl(0, 0%, 100%)',
@@ -58,7 +56,7 @@ export const chartsCustomizations: ChartsComponents<Theme> = {
   },
   MuiChartsGrid: {
     styleOverrides: {
-      root: ({ theme }) => ({
+      root: ({ theme }: { theme: Theme }) => ({
         [`& .${chartsGridClasses.line}`]: {
           stroke: gray[200],
           strokeDasharray: '4 2',

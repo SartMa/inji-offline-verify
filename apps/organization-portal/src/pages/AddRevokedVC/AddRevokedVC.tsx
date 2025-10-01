@@ -18,7 +18,7 @@ import Grid from '@mui/material/Grid';
 import AppNavbar from '../../components/dash_comp/AppNavbar';
 import SideMenu from '../../components/dash_comp/SideMenu';
 import Header from '../../components/dash_comp/Header';
-import AppTheme from '../../theme/dash_theme/AppTheme';
+import AppTheme from '@inji-offline-verify/shared-ui/src/theme/AppTheme';
 import { SidebarProvider } from '../../components/dash_comp/SidebarContext';
 import BlockIcon from '@mui/icons-material/Block';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';

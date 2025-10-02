@@ -653,7 +653,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
     // Core storage functions now use dbService
     const storeVerificationResult = async (jsonData: any): Promise<number | undefined> => {
         // Determine verification status considering expired credentials
-        let verificationStatus: string;
+        let verificationStatus: 'SUCCESS' | 'FAILED' | 'EXPIRED';
         
         // Check if it's expired but valid
         const isExpiredButValid = 

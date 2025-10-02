@@ -230,7 +230,13 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
 
         const items = records.map((rec: any, idx: number) => {
             const timestamp = parseRecordTimestamp(rec);
-            const status: LogItem['status'] = rec.verification_status === 'SUCCESS' ? 'success' : 'failure';
+            // Handle SUCCESS, EXPIRED, and FAILED statuses
+            // EXPIRED credentials should show as 'success' (valid but expired)
+            // Only FAILED should show as 'failure'
+            const status: LogItem['status'] = 
+                rec.verification_status === 'SUCCESS' || rec.verification_status === 'EXPIRED'
+                    ? 'success' 
+                    : 'failure';
 
             return {
                 originalIndex: idx,
@@ -476,7 +482,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
 
             // Then do an actual network request to verify internet connectivity
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 2000); // 1 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 300); // 300ms timeout for even faster response
 
             const response = await fetch('/healthz', {
                 method: 'HEAD',
@@ -488,6 +494,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
             return response.ok;
         } catch (error) {
             // Network request failed - we're offline or have connectivity issues
+            console.log('Network connectivity check failed:', error);
             return false;
         }
     };
@@ -511,7 +518,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
 
         const handleOnline = () => {
             console.log('Network interface online');
-            // Verify actual connectivity
+            // Verify actual connectivity immediately
             updateConnectionStatus();
         };
 
@@ -520,44 +527,54 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
             setIsOnline(false);
         };
 
+        // Handle window focus - check connectivity when user returns to tab
+        const handleFocus = () => {
+            console.log('Window focused - checking connectivity');
+            updateConnectionStatus();
+        };
+
         // Initial connectivity check
         updateConnectionStatus();
 
         // Listen to browser network events
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
+        window.addEventListener('focus', handleFocus);
 
-        // Periodic connectivity verification (every 30 seconds)
+        // Periodic connectivity verification (every 5 seconds for faster detection)
         connectivityCheckInterval = setInterval(async () => {
             await updateConnectionStatus();
-        }, 30000);
+        }, 5000);
 
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
+            window.removeEventListener('focus', handleFocus);
             if (connectivityCheckInterval) {
                 clearInterval(connectivityCheckInterval);
             }
         };
     }, []); // Remove isOnline dependency to prevent recreation
 
-    // Separate effect to handle sync when coming online
+    // Trigger sync and refresh data when coming back online
     useEffect(() => {
         if (isOnline && isAuthenticated) {
-            console.log('Online status changed to true - triggering sync');
-            syncToServer().catch(error => {
-                console.warn('Auto-sync on online failed:', error);
-            });
-        }
-    }, [isOnline, isAuthenticated]);
-
-    // Trigger sync when coming back online
-    useEffect(() => {
-        if (isOnline && isAuthenticated) {
-            console.log('Online status changed to true - triggering sync');
-            syncToServer().catch(error => {
-                console.warn('Auto-sync on online failed:', error);
-            });
+            console.log('Online status changed to true - triggering sync and refresh');
+            // Trigger sync and then refresh all data
+            syncToServer()
+                .then(() => {
+                    console.log('Sync completed, refreshing UI data');
+                    // Refresh stats and logs immediately after sync
+                    return Promise.all([
+                        updateStats(),
+                        loadHybridLogs('post-online-sync')
+                    ]);
+                })
+                .catch(error => {
+                    console.warn('Auto-sync on online failed:', error);
+                    // Still try to refresh stats even if sync failed
+                    updateStats().catch(() => {});
+                });
         }
     }, [isOnline, isAuthenticated]);
 
@@ -635,12 +652,30 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
 
     // Core storage functions now use dbService
     const storeVerificationResult = async (jsonData: any): Promise<number | undefined> => {
+        // Determine verification status considering expired credentials
+        let verificationStatus: string;
+        
+        // Check if it's expired but valid
+        const isExpiredButValid = 
+            jsonData.verificationStatus === true &&
+            (jsonData.verificationErrorCode === 'VC_EXPIRED' || 
+             jsonData.verificationErrorCode === 'EXPIRED' ||
+             jsonData.verificationErrorCode === 'ERR_VC_EXPIRED');
+        
+        if (isExpiredButValid) {
+            verificationStatus = 'EXPIRED';
+        } else if (jsonData.verification_status) {
+            verificationStatus = jsonData.verification_status;
+        } else {
+            verificationStatus = jsonData.verificationStatus === true ? 'SUCCESS' : 'FAILED';
+        }
+
         // Normalize to dbService schema
         const rec: Omit<VerificationRecord, 'sno'> = {
             uuid: jsonData.uuid || jsonData.id || genUuid(),
             verified_at: jsonData.verified_at || new Date().toISOString(),
             synced: jsonData.synced ?? false,
-            verification_status: jsonData.verification_status || (jsonData.verificationStatus === true ? 'SUCCESS' : 'FAILED'),
+            verification_status: verificationStatus,
             vc_hash: jsonData.vc_hash ?? null,
             credential_subject: jsonData.credential_subject ?? null,
             error_message: jsonData.error_message ?? null
@@ -693,9 +728,14 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
 
     // Sync functionality
     const syncToServer = async () => {
+        console.log('Starting sync to server...');
         const result = await syncToServerService();
-        // After sync attempt, refresh stats
-        await updateStats();
+        console.log('Sync completed, refreshing stats and logs');
+        // After sync attempt, refresh both stats and logs immediately
+        await Promise.all([
+            updateStats(),
+            loadHybridLogs('post-sync-refresh')
+        ]);
         return result;
     };
 

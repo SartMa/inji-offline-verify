@@ -18,6 +18,7 @@ import {
   Schedule,
 } from '@mui/icons-material';
 import { useVCStorage } from '../context/VCStorageContext';
+import { useState, useEffect } from 'react';
 
 interface SystemStatusProps {
   compact?: boolean; // Optional for backward compatibility, not used in current implementation
@@ -26,6 +27,18 @@ interface SystemStatusProps {
 const SystemStatus: React.FC<SystemStatusProps> = () => {
   const { isOnline, serviceWorkerActive, stats } = useVCStorage();
   const theme = useTheme();
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+
+  // Update timestamp every 5 seconds and when network status changes
+  useEffect(() => {
+    setLastUpdated(new Date());
+    
+    const interval = setInterval(() => {
+      setLastUpdated(new Date());
+    }, 5000); // Update every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [isOnline, serviceWorkerActive, stats.pendingSyncCount]); // Re-run when these values change
 
   // Calculate overall health status
   const getOverallStatus = () => {
@@ -90,7 +103,7 @@ const SystemStatus: React.FC<SystemStatusProps> = () => {
               System Status
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              Last updated: {new Date().toLocaleTimeString()}
+              Last updated: {lastUpdated.toLocaleTimeString()}
             </Typography>
           </Box>
           <Chip

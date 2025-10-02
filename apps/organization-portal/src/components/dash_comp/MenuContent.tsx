@@ -16,8 +16,8 @@ import { NavLink, useLocation } from 'react-router-dom';
 const mainListItems = [
   { text: 'Home', icon: <HomeRoundedIcon />, to: '/dashboard' },
   { text: 'Add Worker', icon: <PersonAddIcon />, to: '/add-worker' },
-  { text: 'Add VC Data', icon: <FingerprintIcon />, to: '/add-did' },
-  { text: 'Add Revoked VC', icon: <BlockIcon />, to: '/add-revoked-vc' },
+  { text: 'Add Sample VC', icon: <FingerprintIcon />, to: '/add-did' },
+  { text: 'Add StatusList VC', icon: <BlockIcon />, to: '/add-revoked-vc' },
   { text: 'Verification Logs', icon: <AssignmentIcon />, to: '/logs' },
   // you can add more items with `to` fields here later
 ];

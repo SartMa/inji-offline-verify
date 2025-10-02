@@ -41,16 +41,79 @@ const isURL = (value: any) => {
   return typeof value === 'string' && (value.startsWith('http://') || value.startsWith('https://'));
 };
 
-const formatErrorCodeForDisplay = (code?: string | null) => {
-  if (!code) {
-    return [];
-  }
+// // const formatErrorCodeForDisplay = (code?: string | null) => {
+// //   if (!code) {
+// //     return [];
+// //   }
 
-  // Return the full error code as a single line
-  return [code];
+//   // Return the full error code as a single line
+//   return [code];
+// };
+
+// Helper to check if a value should be treated as a simple value
+const isSimpleValue = (value: any): boolean => {
+  return (
+    value === null ||
+    value === undefined ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  );
 };
 
-const CredentialField = ({ label, value }: { label: string; value: any }) => {
+// Helper to format simple values and arrays for display
+const formatValue = (value: any): string => {
+  if (value === null || value === undefined) {
+    return 'N/A';
+  }
+  
+  if (Array.isArray(value)) {
+    // Check if array contains only simple values
+    if (value.every(isSimpleValue)) {
+      return value.join(', ');
+    }
+    // If array contains complex objects, show as JSON
+    return JSON.stringify(value, null, 2);
+  }
+  
+  return String(value);
+};
+
+// Helper to flatten nested objects into field entries
+const flattenObject = (
+  obj: Record<string, any>,
+  parentKey: string = ''
+): Array<{ key: string; value: any; isNested: boolean }> => {
+  const result: Array<{ key: string; value: any; isNested: boolean }> = [];
+  
+  Object.entries(obj).forEach(([key, value]) => {
+    // Skip 'id' field at root level
+    if (!parentKey && key.toLowerCase() === 'id') {
+      return;
+    }
+    
+    const newKey = parentKey ? `${parentKey}.${key}` : key;
+    
+    // If it's an object (but not an array), recursively flatten it
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      result.push(...flattenObject(value, newKey).map(item => ({
+        ...item,
+        isNested: true
+      })));
+    } else {
+      // It's a simple value or array, add it as a field
+      result.push({ key: newKey, value, isNested: !!parentKey });
+    }
+  });
+  
+  return result;
+};
+
+const CredentialField = ({ label, value, isNested = false }: { label: string; value: any; isNested?: boolean }) => {
+  const isUrl = isURL(value);
+  const formattedValue = isUrl ? String(value) : formatValue(value);
+  const isMultiline = formattedValue.includes('\n');
+  
   return (
     <Box 
       sx={{ 
@@ -63,19 +126,21 @@ const CredentialField = ({ label, value }: { label: string; value: any }) => {
         <Typography 
           variant="body2" 
           sx={{ 
-            color: 'var(--template-palette-text-secondary)',
+            color: isNested ? 'var(--template-palette-text-secondary)' : 'var(--template-palette-text-secondary)',
             fontWeight: 700,
             fontSize: { xs: '0.85rem', sm: '0.9rem' },
             minWidth: 'fit-content',
             textTransform: 'capitalize',
             lineHeight: 1.4,
-            letterSpacing: '0.2px'
+            letterSpacing: '0.2px',
+            opacity: isNested ? 0.9 : 1,
           }}
         >
           {label}:
         </Typography>
         <Typography 
           variant="body2" 
+          component={isMultiline ? 'pre' : 'span'}
           sx={{ 
             fontWeight: 600,
             wordBreak: 'break-word',
@@ -83,10 +148,12 @@ const CredentialField = ({ label, value }: { label: string; value: any }) => {
             lineHeight: 1.4,
             fontSize: { xs: '0.9rem', sm: '0.95rem' },
             flex: 1,
-            letterSpacing: '0.1px'
+            letterSpacing: '0.1px',
+            whiteSpace: isMultiline ? 'pre-wrap' : 'normal',
+            fontFamily: isMultiline ? 'monospace' : 'inherit',
           }}
         >
-          {isURL(value) ? (
+          {isUrl ? (
             <Box 
               component="a" 
               href={value} 
@@ -106,7 +173,7 @@ const CredentialField = ({ label, value }: { label: string; value: any }) => {
                 },
               }}
             >
-              {String(value)}
+              {formattedValue}
               <Launch 
                 className="launch-icon"
                 sx={{ 
@@ -116,7 +183,7 @@ const CredentialField = ({ label, value }: { label: string; value: any }) => {
               />
             </Box>
           ) : (
-            String(value)
+            formattedValue
           )}
         </Typography>
       </Box>
@@ -124,13 +191,16 @@ const CredentialField = ({ label, value }: { label: string; value: any }) => {
   );
 };
 
-const StatusIcon = ({ isVerified, isExpired }: { isVerified: boolean; isExpired: boolean }) => {
+const StatusIcon = ({ isVerified, isExpired, isRevoked }: { isVerified: boolean; isExpired: boolean; isRevoked: boolean }) => {
   if (isVerified) {
     return isExpired ? (
       <Warning sx={{ fontSize: 24, color: '#D98C00' }} />
     ) : (
       <CheckCircle sx={{ fontSize: 24, color: '#10B981' }} />
     );
+  }
+  if (isRevoked) {
+    return <ErrorIcon sx={{ fontSize: 24, color: '#DC2626' }} />;
   }
   return <ErrorIcon sx={{ fontSize: 24, color: '#EF4444' }} />;
 };
@@ -149,6 +219,8 @@ export default function VerificationResultModal({ open, onClose, result }: Props
 
   // A VC is considered "verified" if it has a valid status
   const isVerified: boolean = !!result.verificationStatus;
+
+  const isRevoked = result.verificationErrorCode === 'VC_REVOKED';
 
   const isOfflineDepsMissing = result.verificationErrorCode === 'ERR_OFFLINE_DEPENDENCIES_MISSING';
 
@@ -172,6 +244,15 @@ export default function VerificationResultModal({ open, onClose, result }: Props
         statusText: 'VERIFIED'
       };
     }
+    if (isRevoked) {
+      return {
+        primary: '#DC2626',
+        secondary: '#7F1D1D',
+        background: 'linear-gradient(135deg, #DC2626 0%, #7F1D1D 100%)',
+        chip: 'error' as const,
+        statusText: 'REVOKED'
+      };
+    }
     return {
       primary: '#EF4444',
       secondary: '#DC2626',
@@ -189,7 +270,9 @@ export default function VerificationResultModal({ open, onClose, result }: Props
       : 'Verification Successful!'
     : isOfflineDepsMissing
       ? 'Offline data required to verify'
-      : 'Verification Failed!';
+      : isRevoked
+        ? 'Credential has been revoked'
+        : 'Verification Failed!';
 
   const credential = (result as any).payload as any | undefined;
   const credentialType: string | undefined = Array.isArray(credential?.type)
@@ -270,7 +353,7 @@ export default function VerificationResultModal({ open, onClose, result }: Props
             justifyContent: 'center',
             mb: 0.5
           }}>
-            <StatusIcon isVerified={isVerified} isExpired={isExpired} />
+            <StatusIcon isVerified={isVerified} isExpired={isExpired} isRevoked={isRevoked} />
           </Box>
           
           <Typography 
@@ -298,7 +381,9 @@ export default function VerificationResultModal({ open, onClose, result }: Props
               ? isExpired 
                 ? 'Valid signature but expired'
                 : 'Successfully verified'
-              : 'Could not be verified'
+              : isRevoked
+                ? (result.verificationMessage || 'Credential revoked by issuer')
+                : 'Could not be verified'
             }
           </Typography>
         </Box>
@@ -326,7 +411,11 @@ export default function VerificationResultModal({ open, onClose, result }: Props
           },
         }}>
           <Chip 
-            icon={isVerified ? (isExpired ? <AccessTime /> : <Verified />) : <Shield />}
+            icon={isVerified 
+              ? (isExpired ? <AccessTime /> : <Verified />)
+              : isRevoked
+                ? <ErrorIcon sx={{ fontSize: 16 }} />
+                : <Shield />}
             label={statusColors.statusText}
             color={statusColors.chip}
             size="small"
@@ -411,7 +500,13 @@ export default function VerificationResultModal({ open, onClose, result }: Props
                     fontSize: { xs: '0.85rem', sm: '0.9rem' },
                     lineHeight: 1.2
                   }}>
-                    {isVerified ? 'Valid signature' : (isOfflineDepsMissing ? 'Cannot verify offline' : 'Invalid signature')}
+                    {isVerified
+                      ? 'Valid signature'
+                      : isOfflineDepsMissing
+                        ? 'Cannot verify offline'
+                        : isRevoked
+                          ? 'Credential revoked'
+                          : 'Invalid signature'}
                   </Typography>
                 </Box>
               </Box>
@@ -491,35 +586,37 @@ export default function VerificationResultModal({ open, onClose, result }: Props
                     </Typography>
                     <Box
                       sx={{
-                        backgroundColor: alpha(theme.palette.error.main, 0.1),
-                        px: 0.75,
-                        py: 0.6,
-                        borderRadius: '4px',
+                        mt: 0.75,
                         display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'flex-start',
-                        gap: 0.3,
-                        width: '100%'
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 1,
+                        flexWrap: 'wrap'
                       }}
                     >
-                      {formatErrorCodeForDisplay(result.verificationErrorCode).map((segment, index) => (
-                        <Typography
-                          key={`${segment}-${index}`}
-                          variant="body2"
-                          sx={{
-                            fontWeight: 600,
-                            fontFamily: 'monospace',
-                            color: theme.palette.error.main,
-                            fontSize: { xs: '0.75rem', sm: '0.8rem' },
-                            lineHeight: 1.2,
-                            textAlign: 'left',
-                            wordBreak: 'break-word',
-                            whiteSpace: 'normal'
-                          }}
-                        >
-                          {segment}
-                        </Typography>
-                      ))}
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: alpha(theme.palette.error.main, 0.8),
+                          fontWeight: 600,
+                          textTransform: 'uppercase'
+                        }}
+                      >
+                        Code
+                      </Typography>
+                      <Chip
+                        label={result.verificationErrorCode}
+                        size="small"
+                        color="error"
+                        variant="outlined"
+                        sx={{
+                          fontWeight: 700,
+                          fontFamily: 'monospace',
+                          letterSpacing: '0.4px',
+                          backgroundColor: alpha(theme.palette.error.main, 0.12),
+                          color: theme.palette.error.main
+                        }}
+                      />
                     </Box>
                   </Box>
                 </Box>
@@ -582,18 +679,20 @@ export default function VerificationResultModal({ open, onClose, result }: Props
                   gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, 
                   gap: 1.5 
                 }}>
-                  {Object.entries(subject)
-                    .filter(([key]) => key.toLowerCase() !== 'id')
-                    .map(([key, value], index) => (
-                      <Box 
-                        key={key} 
-                        sx={{ 
-                          pl: { xs: 0, sm: index % 2 === 0 ? 4.5 : 0 }
-                        }}
-                      >
-                        <CredentialField label={formatLabel(key)} value={value} />
-                      </Box>
-                    ))}
+                  {flattenObject(subject).map((field, index) => (
+                    <Box 
+                      key={field.key} 
+                      sx={{ 
+                        pl: { xs: 0, sm: index % 2 === 0 ? 4.5 : 0 }
+                      }}
+                    >
+                      <CredentialField 
+                        label={formatLabel(field.key)} 
+                        value={field.value}
+                        isNested={field.isNested}
+                      />
+                    </Box>
+                  ))}
                 </Box>
               </Box>
             </>

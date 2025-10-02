@@ -8,16 +8,16 @@
   "theme_color": "#ed6c02",
   "icons": [
     { 
-      "src": "/vite.svg", 
+      "src": "/android-chrome-192x192.png", 
       "sizes": "192x192", 
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     { 
-      "src": "/vite.svg", 
-      "sizes": "512x512", 
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/favicon.ico", 
+      "sizes": "48x48", 
+      "type": "image/x-icon",
+      "purpose": "any"
     }
   ]
 }

@@ -1,6 +1,5 @@
 import { openDB, IDBPDatabase } from 'idb'      ;
-import { DB_NAME, DB_VERSION, CONTEXT_STORE, KEY_STORE, REVOKED_VC_STORE, KEY_INDEX_CONTROLLER } from './constants/CacheConstants';
-import type { CachedRevokedVC } from './utils/CacheHelper';
+import { DB_NAME, DB_VERSION, CONTEXT_STORE, KEY_STORE, STATUS_LIST_STORE } from './constants/CacheConstants';
 
 class DBService {
   private static instance: DBService;
@@ -21,12 +20,15 @@ class DBService {
         if (!db.objectStoreNames.contains(KEY_STORE)) {
           db.createObjectStore(KEY_STORE, { keyPath: 'key_id' });
           // Note: Index creation must happen within the same transaction as store creation.
-          // This block is for initial creation.
         }
-        if (!db.objectStoreNames.contains(REVOKED_VC_STORE)) {
-          const revokedStore = db.createObjectStore(REVOKED_VC_STORE, { keyPath: 'vc_id' });
-          revokedStore.createIndex('issuer', 'issuer', { unique: false });
-          revokedStore.createIndex('organization_id', 'organization_id', { unique: false });
+
+        // New store for Status List Credentials (BitstringStatusListCredential)
+        if (!db.objectStoreNames.contains(STATUS_LIST_STORE)) {
+          const sl = db.createObjectStore(STATUS_LIST_STORE, { keyPath: 'status_list_id' });
+          try { sl.createIndex('organization_id', 'organization_id', { unique: false }); } catch {}
+        } else {
+          const sl = tx.objectStore(STATUS_LIST_STORE);
+          try { sl.createIndex('organization_id', 'organization_id', { unique: false }); } catch {}
         }
       },
     });

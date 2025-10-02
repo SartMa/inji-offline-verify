@@ -1,5 +1,6 @@
 # server/organization/models.py
 from django.db import models
+import hashlib
 from datetime import datetime, timezone as dt_timezone
 import uuid
 
@@ -155,40 +156,113 @@ class JsonLdContext(models.Model):
         return f"{self.organization_id} :: {self.url}"
 
 
-class RevokedVC(models.Model):
-    """
-    Revoked Verifiable Credential data scoped to an Organization.
-    This is used for pre-cached revocation checks during offline verification.
+class StatusListCredential(models.Model):
+    """Current (latest) version of a BitstringStatusList credential for an org.
+    One row per (organization, status_list_id) stable identifier.
+    Purpose(s) can include multiple values (revocation, suspension, refresh, message, etc.).
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="revoked_vcs"
-    )
-    vc_id = models.CharField(max_length=1000, help_text="Verifiable Credential ID (from credential.id)")
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="status_list_credentials")
+    status_list_id = models.CharField(max_length=1000, help_text="Stable StatusList credential identifier (credential.id)")
     issuer = models.CharField(max_length=500, help_text="Issuer DID")
-    subject = models.CharField(max_length=500, null=True, blank=True, help_text="Subject DID (if available)")
-    reason = models.CharField(max_length=255, null=True, blank=True, help_text="Reason for revocation")
-    revoked_at = models.DateTimeField(auto_now_add=True, help_text="When the VC was marked as revoked")
-    metadata = models.JSONField(null=True, blank=True, help_text="Additional revocation metadata")
+    purposes = models.JSONField(default=list, help_text="One or more status purposes (list of strings)")
+    version = models.PositiveIntegerField(default=1)
+    issuance_date = models.DateTimeField(null=True, blank=True)
+    encoded_list_hash = models.CharField(max_length=128, help_text="SHA256 hash of credentialSubject.encodedList for change detection", blank=True)
+    full_credential = models.JSONField(help_text="Complete StatusList credential JSON document (latest)")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         indexes = [
-            models.Index(fields=["organization"], name="idx_revokedvc_org"),
-            models.Index(fields=["vc_id"], name="idx_revokedvc_id"),
-            models.Index(fields=["issuer"], name="idx_revokedvc_issuer"),
-            models.Index(fields=["subject"], name="idx_revokedvc_subject"),
+            models.Index(fields=["organization"], name="idx_statuslist_org"),
+            models.Index(fields=["status_list_id"], name="idx_statuslist_id"),
+            models.Index(fields=["issuer"], name="idx_statuslist_issuer"),
+            models.Index(fields=["updated_at"], name="idx_statuslist_updated"),
         ]
         constraints = [
-            models.UniqueConstraint(
-                fields=["organization", "vc_id"], name="uniq_revokedvc_org_id"
-            )
+            models.UniqueConstraint(fields=["organization", "status_list_id"], name="uniq_statuslist_org_id")
         ]
-        verbose_name = "Revoked Verifiable Credential"
-        verbose_name_plural = "Revoked Verifiable Credentials"
+        verbose_name = "StatusList Credential"
+        verbose_name_plural = "StatusList Credentials"
 
     def __str__(self):
-        return f"{self.vc_id} (revoked by {self.organization.name})"
+        return f"{self.status_list_id} (v{self.version} purposes={','.join(self.purposes or [])})"
+
+    @staticmethod
+    def _extract_purposes(credential: dict):
+        subj = credential.get('credentialSubject', {}) if isinstance(credential, dict) else {}
+        raw = subj.get('statusPurpose')
+        if raw is None:
+            return []
+        return raw if isinstance(raw, list) else [raw]
+
+    @staticmethod
+    def _compute_encoded_list_hash(credential: dict) -> str:
+        try:
+            subj = credential.get('credentialSubject', {})
+            encoded_list = subj.get('encodedList')
+            if not encoded_list:
+                return ''
+            return hashlib.sha256(encoded_list.encode('utf-8')).hexdigest()
+        except Exception:
+            return ''
+
+    def bump_version(self, new_credential: dict):
+        """Persist current row to history then update this row to new version."""
+        StatusListCredentialHistory.objects.create(
+            status_list_current=self,
+            organization=self.organization,
+            status_list_id=self.status_list_id,
+            issuer=self.issuer,
+            purposes=self.purposes,
+            version=self.version,
+            issuance_date=self.issuance_date,
+            encoded_list_hash=self.encoded_list_hash,
+            full_credential=self.full_credential,
+        )
+        self.version += 1
+        self.full_credential = new_credential
+        self.purposes = self._extract_purposes(new_credential)
+        # Update issuance date if present
+        new_issuance = new_credential.get('issuanceDate') or new_credential.get('issuance_date')
+        if new_issuance:
+            try:
+                # Store as raw string parsed by DRF serializers later if needed
+                from django.utils.dateparse import parse_datetime
+                parsed = parse_datetime(new_issuance)
+                if parsed:
+                    self.issuance_date = parsed
+            except Exception:
+                pass
+        self.encoded_list_hash = self._compute_encoded_list_hash(new_credential)
+        self.save()
+
+
+class StatusListCredentialHistory(models.Model):
+    """Immutable snapshot of previous versions for audit & timestamp queries."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    status_list_current = models.ForeignKey(StatusListCredential, on_delete=models.CASCADE, related_name='history_entries')
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    status_list_id = models.CharField(max_length=1000)
+    issuer = models.CharField(max_length=500, blank=True, default="")
+    purposes = models.JSONField(default=list)
+    version = models.PositiveIntegerField()
+    issuance_date = models.DateTimeField(null=True, blank=True)
+    encoded_list_hash = models.CharField(max_length=128, blank=True)
+    full_credential = models.JSONField()
+    archived_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["organization"], name="idx_statuslisthist_org"),
+            models.Index(fields=["status_list_id"], name="idx_statuslisthist_id"),
+            models.Index(fields=["version"], name="idx_statuslisthist_version"),
+            models.Index(fields=["archived_at"], name="idx_statuslisthist_archived"),
+        ]
+        unique_together = [("status_list_current", "version")]
+
+    def __str__(self):
+        return f"{self.status_list_id} v{self.version} (archived)"
 
 

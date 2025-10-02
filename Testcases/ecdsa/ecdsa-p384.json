@@ -1,0 +1,26 @@
+{
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1",
+    "https://w3id.org/security/data-integrity/v2",
+    "https://www.w3.org/2018/credentials/examples/v1"
+  ],
+  "type": [
+    "VerifiableCredential",
+    "AlumniCredential"
+  ],
+  "credentialSubject": {
+    "id": "did:example:holder",
+    "alumniOf": "Example University"
+  },
+  "id": "urn:uuid:64d58a60-94c0-4bd3-9ec3-80d83b901e41",
+  "issuer": "did:web:chandrahas121.github.io",
+  "issuanceDate": "2025-09-29T05:43:37.123Z",
+  "proof": {
+    "type": "DataIntegrityProof",
+    "created": "2025-09-29T05:43:37Z",
+    "verificationMethod": "did:web:chandrahas121.github.io#key-p384-1",
+    "cryptosuite": "ecdsa-rdfc-2019",
+    "proofPurpose": "assertionMethod",
+    "proofValue": "zy7g6v3TDV3juhG5t7qVCCdRbfq8aPpqyzQ3nEAVFLCTTCshYNU9AKvj2UqukVnRu9we3M131oamMvxhJgvrds4BD43FPDt7TMnwZo6AeXwYUttpcYshavNg6cCrSdW1HNSF"
+  }
+}

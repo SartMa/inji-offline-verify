@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Button,
@@ -38,9 +38,9 @@ import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import { getOrganizationPublicKeys, deletePublicKey } from '../../services/publicKeyService';
-import { getOrganizationRevokedVCs, deleteRevokedVC, OrganizationRevokedVC } from '../../services/revokedVCService';
+import { getOrganizationStatusListCredentials, deleteStatusListCredential, OrganizationStatusListCredential } from '../../services/statusListCredentialService';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import BlockIcon from '@mui/icons-material/Block';
+import ListAltIcon from '@mui/icons-material/ListAlt';
 
 // Styled Components - Theme Aware with consistent styling
 const ContentCard = styled(Box)(({ theme }) => ({
@@ -337,28 +337,29 @@ function KeyDetailDialog({ publicKey, open, onClose }: KeyDetailDialogProps) {
   );
 }
 
-interface VCDetailDialogProps {
-  revokedVC: OrganizationRevokedVC | null;
+interface StatusListDetailDialogProps {
+  statusList: OrganizationStatusListCredential | null;
   open: boolean;
   onClose: () => void;
 }
 
-function VCDetailDialog({ revokedVC, open, onClose }: VCDetailDialogProps) {
-  if (!revokedVC) return null;
+function StatusListDetailDialog({ statusList, open, onClose }: StatusListDetailDialogProps) {
+  if (!statusList) return null;
 
-  const formatDate = (dateString: string) => {
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return '—';
     try {
-      return new Date(dateString).toLocaleString();
+      return new Date(value).toLocaleString();
     } catch {
-      return dateString;
+      return value;
     }
   };
 
-  const formatVCMetadata = (metadata: any) => {
+  const formatCredential = (credential: any) => {
     try {
-      return JSON.stringify(metadata, null, 2);
+      return JSON.stringify(credential, null, 2);
     } catch {
-      return String(metadata);
+      return String(credential);
     }
   };
 
@@ -366,11 +367,11 @@ function VCDetailDialog({ revokedVC, open, onClose }: VCDetailDialogProps) {
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
         <Stack direction="row" alignItems="center" spacing={2}>
-          <BlockIcon color="error" />
-          <Typography variant="h6">Revoked VC Details</Typography>
+          <ListAltIcon color="primary" />
+          <Typography variant="h6">Status List Credential</Typography>
           <Chip
-            label="REVOKED"
-            color="error"
+            label={`Version ${statusList.version}`}
+            color="primary"
             size="small"
           />
         </Stack>
@@ -379,10 +380,10 @@ function VCDetailDialog({ revokedVC, open, onClose }: VCDetailDialogProps) {
         <Stack spacing={3}>
           <Box>
             <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              VC ID
+              Status List ID
             </Typography>
             <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
-              {revokedVC.vc_id}
+              {statusList.status_list_id}
             </Typography>
           </Box>
 
@@ -391,51 +392,62 @@ function VCDetailDialog({ revokedVC, open, onClose }: VCDetailDialogProps) {
               Issuer
             </Typography>
             <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
-              {revokedVC.issuer}
+              {statusList.issuer}
             </Typography>
           </Box>
 
-          {revokedVC.subject && (
+          {statusList.purposes?.length ? (
             <Box>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                Subject
+                Purposes
+              </Typography>
+              <Stack direction="row" flexWrap="wrap" gap={1}>
+                {statusList.purposes.map((purpose) => (
+                  <Chip key={purpose} label={purpose} size="small" color="secondary" />
+                ))}
+              </Stack>
+            </Box>
+          ) : null}
+
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Issuance Date
+              </Typography>
+              <Typography variant="body2">{formatDateTime(statusList.issuance_date)}</Typography>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Last Updated
+              </Typography>
+              <Typography variant="body2">{formatDateTime(statusList.updated_at)}</Typography>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Created At
+              </Typography>
+              <Typography variant="body2">{formatDateTime(statusList.created_at)}</Typography>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Encoded List Hash
               </Typography>
               <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
-                {revokedVC.subject}
+                {statusList.encoded_list_hash}
               </Typography>
-            </Box>
-          )}
-
-          {revokedVC.reason && (
-            <Box>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                Revocation Reason
-              </Typography>
-              <Typography variant="body2">
-                {revokedVC.reason}
-              </Typography>
-            </Box>
-          )}
+            </Grid>
+          </Grid>
 
           <Box>
             <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              Revoked At
-            </Typography>
-            <Typography variant="body2">
-              {formatDate(revokedVC.revoked_at)}
-            </Typography>
-          </Box>
-
-          <Box>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              Full VC Metadata
+              Full Credential
             </Typography>
             <Box
               sx={{
                 backgroundColor: 'var(--template-palette-grey-100)',
                 p: 2,
                 borderRadius: '8px',
-                maxHeight: '300px',
+                maxHeight: '320px',
                 overflow: 'auto',
                 '[data-mui-color-scheme="dark"] &': {
                   backgroundColor: '#2d3748',
@@ -452,7 +464,7 @@ function VCDetailDialog({ revokedVC, open, onClose }: VCDetailDialogProps) {
                   wordBreak: 'break-all',
                 }}
               >
-                {formatVCMetadata(revokedVC.metadata)}
+                {formatCredential(statusList.full_credential)}
               </Typography>
             </Box>
           </Box>
@@ -472,20 +484,20 @@ export default function MyAccount() {
   const { organizationName } = useCurrentUser();
   
   const [publicKeys, setPublicKeys] = useState<OrganizationPublicKey[]>([]);
-  const [revokedVCs, setRevokedVCs] = useState<OrganizationRevokedVC[]>([]);
+  const [statusListCredentials, setStatusListCredentials] = useState<OrganizationStatusListCredential[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingVCs, setLoadingVCs] = useState(true);
+  const [loadingStatusLists, setLoadingStatusLists] = useState(true);
   const [selectedKey, setSelectedKey] = useState<OrganizationPublicKey | null>(null);
-  const [selectedVC, setSelectedVC] = useState<OrganizationRevokedVC | null>(null);
+  const [selectedStatusList, setSelectedStatusList] = useState<OrganizationStatusListCredential | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [vcDetailDialogOpen, setVcDetailDialogOpen] = useState(false);
+  const [statusListDetailDialogOpen, setStatusListDetailDialogOpen] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
     publicKey: null as OrganizationPublicKey | null,
   });
-  const [deleteVCDialog, setDeleteVCDialog] = useState({
+  const [deleteStatusListDialog, setDeleteStatusListDialog] = useState({
     open: false,
-    revokedVC: null as OrganizationRevokedVC | null,
+    statusList: null as OrganizationStatusListCredential | null,
   });
   const [toast, setToast] = useState({
     open: false,
@@ -532,23 +544,27 @@ export default function MyAccount() {
     return null;
   };
 
-  const fetchRevokedVCs = async () => {
+  const fetchStatusListCredentials = async () => {
     try {
-      setLoadingVCs(true);
+      setLoadingStatusLists(true);
       const organizationId = getOrganizationId();
-      const response = await getOrganizationRevokedVCs(organizationId || undefined);
-      setRevokedVCs(response.revoked_vcs || []);
+      if (!organizationId) {
+        showToast('Organization ID not found. Please log in again.', 'error');
+        return;
+      }
+      const response = await getOrganizationStatusListCredentials(organizationId);
+      setStatusListCredentials(response.status_list_credentials || []);
     } catch (error: any) {
-      console.error('Failed to fetch revoked VCs:', error);
-      showToast('Failed to load revoked VCs. Please try again.', 'error');
+      console.error('Failed to fetch status list credentials:', error);
+      showToast('Failed to load status list credentials. Please try again.', 'error');
     } finally {
-      setLoadingVCs(false);
+      setLoadingStatusLists(false);
     }
   };
 
   useEffect(() => {
     fetchPublicKeys();
-    fetchRevokedVCs();
+    fetchStatusListCredentials();
   }, []);
 
   const handleDeleteClick = (publicKey: OrganizationPublicKey) => {
@@ -584,38 +600,38 @@ export default function MyAccount() {
     setSelectedKey(null);
   };
 
-  // Revoked VC handlers
-  const handleDeleteVCClick = (revokedVC: OrganizationRevokedVC) => {
-    setDeleteVCDialog({ open: true, revokedVC });
+  // Status list handlers
+  const handleDeleteStatusListClick = (statusList: OrganizationStatusListCredential) => {
+    setDeleteStatusListDialog({ open: true, statusList });
   };
 
-  const handleDeleteVCConfirm = async () => {
-    if (!deleteVCDialog.revokedVC) return;
-    
+  const handleDeleteStatusListConfirm = async () => {
+    if (!deleteStatusListDialog.statusList) return;
+
     try {
-      await deleteRevokedVC(deleteVCDialog.revokedVC.vc_id);
-      setRevokedVCs(prev => prev.filter(vc => vc.vc_id !== deleteVCDialog.revokedVC!.vc_id));
-      showToast('Revoked VC removed from list successfully', 'success');
+      await deleteStatusListCredential(deleteStatusListDialog.statusList.status_list_id);
+      setStatusListCredentials((prev) => prev.filter((item) => item.status_list_id !== deleteStatusListDialog.statusList!.status_list_id));
+      showToast('Status list credential removed successfully', 'success');
     } catch (error: any) {
-      console.error('Failed to delete revoked VC:', error);
-      showToast('Failed to remove revoked VC. Please try again.', 'error');
+      console.error('Failed to delete status list credential:', error);
+      showToast('Failed to remove status list credential. Please try again.', 'error');
     } finally {
-      setDeleteVCDialog({ open: false, revokedVC: null });
+      setDeleteStatusListDialog({ open: false, statusList: null });
     }
   };
 
-  const handleDeleteVCCancel = () => {
-    setDeleteVCDialog({ open: false, revokedVC: null });
+  const handleDeleteStatusListCancel = () => {
+    setDeleteStatusListDialog({ open: false, statusList: null });
   };
 
-  const handleViewVC = (revokedVC: OrganizationRevokedVC) => {
-    setSelectedVC(revokedVC);
-    setVcDetailDialogOpen(true);
+  const handleViewStatusList = (statusList: OrganizationStatusListCredential) => {
+    setSelectedStatusList(statusList);
+    setStatusListDetailDialogOpen(true);
   };
 
-  const handleCloseVCDetail = () => {
-    setVcDetailDialogOpen(false);
-    setSelectedVC(null);
+  const handleCloseStatusListDetail = () => {
+    setStatusListDetailDialogOpen(false);
+    setSelectedStatusList(null);
   };
 
   const getStatusIcon = (isActive: boolean) => {
@@ -632,20 +648,52 @@ export default function MyAccount() {
     return isActive ? 'ACTIVE' : 'INACTIVE';
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) {
+      return '—';
+    }
+
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return dateString;
+    }
   };
 
   const truncateKey = (key: string, maxLength: number = 50) => {
     if (key.length <= maxLength) return key;
     return `${key.substring(0, maxLength)}...`;
   };
+
+  const statusListStats = useMemo(() => {
+    const total = statusListCredentials.length;
+    const purposes = new Set<string>();
+    let latestUpdatedAt: string | null = null;
+
+    statusListCredentials.forEach((item) => {
+      (item.purposes || []).forEach((purpose) => {
+        if (purpose) purposes.add(purpose);
+      });
+
+      if (item.updated_at) {
+        if (!latestUpdatedAt || new Date(item.updated_at).getTime() > new Date(latestUpdatedAt).getTime()) {
+          latestUpdatedAt = item.updated_at;
+        }
+      }
+    });
+
+    return {
+      total,
+      purposeCount: purposes.size,
+      latestUpdatedAt,
+    };
+  }, [statusListCredentials]);
 
   return (
     <AppTheme>
@@ -699,7 +747,7 @@ export default function MyAccount() {
                         color: isDark ? '#a0aec0' : 'text.secondary', 
                         fontWeight: 400 
                       }}>
-                        Manage your organization's public keys and revoked VCs
+                        Manage your organization's public keys and status list credentials
                       </Typography>
                     </Box>
                   </Box>
@@ -775,13 +823,41 @@ export default function MyAccount() {
                           color: isDark ? '#a0aec0' : 'text.secondary',
                           mb: 1 
                         }}>
-                          Revoked VCs
+                          Status List Credentials
                         </Typography>
                         <Typography variant="h6" sx={{ 
                           fontWeight: 600, 
                           color: 'warning.main' 
                         }}>
-                          {revokedVCs.length}
+                          {statusListStats.total}
+                        </Typography>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <Typography variant="body2" sx={{ 
+                          color: isDark ? '#a0aec0' : 'text.secondary',
+                          mb: 1 
+                        }}>
+                          Unique Purposes
+                        </Typography>
+                        <Typography variant="h6" sx={{ 
+                          fontWeight: 600, 
+                          color: 'secondary.main' 
+                        }}>
+                          {statusListStats.purposeCount}
+                        </Typography>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <Typography variant="body2" sx={{ 
+                          color: isDark ? '#a0aec0' : 'text.secondary',
+                          mb: 1 
+                        }}>
+                          Latest Status List Update
+                        </Typography>
+                        <Typography variant="h6" sx={{ 
+                          fontWeight: 600, 
+                          color: isDark ? '#ffffff' : 'text.primary' 
+                        }}>
+                          {formatDate(statusListStats.latestUpdatedAt)}
                         </Typography>
                       </Grid>
                     </Grid>
@@ -1000,7 +1076,7 @@ export default function MyAccount() {
                     )}
                   </ContentCard>
 
-                  {/* Revoked VCs Section */}
+                  {/* Status List Credentials Section */}
                   <ContentCard>
                     <Stack
                       direction="row"
@@ -1009,19 +1085,19 @@ export default function MyAccount() {
                       sx={{ mb: 3 }}
                     >
                       <Stack direction="row" alignItems="center" spacing={2}>
-                        <BlockIcon sx={{ color: 'error.main', fontSize: 28 }} />
+                        <ListAltIcon sx={{ color: 'primary.main', fontSize: 28 }} />
                         <Typography variant="h5" sx={{ 
                           fontWeight: 600, 
                           color: isDark ? '#ffffff' : 'text.primary' 
                         }}>
-                          Revoked VCs
+                          Status List Credentials
                         </Typography>
                       </Stack>
                       <Button
                         variant="outlined"
                         startIcon={<RefreshIcon />}
-                        onClick={fetchRevokedVCs}
-                        disabled={loadingVCs}
+                        onClick={fetchStatusListCredentials}
+                        disabled={loadingStatusLists}
                         sx={{
                           borderRadius: '12px',
                           textTransform: 'none',
@@ -1032,11 +1108,11 @@ export default function MyAccount() {
                       </Button>
                     </Stack>
 
-                    {loadingVCs ? (
+                    {loadingStatusLists ? (
                       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
-                        <Typography variant="h6">Loading revoked VCs...</Typography>
+                        <Typography variant="h6">Loading status list credentials...</Typography>
                       </Box>
-                    ) : revokedVCs.length === 0 ? (
+                    ) : statusListCredentials.length === 0 ? (
                       <Box
                         sx={{
                           textAlign: 'center',
@@ -1044,12 +1120,12 @@ export default function MyAccount() {
                           color: 'text.secondary',
                         }}
                       >
-                        <BlockIcon sx={{ fontSize: 64, mb: 2, opacity: 0.5 }} />
+                        <ListAltIcon sx={{ fontSize: 64, mb: 2, opacity: 0.5 }} />
                         <Typography variant="h6" gutterBottom>
-                          No Revoked VCs Found
+                          No Status List Credentials Found
                         </Typography>
                         <Typography variant="body2">
-                          You haven't revoked any verifiable credentials yet.
+                          Upload or synchronize a status list credential to see it here.
                         </Typography>
                       </Box>
                     ) : (
@@ -1058,93 +1134,118 @@ export default function MyAccount() {
                           <Table stickyHeader>
                             <TableHead>
                               <TableRow>
-                                <StyledTableCell>VC ID</StyledTableCell>
+                                <StyledTableCell>Status List ID</StyledTableCell>
                                 <StyledTableCell>Issuer</StyledTableCell>
-                                <StyledTableCell>Subject</StyledTableCell>
-                                <StyledTableCell>Reason</StyledTableCell>
-                                <StyledTableCell>Revoked At</StyledTableCell>
+                                <StyledTableCell>Purposes</StyledTableCell>
+                                <StyledTableCell>Version</StyledTableCell>
+                                <StyledTableCell>Issued</StyledTableCell>
+                                <StyledTableCell>Updated</StyledTableCell>
+                                <StyledTableCell>Encoded Hash</StyledTableCell>
                                 <StyledTableCell align="center">Actions</StyledTableCell>
                               </TableRow>
                             </TableHead>
                             <TableBody>
-                              {revokedVCs.map((revokedVC) => (
-                                <TableRow key={revokedVC.id} hover>
+                              {statusListCredentials.map((statusList) => (
+                                <TableRow key={statusList.id} hover>
                                   <StyledTableCell>
-                                    <Tooltip title={revokedVC.vc_id} arrow>
+                                    <Tooltip title={statusList.status_list_id} arrow>
                                       <Typography
                                         sx={{
                                           fontFamily: 'monospace',
                                           fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.8rem' },
-                                          maxWidth: { xs: 100, sm: 150, md: 200 },
+                                          maxWidth: { xs: 120, sm: 180, md: 220 },
                                           overflow: 'hidden',
                                           textOverflow: 'ellipsis',
                                         }}
                                       >
-                                        {truncateKey(revokedVC.vc_id)}
+                                        {truncateKey(statusList.status_list_id)}
                                       </Typography>
                                     </Tooltip>
                                   </StyledTableCell>
                                   <StyledTableCell>
-                                    <Tooltip title={revokedVC.issuer} arrow>
+                                    <Tooltip title={statusList.issuer} arrow>
                                       <Typography
                                         sx={{
                                           fontFamily: 'monospace',
                                           fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.8rem' },
-                                          maxWidth: { xs: 100, sm: 150, md: 200 },
+                                          maxWidth: { xs: 120, sm: 180, md: 220 },
                                           overflow: 'hidden',
                                           textOverflow: 'ellipsis',
                                         }}
                                       >
-                                        {truncateKey(revokedVC.issuer)}
+                                        {truncateKey(statusList.issuer)}
                                       </Typography>
                                     </Tooltip>
                                   </StyledTableCell>
                                   <StyledTableCell>
-                                    {revokedVC.subject ? (
-                                      <Tooltip title={revokedVC.subject} arrow>
-                                        <Typography
-                                          sx={{
-                                            fontFamily: 'monospace',
-                                            fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.8rem' },
-                                            maxWidth: { xs: 80, sm: 120, md: 150 },
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                          }}
-                                        >
-                                          {truncateKey(revokedVC.subject, 30)}
-                                        </Typography>
-                                      </Tooltip>
+                                    {statusList.purposes?.length ? (
+                                      <Stack direction="row" spacing={0.5} flexWrap="wrap" rowGap={0.5}>
+                                        {statusList.purposes.map((purpose) => (
+                                          <Chip
+                                            key={`${statusList.status_list_id}-${purpose}`}
+                                            label={purpose}
+                                            size="small"
+                                            color="secondary"
+                                            sx={{
+                                              fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' },
+                                              height: { xs: '18px', sm: '20px', md: '22px' },
+                                              '& .MuiChip-label': {
+                                                px: { xs: 0.5, sm: 0.75, md: 1 },
+                                              },
+                                            }}
+                                          />
+                                        ))}
+                                      </Stack>
                                     ) : (
                                       <Typography color="text.secondary">—</Typography>
                                     )}
                                   </StyledTableCell>
                                   <StyledTableCell>
-                                    {revokedVC.reason ? (
-                                      <Tooltip title={revokedVC.reason} arrow>
-                                        <Typography
-                                          sx={{
-                                            maxWidth: { xs: 80, sm: 120, md: 150 },
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.875rem' },
-                                          }}
-                                        >
-                                          {revokedVC.reason}
-                                        </Typography>
-                                      </Tooltip>
-                                    ) : (
-                                      <Typography color="text.secondary">—</Typography>
-                                    )}
+                                    <Chip
+                                      label={`v${statusList.version}`}
+                                      size="small"
+                                      color="primary"
+                                      sx={{
+                                        fontWeight: 600,
+                                        fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' },
+                                        height: { xs: '18px', sm: '20px', md: '22px' },
+                                      }}
+                                    />
                                   </StyledTableCell>
                                   <StyledTableCell>
-                                    <Typography 
+                                    <Typography
                                       sx={{
                                         fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.875rem' },
-                                        whiteSpace: 'nowrap'
+                                        whiteSpace: 'nowrap',
                                       }}
                                     >
-                                      {formatDate(revokedVC.revoked_at)}
+                                      {formatDate(statusList.issuance_date)}
                                     </Typography>
+                                  </StyledTableCell>
+                                  <StyledTableCell>
+                                    <Typography
+                                      sx={{
+                                        fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.875rem' },
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                    >
+                                      {formatDate(statusList.updated_at)}
+                                    </Typography>
+                                  </StyledTableCell>
+                                  <StyledTableCell>
+                                    <Tooltip title={statusList.encoded_list_hash} arrow>
+                                      <Typography
+                                        sx={{
+                                          fontFamily: 'monospace',
+                                          fontSize: { xs: '0.6rem', sm: '0.7rem', md: '0.75rem' },
+                                          maxWidth: { xs: 120, sm: 180, md: 220 },
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                        }}
+                                      >
+                                        {truncateKey(statusList.encoded_list_hash, window.innerWidth < 600 ? 16 : 28)}
+                                      </Typography>
+                                    </Tooltip>
                                   </StyledTableCell>
                                   <StyledTableCell align="center">
                                     <Stack direction="row" spacing={{ xs: 0.25, sm: 0.5, md: 1 }} justifyContent="center">
@@ -1153,7 +1254,7 @@ export default function MyAccount() {
                                           size="small"
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            handleViewVC(revokedVC);
+                                            handleViewStatusList(statusList);
                                           }}
                                           sx={{
                                             color: isDark ? '#4299e1' : 'primary.main',
@@ -1162,22 +1263,22 @@ export default function MyAccount() {
                                               transform: 'scale(1.1)',
                                             },
                                             transition: 'all 0.2s ease-in-out',
-                                            p: { xs: '4px', sm: '6px', md: '8px' }
+                                            p: { xs: '4px', sm: '6px', md: '8px' },
                                           }}
                                         >
                                           <VisibilityIcon sx={{ fontSize: { xs: '14px', sm: '16px', md: '18px' } }} />
                                         </IconButton>
                                       </Tooltip>
-                                      <Tooltip title="Remove from List" placement="top">
+                                      <Tooltip title="Remove" placement="top">
                                         <ActionButton
                                           className="delete"
                                           size="small"
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            handleDeleteVCClick(revokedVC);
+                                            handleDeleteStatusListClick(statusList);
                                           }}
                                           sx={{
-                                            p: { xs: '4px', sm: '6px', md: '8px' }
+                                            p: { xs: '4px', sm: '6px', md: '8px' },
                                           }}
                                         >
                                           <DeleteIcon sx={{ fontSize: { xs: '14px', sm: '16px', md: '18px' } }} />
@@ -1206,11 +1307,11 @@ export default function MyAccount() {
           onClose={handleCloseDetail}
         />
 
-        {/* VC Detail Dialog */}
-        <VCDetailDialog
-          revokedVC={selectedVC}
-          open={vcDetailDialogOpen}
-          onClose={handleCloseVCDetail}
+        {/* Status List Detail Dialog */}
+        <StatusListDetailDialog
+          statusList={selectedStatusList}
+          open={statusListDetailDialogOpen}
+          onClose={handleCloseStatusListDetail}
         />
 
         {/* Delete Confirmation Dialog */}
@@ -1310,10 +1411,10 @@ export default function MyAccount() {
           </DialogActions>
         </Dialog>
 
-        {/* Delete Revoked VC Confirmation Dialog */}
+        {/* Delete Status List Confirmation Dialog */}
         <Dialog
-          open={deleteVCDialog.open}
-          onClose={handleDeleteVCCancel}
+          open={deleteStatusListDialog.open}
+          onClose={handleDeleteStatusListCancel}
           maxWidth="sm"
           fullWidth
           PaperProps={{
@@ -1332,13 +1433,13 @@ export default function MyAccount() {
             fontWeight: 600
           }}>
             <WarningIcon />
-            Confirm Remove
+            Remove Status List Credential
           </DialogTitle>
           <DialogContent>
             <Typography variant="body1" sx={{ mb: 2 }}>
-              Are you sure you want to remove this VC from the revocation list?
+              Are you sure you want to delete this status list credential from your organization?
             </Typography>
-            {deleteVCDialog.revokedVC && (
+            {deleteStatusListDialog.statusList && (
               <Box sx={{ 
                 p: 2, 
                 bgcolor: isDark ? '#2d3748' : 'grey.100', 
@@ -1346,30 +1447,33 @@ export default function MyAccount() {
                 mb: 2
               }}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  VC ID:
+                  Status List ID:
                 </Typography>
                 <Typography sx={{
                   fontFamily: 'monospace',
                   fontSize: '0.8rem',
-                  color: isDark ? '#fc8181' : 'error.main',
+                  color: isDark ? '#63b3ed' : 'primary.main',
                   fontWeight: 600,
                   mb: 2,
                   wordBreak: 'break-all'
                 }}>
-                  {deleteVCDialog.revokedVC.vc_id}
+                  {deleteStatusListDialog.statusList.status_list_id}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Purposes: {deleteStatusListDialog.statusList.purposes?.join(', ') || '—'}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Issuer: {truncateKey(deleteVCDialog.revokedVC.issuer, 60)}
+                  Current Version: {deleteStatusListDialog.statusList.version}
                 </Typography>
               </Box>
             )}
             <Typography variant="body2" color="warning.main" sx={{ fontStyle: 'italic' }}>
-              Note: This will remove the VC from your revocation list, but won't affect its actual revocation status.
+              This doesn't revoke any credential; it only removes the cached status list from your organization portal.
             </Typography>
           </DialogContent>
           <DialogActions sx={{ p: 3, gap: 2 }}>
             <Button
-              onClick={handleDeleteVCCancel}
+              onClick={handleDeleteStatusListCancel}
               variant="outlined"
               sx={{
                 borderRadius: '8px',
@@ -1386,7 +1490,7 @@ export default function MyAccount() {
               Cancel
             </Button>
             <Button
-              onClick={handleDeleteVCConfirm}
+              onClick={handleDeleteStatusListConfirm}
               variant="contained"
               color="error"
               sx={{
@@ -1398,7 +1502,7 @@ export default function MyAccount() {
                 },
               }}
             >
-              Remove VC
+              Delete Status List
             </Button>
           </DialogActions>
         </Dialog>

@@ -504,7 +504,8 @@ export default function MyAccount() {
   const fetchPublicKeys = async () => {
     try {
       setLoading(true);
-      const response = await getOrganizationPublicKeys();
+      const organizationId = getOrganizationId();
+      const response = await getOrganizationPublicKeys(organizationId || undefined);
       setPublicKeys(response.keys || []);
     } catch (error: any) {
       console.error('Failed to fetch public keys:', error);

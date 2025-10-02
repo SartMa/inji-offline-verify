@@ -52,6 +52,35 @@ class PublicKeyService {
     return getOrganizationApiUrl();
   }
 
+  private getStoredOrganizationId(): string | null {
+    const storageKeys = ['organizationId', 'org_id', 'current_org_id'];
+
+    for (const key of storageKeys) {
+      try {
+        const value = localStorage.getItem(key);
+        if (value) {
+          return value;
+        }
+      } catch {
+        // Ignore storage access errors (e.g., during SSR or private mode)
+      }
+    }
+
+    try {
+      const raw = localStorage.getItem('organization');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.id) {
+          return parsed.id;
+        }
+      }
+    } catch {
+      // Ignore parsing issues
+    }
+
+    return null;
+  }
+
   private async getAuthHeaders() {
     let token = getAccessToken();
     
@@ -115,9 +144,16 @@ class PublicKeyService {
   /**
    * Fetch all organization public keys
    */
-  async getOrganizationPublicKeys(): Promise<OrganizationPublicKeysResponse> {
+  async getOrganizationPublicKeys(organizationId?: string): Promise<OrganizationPublicKeysResponse> {
+    const params = new URLSearchParams();
+    const orgId = organizationId ?? this.getStoredOrganizationId();
+
+    if (orgId) {
+      params.append('organization_id', orgId);
+    }
+
     const response = await this.fetchWithAuth(
-      `${this.baseUrl}/public-keys/`,
+      `${this.baseUrl}/public-keys/${params.toString() ? `?${params.toString()}` : ''}`,
       {
         method: 'GET',
       }
@@ -135,6 +171,13 @@ class PublicKeyService {
    * Create a new public key using the upsert endpoint
    */
   async createPublicKey(data: CreatePublicKeyData): Promise<any> {
+    if (!data.organization_id) {
+      const storedOrgId = this.getStoredOrganizationId();
+      if (storedOrgId) {
+        data = { ...data, organization_id: storedOrgId };
+      }
+    }
+
     const response = await this.fetchWithAuth(
       `${this.baseUrl}/public-keys/upsert/`,
       {
@@ -155,6 +198,13 @@ class PublicKeyService {
    * Update an existing public key using the upsert endpoint
    */
   async updatePublicKey(data: UpdatePublicKeyData): Promise<any> {
+    if (!data.organization_id) {
+      const storedOrgId = this.getStoredOrganizationId();
+      if (storedOrgId) {
+        data = { ...data, organization_id: storedOrgId };
+      }
+    }
+
     const response = await this.fetchWithAuth(
       `${this.baseUrl}/public-keys/upsert/`,
       {
@@ -193,7 +243,7 @@ class PublicKeyService {
 const publicKeyService = new PublicKeyService();
 
 // Export the service methods for easier importing
-export const getOrganizationPublicKeys = () => publicKeyService.getOrganizationPublicKeys();
+export const getOrganizationPublicKeys = (organizationId?: string) => publicKeyService.getOrganizationPublicKeys(organizationId);
 export const createPublicKey = (data: CreatePublicKeyData) => publicKeyService.createPublicKey(data);
 export const updatePublicKey = (data: UpdatePublicKeyData) => publicKeyService.updatePublicKey(data);
 export const deletePublicKey = (keyId: string) => publicKeyService.deletePublicKey(keyId);

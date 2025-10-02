@@ -61,23 +61,33 @@ class ConfirmOrganizationRegistrationView(APIView):
 
 
 class OrganizationPublicKeysView(APIView):
-    """Return active public keys for the given organization or DID."""
+    """Return active public keys for the requesting user's organization."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        org_id = request.query_params.get('organization_id')
+        requested_org_id = request.query_params.get('organization_id')
         did = request.query_params.get('did')
 
-        org = None
-        if org_id:
-            try:
-                org = Organization.objects.get(id=org_id)
-            except Organization.DoesNotExist:
-                return Response({'detail': 'Organization not found'}, status=status.HTTP_404_NOT_FOUND)
+        members = OrganizationMember.objects.select_related('organization').filter(user=request.user)
+        if not members.exists():
+            return Response({'detail': 'No organization membership found for user'}, status=status.HTTP_403_FORBIDDEN)
 
-        qs = PublicKey.objects.filter(is_active=True)
-        if org:
-            qs = qs.filter(organization=org)
+        member_org_ids = {str(m.organization_id) for m in members}
+
+        if requested_org_id:
+            if requested_org_id not in member_org_ids:
+                return Response({'detail': 'You do not have access to this organization'}, status=status.HTTP_403_FORBIDDEN)
+            org_id = requested_org_id
+        else:
+            # Default to the first organization the user belongs to
+            org_id = next(iter(member_org_ids))
+
+        try:
+            org = Organization.objects.get(id=org_id)
+        except Organization.DoesNotExist:
+            return Response({'detail': 'Organization not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        qs = PublicKey.objects.filter(organization=org, is_active=True)
         if did:
             qs = qs.filter(controller=did)
 
@@ -86,7 +96,7 @@ class OrganizationPublicKeysView(APIView):
             'controller', 'purpose', 'created_at', 'expires_at', 'revoked_at', 'revocation_reason', 'is_active'
         ))
         payload = {
-            'organization_id': str(org.id) if org else None,
+            'organization_id': str(org.id),
             'did': did,
             'keys': keys,
         }
@@ -371,9 +381,9 @@ class OrganizationPublicKeyUpsertView(APIView):
         try:
             with transaction.atomic():
                 pk_obj, created = PublicKey.objects.update_or_create(
+                    organization=org,
                     key_id=key_id,
                     defaults={
-                        'organization': org,
                         'key_type': key_type,
                         'public_key_multibase': public_key_multibase,
                         'public_key_hex': public_key_hex,

@@ -517,13 +517,7 @@ export default function MyAccount() {
     try {
       setLoading(true);
       const organizationId = getOrganizationId();
-      if (!organizationId) {
-        showToast('Organization ID not found. Please log in again.', 'error');
-        return;
-      }
-      const response = await getOrganizationPublicKeys();
-      // Filter keys by organization_id on client-side if backend doesn't filter
-      // The response should already be filtered by organization based on JWT token
+      const response = await getOrganizationPublicKeys(organizationId || undefined);
       setPublicKeys(response.keys || []);
     } catch (error: any) {
       console.error('Failed to fetch public keys:', error);

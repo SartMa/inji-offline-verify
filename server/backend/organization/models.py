@@ -60,7 +60,7 @@ class PublicKey(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="public_keys", null=True, blank=True
     )
-    key_id = models.CharField(max_length=500, unique=True)
+    key_id = models.CharField(max_length=500)
     key_type = models.CharField(max_length=100)
     public_key_multibase = models.TextField()
     public_key_hex = models.TextField(null=True, blank=True)
@@ -79,6 +79,12 @@ class PublicKey(models.Model):
             models.Index(fields=["key_id"], name="idx_pk_keyid"),
             models.Index(fields=["controller"], name="idx_pk_controller"),
             models.Index(fields=["is_active", "revoked_at", "expires_at"], name="idx_pk_active"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "key_id"],
+                name="uniq_publickey_org_keyid",
+            )
         ]
 
     def __str__(self):

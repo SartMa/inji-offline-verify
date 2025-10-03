@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('organization', '0005_statuslistcredentialhistory_and_more'),
+        ('organization', '0006_statuslistcredentialhistory_and_more'),
     ]
 
     operations = [

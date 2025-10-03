@@ -481,7 +481,7 @@ export default function MyAccount() {
   const theme = useTheme();
   const { mode } = useColorScheme();
   const isDark = mode === 'dark';
-  const { organizationName } = useCurrentUser();
+  const { organizationName, organizationId } = useCurrentUser();
   
   const [publicKeys, setPublicKeys] = useState<OrganizationPublicKey[]>([]);
   const [statusListCredentials, setStatusListCredentials] = useState<OrganizationStatusListCredential[]>([]);
@@ -516,8 +516,11 @@ export default function MyAccount() {
   const fetchPublicKeys = async () => {
     try {
       setLoading(true);
-      const organizationId = getOrganizationId();
-      const response = await getOrganizationPublicKeys(organizationId || undefined);
+      if (!organizationId) {
+        showToast('Organization ID not found. Please log in again.', 'error');
+        return;
+      }
+      const response = await getOrganizationPublicKeys(organizationId);
       setPublicKeys(response.keys || []);
     } catch (error: any) {
       console.error('Failed to fetch public keys:', error);
@@ -527,27 +530,9 @@ export default function MyAccount() {
     }
   };
 
-  const getOrganizationId = () => {
-    try {
-      const orgId = localStorage.getItem('organizationId');
-      if (orgId) return orgId;
-    } catch {/* ignore */}
-
-    try {
-      const raw = localStorage.getItem('organization');
-      if (raw) {
-        const obj = JSON.parse(raw);
-        if (obj?.id) return obj.id;
-      }
-    } catch {/* ignore */}
-
-    return null;
-  };
-
   const fetchStatusListCredentials = async () => {
     try {
       setLoadingStatusLists(true);
-      const organizationId = getOrganizationId();
       if (!organizationId) {
         showToast('Organization ID not found. Please log in again.', 'error');
         return;
@@ -563,9 +548,12 @@ export default function MyAccount() {
   };
 
   useEffect(() => {
-    fetchPublicKeys();
-    fetchStatusListCredentials();
-  }, []);
+    // Only fetch when organizationId is available
+    if (organizationId) {
+      fetchPublicKeys();
+      fetchStatusListCredentials();
+    }
+  }, [organizationId]);
 
   const handleDeleteClick = (publicKey: OrganizationPublicKey) => {
     setDeleteDialog({ open: true, publicKey });

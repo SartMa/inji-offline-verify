@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('organization', '0004_statuslistcredential_replace_revokedvc'),
+        ('organization', '0005_statuslistcredential_replace_revokedvc'),
     ]
 
     operations = [

@@ -442,10 +442,13 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         }
 
         if (!isAuthenticated) {
+            // Clear all state when user logs out
             setStats({ ...EMPTY_STATS });
             setLogs([]);
             setDailyStats([]);
             setHistoricalStats([]);
+            setVerificationDurations([]);
+            setStorageDurations([]);
             return;
         }
 

@@ -203,15 +203,30 @@ export async function clearAllUserData() {
   
   // Clear additional localStorage items
   try {
+    // Worker app specific
     localStorage.removeItem('deviceId');
-    localStorage.removeItem('organization');
+    localStorage.removeItem('historicalStats');
+    localStorage.removeItem('historicalLogsDays');
+    localStorage.removeItem('historicalLogs.cache');
+    localStorage.removeItem('vcMetrics:verificationMs');
+    localStorage.removeItem('vcMetrics:storageMs');
+    
+    // Organization portal specific
     localStorage.removeItem('organizationId');
+    localStorage.removeItem('organizationName');
+    localStorage.removeItem('userRole');
+    
+    // Common organization items
+    localStorage.removeItem('organization');
     localStorage.removeItem('org_id');
     localStorage.removeItem('current_org_id');
   } catch {}
   
   // Clear IndexedDB databases
   try {
+    // Clear WorkerCache (worker verification logs)
+    await clearIndexedDB('WorkerCache');
+    
     // Clear VCVerifierDB (verification logs)
     await clearIndexedDB('VCVerifierDB');
     

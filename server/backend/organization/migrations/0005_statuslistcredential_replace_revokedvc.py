@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('organization', '0003_revokedvc'),
+        ('organization', '0004_publickey_org_scope'),
     ]
 
     operations = [

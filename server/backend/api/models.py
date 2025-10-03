@@ -13,13 +13,17 @@ class VerificationLog(models.Model):
     # generate IDs. The client will generate this ID.
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
+    class VerificationStatus(models.TextChoices):
+        SUCCESS = "SUCCESS", "Success"
+        FAILED = "FAILED", "Failed"
+        EXPIRED = "EXPIRED", "Expired"
+        REVOKED = "REVOKED", "Revoked"
+        SUSPENDED = "SUSPENDED", "Suspended"
+
     # The core status of the verification, as per the project brief.[1]
     verification_status = models.CharField(
         max_length=10,
-        choices=[
-            ("SUCCESS", "Success"),
-            ("FAILED", "Failed"),
-        ]
+        choices=VerificationStatus.choices,
     )
 
     # Timestamp from the client indicating when the verification occurred.

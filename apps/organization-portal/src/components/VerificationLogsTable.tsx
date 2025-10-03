@@ -26,9 +26,12 @@ import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import BlockIcon from '@mui/icons-material/Block';
+import PauseCircleIcon from '@mui/icons-material/PauseCircle';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { useLogs } from '../hooks/useVerificationLogs';
-import { VerificationLog } from '../services/logsService';
+import { VerificationLog, VerificationStatus } from '../services/logsService';
 
 
 interface VerificationLogsTableProps {
@@ -47,7 +50,7 @@ export default function VerificationLogsTable({
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'SUCCESS' | 'FAILED' | ''>('');
+  const [statusFilter, setStatusFilter] = useState<VerificationStatus | ''>('');
   const [showFilters, setShowFilters] = useState(false);
 
   const { data, loading, error } = useLogs({
@@ -107,25 +110,54 @@ export default function VerificationLogsTable({
     return 'N/A';
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: VerificationStatus) => {
     switch (status) {
       case 'SUCCESS':
         return 'success';
       case 'FAILED':
         return 'error';
+      case 'EXPIRED':
+        return 'warning';
+      case 'REVOKED':
+        return 'error';
+      case 'SUSPENDED':
+        return 'info';
       default:
         return 'default';
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: VerificationStatus) => {
     switch (status) {
       case 'SUCCESS':
         return <CheckCircleIcon fontSize="small" />;
       case 'FAILED':
         return <ErrorIcon fontSize="small" />;
+      case 'EXPIRED':
+        return <AccessTimeIcon fontSize="small" />;
+      case 'REVOKED':
+        return <BlockIcon fontSize="small" />;
+      case 'SUSPENDED':
+        return <PauseCircleIcon fontSize="small" />;
       default:
         return undefined;
+    }
+  };
+
+  const formatStatusLabel = (status: VerificationStatus) => {
+    switch (status) {
+      case 'SUCCESS':
+        return 'Success';
+      case 'FAILED':
+        return 'Failed';
+      case 'EXPIRED':
+        return 'Expired';
+      case 'REVOKED':
+        return 'Revoked';
+      case 'SUSPENDED':
+        return 'Suspended';
+      default:
+        return status;
     }
   };
 
@@ -194,6 +226,9 @@ export default function VerificationLogsTable({
                 <MenuItem value="">All</MenuItem>
                 <MenuItem value="SUCCESS">Success</MenuItem>
                 <MenuItem value="FAILED">Failed</MenuItem>
+                <MenuItem value="EXPIRED">Expired</MenuItem>
+                <MenuItem value="REVOKED">Revoked</MenuItem>
+                <MenuItem value="SUSPENDED">Suspended</MenuItem>
               </Select>
             </FormControl>
           )}
@@ -209,8 +244,20 @@ export default function VerificationLogsTable({
               Success: {data.stats.success_count}
             </Typography>
             <Typography variant="body2" color="error.main">
-              Failed: {data.stats.failed_count}
+            Failed: {data.stats.failed_count}
+          </Typography>
+          <Typography variant="body2" color="warning.main">
+            Expired: {data.stats.expired_count}
+          </Typography>
+          <Typography variant="body2" color="error.main">
+            Revoked: {data.stats.revoked_count}
+          </Typography>
+          <Typography variant="body2" color="info.main">
+            Suspended: {data.stats.suspended_count}
             </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Unsuccessful Total: {data.stats.unsuccessful_count}
+          </Typography>
           </Stack>
         )}
       </Box>
@@ -249,7 +296,7 @@ export default function VerificationLogsTable({
                   <TableCell>
                     <Chip
                       icon={getStatusIcon(log.verification_status)}
-                      label={log.verification_status}
+                      label={formatStatusLabel(log.verification_status)}
                       color={getStatusColor(log.verification_status) as any}
                       size="small"
                       variant="outlined"

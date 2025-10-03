@@ -1,9 +1,11 @@
 import { authenticatedFetch } from './authService';
 
 // Type definitions
+export type ServerVerificationStatus = 'SUCCESS' | 'FAILED' | 'EXPIRED' | 'REVOKED' | 'SUSPENDED';
+
 export interface HistoricalLogItem {
   id: string;
-  verification_status: 'SUCCESS' | 'FAILED';
+  verification_status: ServerVerificationStatus;
   verified_at: string;
   vc_hash: string | null;
   credential_subject: any | null;
@@ -44,6 +46,10 @@ export interface HistoricalLogsResponse {
     total_logs: number;
     success_count: number;
     failed_count: number;
+    expired_count: number;
+    revoked_count: number;
+    suspended_count: number;
+    unsuccessful_count: number;
     success_rate: number;
   };
   error?: string;
@@ -112,6 +118,10 @@ export async function fetchHistoricalLogs(options: FetchHistoricalLogsOptions = 
         total_logs: 0,
         success_count: 0,
         failed_count: 0,
+        expired_count: 0,
+        revoked_count: 0,
+        suspended_count: 0,
+        unsuccessful_count: 0,
         success_rate: 0,
       },
     };
@@ -124,7 +134,20 @@ export async function fetchHistoricalLogs(options: FetchHistoricalLogsOptions = 
 export function convertHistoricalLogToLogItem(historicalLog: HistoricalLogItem, index: number) {
   return {
     id: parseInt(historicalLog.id.replace(/-/g, '').slice(0, 8), 16) || index, // Convert UUID to number for UI consistency
-    status: historicalLog.verification_status === 'SUCCESS' ? 'success' as const : 'failure' as const,
+    status: (() => {
+      switch (historicalLog.verification_status) {
+        case 'SUCCESS':
+          return 'success' as const;
+        case 'EXPIRED':
+          return 'expired' as const;
+        case 'REVOKED':
+          return 'revoked' as const;
+        case 'SUSPENDED':
+          return 'suspended' as const;
+        default:
+          return 'failure' as const;
+      }
+    })(),
     synced: true, // Historical logs from server are always considered synced
     timestamp: new Date(historicalLog.verified_at).getTime(),
     hash: historicalLog.vc_hash || '-',

@@ -1,9 +1,11 @@
 // Logs service for API calls
 import { getAccessToken, refreshAccessToken, getWorkerApiUrl } from '@inji-offline-verify/shared-auth';
 
+export type VerificationStatus = 'SUCCESS' | 'FAILED' | 'EXPIRED' | 'REVOKED' | 'SUSPENDED';
+
 export interface VerificationLog {
   id: string;
-  verification_status: 'SUCCESS' | 'FAILED';
+  verification_status: VerificationStatus;
   verified_at: string;
   vc_hash?: string;
   credential_subject?: Record<string, any>;
@@ -34,6 +36,10 @@ export interface VerificationLogsResponse {
     total_logs: number;
     success_count: number;
     failed_count: number;
+    expired_count: number;
+    revoked_count: number;
+    suspended_count: number;
+    unsuccessful_count: number;
   };
   organization?: {
     id: string;
@@ -44,7 +50,7 @@ export interface VerificationLogsResponse {
 export interface GetLogsParams {
   orgId?: string;
   userId?: string;
-  status?: 'SUCCESS' | 'FAILED';
+  status?: VerificationStatus;
   search?: string;
   page?: number;
   pageSize?: number;
@@ -58,6 +64,10 @@ export interface LogsStatsResponse {
     total_logs: number;
     success_count: number;
     failed_count: number;
+    expired_count: number;
+    revoked_count: number;
+    suspended_count: number;
+    unsuccessful_count: number;
     recent_logs: number; // logs in last 24 hours
   };
 }

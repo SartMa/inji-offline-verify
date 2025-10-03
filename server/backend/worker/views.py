@@ -6,6 +6,9 @@ from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
 from django.core.paginator import Paginator
 from django.db import models
+from datetime import timedelta
+
+from django.db.models import Count
 from .serializers import (
     WorkerRegistrationSerializer,
     WorkerLoginSerializer,
@@ -16,9 +19,21 @@ from .models import OrganizationMember
 from organization.models import Organization
 from organization.permissions import IsOrganizationAdmin
 from api.serializers import VerificationLogSerializer
+from api.models import VerificationLog
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import transaction
+from django.utils import timezone
+
+
+def _compute_status_counts(queryset):
+    """Return a dict with counts for each verification status."""
+    status_counts = {status: 0 for status in VerificationLog.VerificationStatus.values}
+    for row in queryset.values('verification_status').annotate(count=Count('id')):
+        status = row['verification_status']
+        if status in status_counts:
+            status_counts[status] = row['count']
+    return status_counts
 
 
 class WorkerLoginView(APIView):
@@ -504,7 +519,8 @@ def get_organization_logs(request, org_id):
                     'error': 'User not found in organization'
                 }, status=status.HTTP_404_NOT_FOUND)
         
-        if status_filter and status_filter in ['SUCCESS', 'FAILED']:
+        valid_statuses = set(VerificationLog.VerificationStatus.values)
+        if status_filter and status_filter in valid_statuses:
             queryset = queryset.filter(verification_status=status_filter)
         
         if search:
@@ -540,13 +556,18 @@ def get_organization_logs(request, org_id):
             user_member = OrganizationMember.objects.get(id=user_id, organization=organization)
             user_logs_queryset = VerificationLog.objects.filter(organization=organization, verified_by=user_member.user)
             total_logs = user_logs_queryset.count()
-            success_count = user_logs_queryset.filter(verification_status='SUCCESS').count()
-            failed_count = user_logs_queryset.filter(verification_status='FAILED').count()
+            status_counts = _compute_status_counts(user_logs_queryset)
         else:
             # Stats for entire organization
             total_logs = organization.verification_logs.count()
-            success_count = organization.verification_logs.filter(verification_status='SUCCESS').count()
-            failed_count = organization.verification_logs.filter(verification_status='FAILED').count()
+            status_counts = _compute_status_counts(organization.verification_logs)
+
+        success_count = status_counts.get(VerificationLog.VerificationStatus.SUCCESS, 0)
+        failed_count = status_counts.get(VerificationLog.VerificationStatus.FAILED, 0)
+        expired_count = status_counts.get(VerificationLog.VerificationStatus.EXPIRED, 0)
+        revoked_count = status_counts.get(VerificationLog.VerificationStatus.REVOKED, 0)
+        suspended_count = status_counts.get(VerificationLog.VerificationStatus.SUSPENDED, 0)
+        unsuccessful_count = failed_count + expired_count + revoked_count + suspended_count
         
         # Response data
         response_data = {
@@ -568,6 +589,10 @@ def get_organization_logs(request, org_id):
                 'total_logs': total_logs,
                 'success_count': success_count,
                 'failed_count': failed_count,
+                'expired_count': expired_count,
+                'revoked_count': revoked_count,
+                'suspended_count': suspended_count,
+                'unsuccessful_count': unsuccessful_count,
             }
         }
         
@@ -595,67 +620,72 @@ def get_organization_logs_stats(request, org_id):
     """
     try:
         from api.models import VerificationLog
-        from datetime import datetime, timedelta
-        
-        # Get the organization
+
         organization = get_object_or_404(Organization, id=org_id)
-        
-        # Check if the requesting user has permission to view this org's data
+
         user_membership = OrganizationMember.objects.filter(
             user=request.user,
             organization=organization,
-            role='ADMIN'
+            role='ADMIN',
         ).first()
-        
+
         if not user_membership:
-            return Response({
-                'success': False,
-                'error': 'You do not have permission to view this organization\'s logs'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        # Get user_id parameter for filtering
-        user_id = request.GET.get('user_id', None)
-        
+            return Response(
+                {
+                    'success': False,
+                    'error': "You do not have permission to view this organization's logs",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        base_queryset = VerificationLog.objects.filter(organization=organization)
+        user_id = request.GET.get('user_id')
+
         if user_id:
-            # Stats for specific user only
             try:
                 member = OrganizationMember.objects.get(id=user_id, organization=organization)
-                user_logs_queryset = VerificationLog.objects.filter(organization=organization, verified_by=member.user)
-                total_logs = user_logs_queryset.count()
-                success_count = user_logs_queryset.filter(verification_status='SUCCESS').count()
-                failed_count = user_logs_queryset.filter(verification_status='FAILED').count()
-                
-                # Recent logs (last 24 hours) for this user
-                from django.utils import timezone
-                last_24h = timezone.now() - timedelta(hours=24)
-                recent_logs = user_logs_queryset.filter(verified_at__gte=last_24h).count()
             except OrganizationMember.DoesNotExist:
-                return Response({
-                    'success': False,
-                    'error': 'User not found in organization'
-                }, status=status.HTTP_404_NOT_FOUND)
+                return Response(
+                    {
+                        'success': False,
+                        'error': 'User not found in organization',
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            queryset = base_queryset.filter(verified_by=member.user)
         else:
-            # Stats for entire organization
-            total_logs = organization.verification_logs.count()
-            success_count = organization.verification_logs.filter(verification_status='SUCCESS').count()
-            failed_count = organization.verification_logs.filter(verification_status='FAILED').count()
-            
-            # Recent logs (last 24 hours)
-            from django.utils import timezone
-            last_24h = timezone.now() - timedelta(hours=24)
-            recent_logs = organization.verification_logs.filter(verified_at__gte=last_24h).count()
-        
-        response_data = {
-            'success': True,
-            'stats': {
-                'total_logs': total_logs,
-                'success_count': success_count,
-                'failed_count': failed_count,
-                'recent_logs': recent_logs,
-            }
-        }
-        
-        return Response(response_data, status=status.HTTP_200_OK)
+            queryset = base_queryset
+
+        total_logs = queryset.count()
+        status_counts = _compute_status_counts(queryset)
+
+        last_24h = timezone.now() - timedelta(hours=24)
+        recent_logs = queryset.filter(verified_at__gte=last_24h).count()
+
+        success_count = status_counts.get(VerificationLog.VerificationStatus.SUCCESS, 0)
+        failed_count = status_counts.get(VerificationLog.VerificationStatus.FAILED, 0)
+        expired_count = status_counts.get(VerificationLog.VerificationStatus.EXPIRED, 0)
+        revoked_count = status_counts.get(VerificationLog.VerificationStatus.REVOKED, 0)
+        suspended_count = status_counts.get(VerificationLog.VerificationStatus.SUSPENDED, 0)
+        unsuccessful_count = failed_count + expired_count + revoked_count + suspended_count
+
+        return Response(
+            {
+                'success': True,
+                'stats': {
+                    'total_logs': total_logs,
+                    'success_count': success_count,
+                    'failed_count': failed_count,
+                    'expired_count': expired_count,
+                    'revoked_count': revoked_count,
+                    'suspended_count': suspended_count,
+                    'unsuccessful_count': unsuccessful_count,
+                    'recent_logs': recent_logs,
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
         
     except ValueError as e:
         return Response({
@@ -721,36 +751,34 @@ def get_worker_historical_logs(request):
     try:
         from api.models import VerificationLog
         from api.serializers import VerificationLogSerializer
-        from datetime import datetime, timedelta
-        from django.utils import timezone
-        
+
         # Get the authenticated user
         user = request.user
-        
+
         # Get user's organization membership to determine which logs they can access
         membership = OrganizationMember.objects.select_related('organization').filter(
             user=user
         ).first()
-        
+
         if not membership:
             return Response({
                 'success': False,
                 'error': 'User is not associated with any organization'
             }, status=status.HTTP_404_NOT_FOUND)
-        
+
         # Get query parameters for filtering
         days_back = int(request.GET.get('days', 3))  # Default to 3 days
         max_days = 14  # Security limit - don't allow fetching too far back
         if days_back > max_days:
             days_back = max_days
-        
+
         page = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('page_size', 100))  # Higher default for historical data
-        
+
         # Calculate date range
         end_date = timezone.now()
         start_date = end_date - timedelta(days=days_back)
-        
+
         # Build the queryset - get logs for this worker's organization within the date range
         # Only include logs verified by this specific user to maintain data privacy
         queryset = VerificationLog.objects.filter(
@@ -759,19 +787,24 @@ def get_worker_historical_logs(request):
             verified_at__gte=start_date,
             verified_at__lte=end_date
         ).select_related('verified_by').order_by('-verified_at')
-        
+
         # Pagination
         paginator = Paginator(queryset, page_size)
         page_obj = paginator.get_page(page)
-        
+
         # Serialize the data
         serializer = VerificationLogSerializer(page_obj, many=True)
-        
+
         # Calculate stats for the time period
         total_logs = queryset.count()
-        success_count = queryset.filter(verification_status='SUCCESS').count()
-        failed_count = queryset.filter(verification_status='FAILED').count()
-        
+        status_counts = _compute_status_counts(queryset)
+        success_count = status_counts.get(VerificationLog.VerificationStatus.SUCCESS, 0)
+        failed_count = status_counts.get(VerificationLog.VerificationStatus.FAILED, 0)
+        expired_count = status_counts.get(VerificationLog.VerificationStatus.EXPIRED, 0)
+        revoked_count = status_counts.get(VerificationLog.VerificationStatus.REVOKED, 0)
+        suspended_count = status_counts.get(VerificationLog.VerificationStatus.SUSPENDED, 0)
+        unsuccessful_count = failed_count + expired_count + revoked_count + suspended_count
+
         # Response data
         response_data = {
             'success': True,
@@ -801,10 +834,14 @@ def get_worker_historical_logs(request):
                 'total_logs': total_logs,
                 'success_count': success_count,
                 'failed_count': failed_count,
+                'expired_count': expired_count,
+                'revoked_count': revoked_count,
+                'suspended_count': suspended_count,
+                'unsuccessful_count': unsuccessful_count,
                 'success_rate': round((success_count / total_logs * 100) if total_logs > 0 else 0, 2),
             }
         }
-        
+
         return Response(response_data, status=status.HTTP_200_OK)
         
     except ValueError as e:

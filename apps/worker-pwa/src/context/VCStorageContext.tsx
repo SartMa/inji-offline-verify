@@ -24,7 +24,6 @@ type DailyStat = {
     failedCount: number;
 };
 
-type Stats = { totalStored: number; pendingSyncCount: number; syncedCount: number; failedCount: number };
 type HistoricalStats = {
     timestamp: number;
     totalStored: number;
@@ -34,10 +33,21 @@ type HistoricalStats = {
 };
 type LogItem = {
     id: number;
-    status: 'success' | 'failure' | 'expired' | 'revoked';
+    status: 'success' | 'failure' | 'expired' | 'revoked' | 'suspended';
     synced: boolean;
     timestamp: number;
     hash: string;
+};
+
+type Stats = {
+    totalStored: number;
+    pendingSyncCount: number;
+    syncedCount: number;
+    failedCount: number;
+    expiredCount: number;
+    revokedCount: number;
+    suspendedCount: number;
+    unsuccessfulCount: number;
 };
 
 const MAX_METRIC_SAMPLES = 50;
@@ -106,7 +116,16 @@ type VCStorageContextValue = {
     recordVerificationDuration: (durationMs: number) => void;
 };
 
-const EMPTY_STATS: Stats = { totalStored: 0, pendingSyncCount: 0, syncedCount: 0, failedCount: 0 };
+const EMPTY_STATS: Stats = {
+    totalStored: 0,
+    pendingSyncCount: 0,
+    syncedCount: 0,
+    failedCount: 0,
+    expiredCount: 0,
+    revokedCount: 0,
+    suspendedCount: 0,
+    unsuccessfulCount: 0,
+};
 
 const defaultContextValue: VCStorageContextValue = {
   isOnline: false,
@@ -243,6 +262,9 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
                     break;
                 case 'REVOKED':
                     status = 'revoked';
+                    break;
+                case 'SUSPENDED':
+                    status = 'suspended';
                     break;
                 case 'FAILED':
                 default:
@@ -617,12 +639,23 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         const all = await getAllFromDb();
         const unsynced = await getUnsyncedFromDb();
 
-        const newStats = {
+        const syncedSuccessCount = all.filter((v: any) => v.synced && v.verification_status === 'SUCCESS').length;
+        const failedCount = all.filter((v: any) => v.verification_status === 'FAILED').length;
+        const expiredCount = all.filter((v: any) => v.verification_status === 'EXPIRED').length;
+        const revokedCount = all.filter((v: any) => v.verification_status === 'REVOKED').length;
+        const suspendedCount = all.filter((v: any) => v.verification_status === 'SUSPENDED').length;
+        const unsuccessfulCount = failedCount + expiredCount + revokedCount + suspendedCount;
+
+        const newStats: Stats = {
             totalStored: all.length,
             pendingSyncCount: unsynced.length,
             // Use verification_status from dbService schema
-            syncedCount: all.filter((v: any) => v.synced && v.verification_status === 'SUCCESS').length,
-            failedCount: all.filter((v: any) => v.verification_status === 'FAILED').length
+            syncedCount: syncedSuccessCount,
+            failedCount,
+            expiredCount,
+            revokedCount,
+            suspendedCount,
+            unsuccessfulCount,
         };
 
         setStats(newStats);
@@ -632,19 +665,28 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         const existingHistorical = JSON.parse(localStorage.getItem('historicalStats') || '[]') as HistoricalStats[];
 
         const lastEntry = existingHistorical[existingHistorical.length - 1];
+        const comparableSnapshot = {
+            totalStored: newStats.totalStored,
+            syncedCount: newStats.syncedCount,
+            failedCount: newStats.unsuccessfulCount,
+            pendingSyncCount: newStats.pendingSyncCount,
+        };
         const shouldAddPoint = !lastEntry ||
             (now - lastEntry.timestamp > 3600000) ||
-            (JSON.stringify(newStats) !== JSON.stringify({
+            (JSON.stringify(comparableSnapshot) !== JSON.stringify({
                 totalStored: lastEntry.totalStored,
                 syncedCount: lastEntry.syncedCount,
                 failedCount: lastEntry.failedCount,
-                pendingSyncCount: lastEntry.pendingSyncCount
+                pendingSyncCount: lastEntry.pendingSyncCount,
             }));
 
         if (shouldAddPoint) {
             const newHistoricalPoint: HistoricalStats = {
                 timestamp: now,
-                ...newStats
+                totalStored: newStats.totalStored,
+                syncedCount: newStats.syncedCount,
+                failedCount: newStats.unsuccessfulCount,
+                pendingSyncCount: newStats.pendingSyncCount,
             };
 
             const updatedHistorical = [...existingHistorical, newHistoricalPoint].slice(-30);
@@ -682,30 +724,52 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
 
     // Core storage functions now use dbService
     const storeVerificationResult = async (jsonData: any): Promise<number | undefined> => {
-        // Determine verification status considering expired and revoked credentials
-        let verificationStatus: 'SUCCESS' | 'FAILED' | 'EXPIRED' | 'REVOKED';
-        
-        // Check if it's revoked
-        const isRevoked = 
-            jsonData.verificationErrorCode === 'VC_REVOKED' ||
-            jsonData.verificationErrorCode === 'REVOKED' ||
-            jsonData.verificationErrorCode === 'ERR_VC_REVOKED';
-        
-        // Check if it's expired but valid
-        const isExpiredButValid = 
+        // Determine verification status considering expired, revoked, and suspended credentials
+        const normalizeStatus = (value: unknown): VerificationRecord['verification_status'] | undefined => {
+            if (typeof value !== 'string') {
+                return undefined;
+            }
+
+            switch (value.toUpperCase()) {
+                case 'SUCCESS':
+                case 'FAILED':
+                case 'EXPIRED':
+                case 'REVOKED':
+                case 'SUSPENDED':
+                    return value.toUpperCase() as VerificationRecord['verification_status'];
+                default:
+                    return undefined;
+            }
+        };
+
+        const errorCode = typeof jsonData.verificationErrorCode === 'string'
+            ? jsonData.verificationErrorCode.toUpperCase()
+            : '';
+
+        const isSuspended = ['VC_SUSPENDED', 'SUSPENDED', 'ERR_VC_SUSPENDED'].includes(errorCode);
+        const isRevoked = ['VC_REVOKED', 'REVOKED', 'ERR_VC_REVOKED'].includes(errorCode);
+        const isExpiredButValid =
             jsonData.verificationStatus === true &&
-            (jsonData.verificationErrorCode === 'VC_EXPIRED' || 
-             jsonData.verificationErrorCode === 'EXPIRED' ||
-             jsonData.verificationErrorCode === 'ERR_VC_EXPIRED');
-        
-        if (isRevoked) {
+            ['VC_EXPIRED', 'EXPIRED', 'ERR_VC_EXPIRED'].includes(errorCode);
+
+        const statusFromPayload =
+            normalizeStatus(jsonData.verification_status) ??
+            normalizeStatus(jsonData.verificationStatus);
+
+        let verificationStatus: VerificationRecord['verification_status'];
+
+        if (isSuspended) {
+            verificationStatus = 'SUSPENDED';
+        } else if (isRevoked) {
             verificationStatus = 'REVOKED';
         } else if (isExpiredButValid) {
             verificationStatus = 'EXPIRED';
-        } else if (jsonData.verification_status) {
-            verificationStatus = jsonData.verification_status;
+        } else if (statusFromPayload) {
+            verificationStatus = statusFromPayload;
+        } else if (typeof jsonData.verificationStatus === 'boolean') {
+            verificationStatus = jsonData.verificationStatus ? 'SUCCESS' : 'FAILED';
         } else {
-            verificationStatus = jsonData.verificationStatus === true ? 'SUCCESS' : 'FAILED';
+            verificationStatus = 'FAILED';
         }
 
         // Normalize to dbService schema

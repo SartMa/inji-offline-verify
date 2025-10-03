@@ -54,7 +54,7 @@ export type VerificationRecord = {
   uuid: string; // The universally unique ID for syncing
   verified_at: string;
   synced: boolean;
-  verification_status: 'SUCCESS' | 'FAILED' | 'EXPIRED' | 'REVOKED';
+  verification_status: 'SUCCESS' | 'FAILED' | 'EXPIRED' | 'REVOKED' | 'SUSPENDED';
   vc_hash: string | null;
   credential_subject: any | null;
   error_message: string | null;

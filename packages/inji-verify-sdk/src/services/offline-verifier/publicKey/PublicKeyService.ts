@@ -3,6 +3,7 @@ import { KEY_STORE } from '../cache/constants/CacheConstants';
 import { PublicKeyGetterFactory } from './PublicKeyGetterFactory';
 import { putPublicKeys } from '../cache/utils/CacheHelper';
 import { bytesToHex, spkiToRawEd25519, ed25519RawToMultibase, parsePemToDer, base64UrlDecode } from './Utils';
+import { CredentialVerifierConstants } from '../constants/CredentialVerifierConstants';
 
 export class PublicKeyService {
   /**
@@ -30,6 +31,15 @@ export class PublicKeyService {
 
       if (!record || isIncomplete(record)) {
           console.warn(`⚠️ Public key not found in cache: ${verificationMethod}`);
+          
+          // Check if we're offline before attempting network fetch
+          const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+          
+          if (isOffline) {
+            console.error(`❌ Cannot resolve public key while offline: ${verificationMethod}`);
+            throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
+          }
+          
           // Online fallback: resolve and cache
           if (typeof navigator !== 'undefined' && navigator.onLine) {
             try {
@@ -105,10 +115,15 @@ export class PublicKeyService {
               record = await store2.get(verificationMethod);
             } catch (e: any) {
               console.error('💥 Error resolving public key online:', e);
-              return null;
+              // If it's a network error (fetch failed), throw offline dependencies error
+              if (e.message?.includes('fetch') || e.message?.includes('network') || e.message?.includes('Failed to fetch')) {
+                throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
+              }
+              throw e;
             }
           } else {
-            return null;
+            // Offline without cache - throw proper error
+            throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
           }
       }
       if (record.is_active === false) {

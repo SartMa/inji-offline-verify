@@ -34,7 +34,7 @@ type HistoricalStats = {
 };
 type LogItem = {
     id: number;
-    status: 'success' | 'failure';
+    status: 'success' | 'failure' | 'expired' | 'revoked';
     synced: boolean;
     timestamp: number;
     hash: string;
@@ -230,13 +230,25 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
 
         const items = records.map((rec: any, idx: number) => {
             const timestamp = parseRecordTimestamp(rec);
-            // Handle SUCCESS, EXPIRED, and FAILED statuses
-            // EXPIRED credentials should show as 'success' (valid but expired)
-            // Only FAILED should show as 'failure'
-            const status: LogItem['status'] = 
-                rec.verification_status === 'SUCCESS' || rec.verification_status === 'EXPIRED'
-                    ? 'success' 
-                    : 'failure';
+            // Map database verification_status to log status
+            // Keep EXPIRED and REVOKED as separate statuses for proper UI display
+            let status: LogItem['status'];
+            
+            switch (rec.verification_status) {
+                case 'SUCCESS':
+                    status = 'success';
+                    break;
+                case 'EXPIRED':
+                    status = 'expired';
+                    break;
+                case 'REVOKED':
+                    status = 'revoked';
+                    break;
+                case 'FAILED':
+                default:
+                    status = 'failure';
+                    break;
+            }
 
             return {
                 originalIndex: idx,
@@ -477,6 +489,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
         try {
             // First check navigator.onLine for basic network interface status
             if (!navigator.onLine) {
+                console.log('Browser reports offline (navigator.onLine = false)');
                 return false;
             }
 
@@ -491,7 +504,9 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
             });
 
             clearTimeout(timeoutId);
-            return response.ok;
+            const isConnected = response.ok;
+            console.log('Network connectivity check result:', isConnected);
+            return isConnected;
         } catch (error) {
             // Network request failed - we're offline or have connectivity issues
             console.log('Network connectivity check failed:', error);
@@ -502,34 +517,46 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
     // Online/offline detection with enhanced network checking
     useEffect(() => {
         let connectivityCheckInterval: NodeJS.Timeout;
+        let isCheckingConnectivity = false;
 
         const updateConnectionStatus = async () => {
-            const isConnected = await checkNetworkConnectivity();
+            // Prevent overlapping checks
+            if (isCheckingConnectivity) {
+                console.log('Connectivity check already in progress, skipping...');
+                return;
+            }
             
-            setIsOnline(prevIsOnline => {
-                if (isConnected && !prevIsOnline) {
-                    console.log('Connection restored');
-                } else if (!isConnected && prevIsOnline) {
-                    console.log('Connection lost');
-                }
-                return isConnected;
-            });
+            isCheckingConnectivity = true;
+            try {
+                const isConnected = await checkNetworkConnectivity();
+                
+                setIsOnline(prevIsOnline => {
+                    if (isConnected && !prevIsOnline) {
+                        console.log('🟢 Connection restored - now ONLINE');
+                    } else if (!isConnected && prevIsOnline) {
+                        console.log('🔴 Connection lost - now OFFLINE');
+                    }
+                    return isConnected;
+                });
+            } finally {
+                isCheckingConnectivity = false;
+            }
         };
 
         const handleOnline = () => {
-            console.log('Network interface online');
+            console.log('📡 Network interface online event');
             // Verify actual connectivity immediately
             updateConnectionStatus();
         };
 
         const handleOffline = () => {
-            console.log('Network interface offline');
+            console.log('📡 Network interface offline event');
             setIsOnline(false);
         };
 
         // Handle window focus - check connectivity when user returns to tab
         const handleFocus = () => {
-            console.log('Window focused - checking connectivity');
+            console.log('👁️ Window focused - checking connectivity');
             updateConnectionStatus();
         };
 
@@ -652,8 +679,14 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
 
     // Core storage functions now use dbService
     const storeVerificationResult = async (jsonData: any): Promise<number | undefined> => {
-        // Determine verification status considering expired credentials
-        let verificationStatus: 'SUCCESS' | 'FAILED' | 'EXPIRED';
+        // Determine verification status considering expired and revoked credentials
+        let verificationStatus: 'SUCCESS' | 'FAILED' | 'EXPIRED' | 'REVOKED';
+        
+        // Check if it's revoked
+        const isRevoked = 
+            jsonData.verificationErrorCode === 'VC_REVOKED' ||
+            jsonData.verificationErrorCode === 'REVOKED' ||
+            jsonData.verificationErrorCode === 'ERR_VC_REVOKED';
         
         // Check if it's expired but valid
         const isExpiredButValid = 
@@ -662,7 +695,9 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
              jsonData.verificationErrorCode === 'EXPIRED' ||
              jsonData.verificationErrorCode === 'ERR_VC_EXPIRED');
         
-        if (isExpiredButValid) {
+        if (isRevoked) {
+            verificationStatus = 'REVOKED';
+        } else if (isExpiredButValid) {
             verificationStatus = 'EXPIRED';
         } else if (jsonData.verification_status) {
             verificationStatus = jsonData.verification_status;

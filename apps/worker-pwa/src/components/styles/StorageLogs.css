@@ -124,6 +124,30 @@
   border-color: var(--success-border);
 }
 
+.status-badge.warning {
+  background-color: #FEF3C7;
+  color: #D97706;
+  border-color: #FCD34D;
+}
+
+[data-mui-color-scheme="dark"] .status-badge.warning {
+  background-color: rgba(217, 119, 6, 0.15);
+  color: #FCD34D;
+  border-color: rgba(252, 211, 77, 0.3);
+}
+
+.status-badge.revoked {
+  background-color: #FEE2E2;
+  color: #DC2626;
+  border-color: #FCA5A5;
+}
+
+[data-mui-color-scheme="dark"] .status-badge.revoked {
+  background-color: rgba(220, 38, 38, 0.15);
+  color: #FCA5A5;
+  border-color: rgba(252, 165, 165, 0.3);
+}
+
 .status-badge.error {
   background-color: var(--error-bg);
   color: var(--error-color);
@@ -195,6 +219,30 @@
   background-color: var(--success-bg);
   color: var(--success-color);
   border-color: var(--success-border);
+}
+
+.stat-chip.warning {
+  background-color: #FEF3C7;
+  color: #D97706;
+  border-color: #FCD34D;
+}
+
+[data-mui-color-scheme="dark"] .stat-chip.warning {
+  background-color: rgba(217, 119, 6, 0.15);
+  color: #FCD34D;
+  border-color: rgba(252, 211, 77, 0.3);
+}
+
+.stat-chip.revoked {
+  background-color: #FEE2E2;
+  color: #DC2626;
+  border-color: #FCA5A5;
+}
+
+[data-mui-color-scheme="dark"] .stat-chip.revoked {
+  background-color: rgba(220, 38, 38, 0.15);
+  color: #FCA5A5;
+  border-color: rgba(252, 165, 165, 0.3);
 }
 
 .stat-chip.failure {

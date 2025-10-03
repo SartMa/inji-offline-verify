@@ -22,7 +22,7 @@
     import { useVCStorage } from '../context/VCStorageContext';
     import './styles/StorageLogs.css';
 
-    type Status = 'success' | 'failure';
+    type Status = 'success' | 'failure' | 'expired' | 'revoked';
     type Log = {
         id: number;
         status: Status;
@@ -35,6 +35,8 @@
     const renderStatus = (status: Status | undefined) => {
         if (status === undefined) return <span className="status-badge neutral">-</span>;
         if (status === 'success') return <span className="status-badge success">Success</span>;
+        if (status === 'expired') return <span className="status-badge warning">Expired</span>;
+        if (status === 'revoked') return <span className="status-badge revoked">Revoked</span>;
         if (status === 'failure') return <span className="status-badge error">Failed</span>;
         return <span className="status-badge neutral">-</span>;
     };
@@ -98,6 +100,8 @@
                     if (filter === 'synced') return !!log.synced;
                     if (filter === 'pending') return !log.synced;
                     if (filter === 'success') return log.status === 'success';
+                    if (filter === 'expired') return log.status === 'expired';
+                    if (filter === 'revoked') return log.status === 'revoked';
                     if (filter === 'failure') return log.status === 'failure';
                     return true;
                 });
@@ -153,6 +157,8 @@
             synced: logs.filter((log: Log) => !!log.synced).length,
             pending: logs.filter((log: Log) => !log.synced).length,
             success: logs.filter((log: Log) => log.status === 'success').length,
+            expired: logs.filter((log: Log) => log.status === 'expired').length,
+            revoked: logs.filter((log: Log) => log.status === 'revoked').length,
             failure: logs.filter((log: Log) => log.status === 'failure').length,
         };
 
@@ -262,6 +268,12 @@
                     <div className="stats-chips">
                         <span className="stat-chip total">{statsCount.total} Total</span>
                         <span className="stat-chip success">{statsCount.success} Success</span>
+                        {statsCount.expired > 0 && (
+                            <span className="stat-chip warning">{statsCount.expired} Expired</span>
+                        )}
+                        {statsCount.revoked > 0 && (
+                            <span className="stat-chip revoked">{statsCount.revoked} Revoked</span>
+                        )}
                         {statsCount.failure > 0 && (
                             <span className="stat-chip failure">{statsCount.failure} Failed</span>
                         )}

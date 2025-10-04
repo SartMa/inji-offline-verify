@@ -347,14 +347,19 @@ export function decodeDidKeyMultibaseEd25519(multibaseKey: string): Uint8Array {
  * @param url The URL of the public document to fetch.
  * @returns A promise that resolves to the parsed JSON object.
  */
+const FETCH_TIMEOUT_MS = 5000;
+
 export async function fetchPublicDocument(url: string): Promise<any> {
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
+  const timer = controller ? setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS) : undefined;
   try {
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         // We specifically request 'application/did+json' and fall back to 'application/json'
         'Accept': 'application/did+json, application/json'
-      }
+      },
+      signal: controller?.signal
     });
 
     if (!response.ok) {
@@ -366,6 +371,11 @@ export async function fetchPublicDocument(url: string): Promise<any> {
   } catch (error: any) {
     console.error(`[SDK-didFetcher] Error fetching public document from ${url}:`, error);
     // Re-throw the error so the calling function can handle it.
-    throw new Error(`Could not retrieve document from ${url}. Reason: ${error.message}`);
+    const reason = error?.name === 'AbortError' ? 'Request timed out' : error.message;
+    throw new Error(`Could not retrieve document from ${url}. Reason: ${reason}`);
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
   }
 }

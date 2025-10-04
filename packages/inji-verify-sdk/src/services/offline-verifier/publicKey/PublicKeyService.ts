@@ -115,15 +115,8 @@ export class PublicKeyService {
               record = await store2.get(verificationMethod);
             } catch (e: any) {
               console.error('💥 Error resolving public key online:', e);
-              const message = (e?.message ?? '').toString().toLowerCase();
-              // If it's a network error (fetch/timeout/abort failed), throw offline dependencies error
-              if (
-                message.includes('fetch') ||
-                message.includes('network') ||
-                message.includes('failed to fetch') ||
-                message.includes('abort') ||
-                message.includes('timeout')
-              ) {
+              // If it's a network error (fetch failed), throw offline dependencies error
+              if (e.message?.includes('fetch') || e.message?.includes('network') || e.message?.includes('Failed to fetch')) {
                 throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
               }
               throw e;
@@ -150,10 +143,6 @@ export class PublicKeyService {
       };
     } catch (e: any) {
       console.error('💥 Error retrieving public key from cache:', e);
-      const message = (e?.message ?? '').toString();
-      if (message.includes(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING)) {
-        throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
-      }
       return null;
     }
   }

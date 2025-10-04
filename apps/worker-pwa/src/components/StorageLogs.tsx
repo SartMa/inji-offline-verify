@@ -22,7 +22,7 @@
     import { useVCStorage } from '../context/VCStorageContext';
     import './styles/StorageLogs.css';
 
-    type Status = 'success' | 'failure' | 'expired' | 'revoked';
+    type Status = 'success' | 'failure' | 'expired' | 'revoked' | 'suspended';
     type Log = {
         id: number;
         status: Status;
@@ -37,6 +37,7 @@
         if (status === 'success') return <span className="status-badge success">Success</span>;
         if (status === 'expired') return <span className="status-badge warning">Expired</span>;
         if (status === 'revoked') return <span className="status-badge revoked">Revoked</span>;
+        if (status === 'suspended') return <span className="status-badge suspended">Suspended</span>;
         if (status === 'failure') return <span className="status-badge error">Failed</span>;
         return <span className="status-badge neutral">-</span>;
     };
@@ -103,6 +104,7 @@
                     if (filter === 'expired') return log.status === 'expired';
                     if (filter === 'revoked') return log.status === 'revoked';
                     if (filter === 'failure') return log.status === 'failure';
+                    if (filter === 'suspended') return log.status === 'suspended';
                     return true;
                 });
             }
@@ -160,6 +162,7 @@
             expired: logs.filter((log: Log) => log.status === 'expired').length,
             revoked: logs.filter((log: Log) => log.status === 'revoked').length,
             failure: logs.filter((log: Log) => log.status === 'failure').length,
+            suspended: logs.filter((log: Log) => log.status === 'suspended').length,
         };
 
         const clearFilters = () => {
@@ -277,6 +280,9 @@
                         {statsCount.failure > 0 && (
                             <span className="stat-chip failure">{statsCount.failure} Failed</span>
                         )}
+                        {statsCount.suspended > 0 && (
+                            <span className="stat-chip suspended">{statsCount.suspended} Suspended</span>
+                        )}
                         <span className="stat-chip pending">{statsCount.pending} Pending</span>
                         <span className="stat-chip showing">
                             {filteredLogs.length} Showing
@@ -381,7 +387,10 @@
                                 <MenuItem value="synced">Synced</MenuItem>
                                 <MenuItem value="pending">Pending</MenuItem>
                                 <MenuItem value="success">Success</MenuItem>
+                                <MenuItem value="expired">Expired</MenuItem>
+                                <MenuItem value="revoked">Revoked</MenuItem>
                                 <MenuItem value="failure">Failed</MenuItem>
+                                <MenuItem value="suspended">Suspended</MenuItem>
                             </Select>
                         </FormControl>
 

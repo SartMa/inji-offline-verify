@@ -20,6 +20,7 @@ import { useVCStorage } from '../context/VCStorageContext';
 import { v4 as uuidv4 } from 'uuid';
 import ColoredCredentialIcon from './icons/ColoredCredentialIcon';
 import { VC_VARIANT_COLORS, resolveVCVariant } from './vcVisuals';
+import { deriveVerificationErrorMessage, deriveVerificationLogStatus } from '../utils/verificationStatus';
 
 // Helper to create a simple hash of the payload for logging
 async function createHash(data: string) {
@@ -119,14 +120,19 @@ export default function FileUploadModal({ open, onClose, onResult }: FileUploadM
 			// Persist to local DB logs similar to QRScannerModal
 			const payload = (result as any).payload || {};
 			const vc_hash = payload ? await createHash(JSON.stringify(payload)) : null;
+			const verificationStatus = deriveVerificationLogStatus(result);
+			const errorMessage = deriveVerificationErrorMessage(result);
 
 			const verificationData = {
 				uuid: uuidv4(),
-				verification_status: result.verificationStatus ? 'SUCCESS' : 'FAILED',
+				verification_status: verificationStatus,
+				verificationStatus: result.verificationStatus,
+				verificationErrorCode: result.verificationErrorCode ?? null,
+				verificationMessage: result.verificationMessage ?? null,
 				verified_at: new Date().toISOString(),
 				vc_hash: vc_hash,
 				credential_subject: payload?.credentialSubject || null,
-				error_message: result.verificationStatus ? null : result.verificationMessage,
+				error_message: errorMessage,
 				synced: false,
 			};
 

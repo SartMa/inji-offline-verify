@@ -18,6 +18,9 @@
   --error-bg: rgba(239, 68, 68, 0.1);
   --error-color: #dc2626;
   --error-border: rgba(239, 68, 68, 0.2);
+  --suspended-bg: rgba(59, 130, 246, 0.1);
+  --suspended-color: #1d4ed8;
+  --suspended-border: rgba(59, 130, 246, 0.2);
   --warning-bg: rgba(245, 158, 11, 0.1);
   --warning-color: #d97706;
   --warning-border: rgba(245, 158, 11, 0.2);
@@ -50,6 +53,9 @@
   --error-bg: rgba(239, 68, 68, 0.1);
   --error-color: #ef4444;
   --error-border: rgba(239, 68, 68, 0.2);
+  --suspended-bg: rgba(37, 99, 235, 0.15);
+  --suspended-color: #93c5fd;
+  --suspended-border: rgba(59, 130, 246, 0.35);
   --warning-bg: rgba(251, 191, 36, 0.1);
   --warning-color: #fbbf24;
   --warning-border: rgba(251, 191, 36, 0.2);
@@ -146,6 +152,12 @@
   background-color: rgba(220, 38, 38, 0.15);
   color: #FCA5A5;
   border-color: rgba(252, 165, 165, 0.3);
+}
+
+.status-badge.suspended {
+  background-color: var(--suspended-bg);
+  color: var(--suspended-color);
+  border-color: var(--suspended-border);
 }
 
 .status-badge.error {
@@ -249,6 +261,12 @@
   background-color: var(--error-bg);
   color: var(--error-color);
   border-color: var(--error-border);
+}
+
+.stat-chip.suspended {
+  background-color: var(--suspended-bg);
+  color: var(--suspended-color);
+  border-color: var(--suspended-border);
 }
 
 .stat-chip.pending {

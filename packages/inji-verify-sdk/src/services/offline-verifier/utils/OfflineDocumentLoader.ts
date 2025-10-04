@@ -40,25 +40,14 @@ export class OfflineDocumentLoader {
     if (canFetch) {
       console.log(`🌐 [OfflineDocumentLoader] Fetching exact context: ${url}`);
       try {
-        // Add timeout to prevent long waits
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
-        
-        const resp = await fetch(url, { 
-          headers: { Accept: 'application/ld+json, application/json' }, 
-          cache: 'no-store' as RequestCache,
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        
+        const resp = await fetch(url, { headers: { Accept: 'application/ld+json, application/json' }, cache: 'no-store' as RequestCache });
         if (!resp.ok) throw new Error(`Failed to fetch context: ${url} (${resp.status})`);
         const document = await resp.json();
         // Use the helper to cache the newly fetched context
         await putContexts([{ url, document }]);
         return { contextUrl: undefined, document, documentUrl: url };
       } catch (e: any) {
-        const errorMsg = (e.message || e.name || '').toLowerCase();
-        console.error(`[OfflineDocumentLoader] Network fetch failed for ${url}:`, errorMsg);
+        console.error(`[OfflineDocumentLoader] Network fetch failed for ${url}:`, e.message);
         // Treat any fetch failure (when not already cached) as missing offline dependency
         // so upstream can show a clear message and guide the user to seed the cache.
         throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef, type ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { syncToServer as syncToServerService } from '../services/syncService';
 import { 
@@ -175,6 +175,7 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
     const [serviceWorkerActive, setServiceWorkerActive] = useState(false);
     const [verificationDurations, setVerificationDurations] = useState<number[]>(() => loadDurations(VERIFICATION_METRICS_KEY));
     const [storageDurations, setStorageDurations] = useState<number[]>(() => loadDurations(STORAGE_METRICS_KEY));
+    const connectivityFailureStreak = useRef(0);
 
     const recordVerificationDuration = useCallback((durationMs: number) => {
         if (!Number.isFinite(durationMs) || durationMs <= 0) {
@@ -510,32 +511,49 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
     }, []);
 
     // Enhanced network connectivity detection
-    const checkNetworkConnectivity = async (): Promise<boolean> => {
+    const CONNECTIVITY_TIMEOUT_MS = 1500;
+    const CONNECTIVITY_FAILURE_THRESHOLD = 2;
+
+    const checkNetworkConnectivity = async (): Promise<boolean | 'unknown'> => {
+        // First check navigator.onLine for basic network interface status
+        if (!navigator.onLine) {
+            console.log('Browser reports offline (navigator.onLine = false)');
+            return false;
+        }
+
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), CONNECTIVITY_TIMEOUT_MS);
+
         try {
-            // First check navigator.onLine for basic network interface status
-            if (!navigator.onLine) {
-                console.log('Browser reports offline (navigator.onLine = false)');
-                return false;
-            }
-
             // Then do an actual network request to verify internet connectivity
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 300); // 300ms timeout for even faster response
-
             const response = await fetch('/healthz', {
                 method: 'HEAD',
                 cache: 'no-store',
                 signal: controller.signal,
             });
 
-            clearTimeout(timeoutId);
-            const isConnected = response.ok;
-            console.log('Network connectivity check result:', isConnected);
+            const statusCode = response.status;
+            const isConnected = response.ok || statusCode > 0;
+            console.log('Network connectivity check result:', isConnected, `(status ${statusCode})`);
             return isConnected;
         } catch (error) {
-            // Network request failed - we're offline or have connectivity issues
+            const errorName = (error as { name?: string })?.name ?? '';
+            const errorMessage = (error as { message?: string })?.message ?? '';
+            const isAbort =
+                errorName === 'AbortError' ||
+                errorName === 'TimeoutError' ||
+                error instanceof DOMException && error.name === 'AbortError' ||
+                errorMessage.toLowerCase().includes('aborted');
+
+            if (isAbort) {
+                console.warn('Network connectivity check timed out or was aborted. Keeping previous status.', error);
+                return 'unknown';
+            }
+
             console.log('Network connectivity check failed:', error);
             return false;
+        } finally {
+            clearTimeout(timeoutId);
         }
     };
 
@@ -553,15 +571,38 @@ export const VCStorageProvider = (props: { children?: ReactNode | null }) => {
             
             isCheckingConnectivity = true;
             try {
-                const isConnected = await checkNetworkConnectivity();
-                
+                const connectivityResult = await checkNetworkConnectivity();
+
                 setIsOnline(prevIsOnline => {
-                    if (isConnected && !prevIsOnline) {
-                        console.log('🟢 Connection restored - now ONLINE');
-                    } else if (!isConnected && prevIsOnline) {
+                    if (connectivityResult === 'unknown') {
+                        console.log('Connectivity check inconclusive (timeout/abort). Retaining previous status:', prevIsOnline ? 'ONLINE' : 'OFFLINE');
+                        return prevIsOnline;
+                    }
+
+                    if (connectivityResult) {
+                        if (!prevIsOnline) {
+                            console.log('🟢 Connection restored - now ONLINE');
+                        }
+                        if (connectivityFailureStreak.current !== 0) {
+                            connectivityFailureStreak.current = 0;
+                        }
+                        return true;
+                    }
+
+                    connectivityFailureStreak.current += 1;
+
+                    if (connectivityFailureStreak.current < CONNECTIVITY_FAILURE_THRESHOLD) {
+                        console.warn(
+                            `Connectivity check failed (${connectivityFailureStreak.current}/${CONNECTIVITY_FAILURE_THRESHOLD}) — holding status at`,
+                            prevIsOnline ? 'ONLINE' : 'OFFLINE'
+                        );
+                        return prevIsOnline;
+                    }
+
+                    if (prevIsOnline) {
                         console.log('🔴 Connection lost - now OFFLINE');
                     }
-                    return isConnected;
+                    return false;
                 });
             } finally {
                 isCheckingConnectivity = false;

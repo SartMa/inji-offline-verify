@@ -115,7 +115,7 @@ All mandatory requirements from the MOSIP Inji Verify problem statement have bee
 
 ### Prerequisites
 
-- **Node.js** 18+ and **pnpm** 8+
+- **Node.js** 18+
 - **Python** 3.11+ and **uv** package manager
 - **Docker** and **Docker Compose** (recommended)
 
@@ -169,27 +169,6 @@ docker compose exec api python manage.py test
 pnpm test
 ```
 
-### Manual Development Setup
-
-1. **Install dependencies**:
-   ```bash
-   pnpm install
-   ```
-
-2. **Start the backend**:
-   ```bash
-   pnpm nx serve server
-   ```
-
-3. **Start the frontend applications**:
-   ```bash
-   # Worker PWA
-   pnpm nx dev worker-pwa
-   
-   # Organization Portal  
-   pnpm nx dev organization-portal
-   ```
----
 
 ## Deployment
 

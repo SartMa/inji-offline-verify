@@ -146,6 +146,7 @@ class CredentialsVerifier {
                     CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING
                 );
             }
+            console.error('HI I am Harsh Mohta Verification failed',error);
             return new VerificationResult(
                 false, 
                 `${CredentialVerifierConstants.EXCEPTION_DURING_VERIFICATION}${error.message}`, 

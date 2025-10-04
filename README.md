@@ -115,7 +115,7 @@ All mandatory requirements from the MOSIP Inji Verify problem statement have bee
 
 ### Prerequisites
 
-- **Node.js** 18+ and **pnpm** 8+
+- **Node.js** 18+
 - **Python** 3.11+ and **uv** package manager
 - **Docker** and **Docker Compose** (recommended)
 

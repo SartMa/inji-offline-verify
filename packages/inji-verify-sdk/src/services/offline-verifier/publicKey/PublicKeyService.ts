@@ -40,10 +40,18 @@ export class PublicKeyService {
             throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
           }
           
-          // Online fallback: resolve and cache
+          // Online fallback: resolve and cache with timeout
           if (typeof navigator !== 'undefined' && navigator.onLine) {
             try {
-              const pk = await new PublicKeyGetterFactory().get(verificationMethod);
+              // Add a shorter timeout wrapper for public key resolution
+              const timeoutPromise = new Promise<never>((_, reject) => {
+                setTimeout(() => reject(new Error('Public key resolution timeout')), 3000);
+              });
+              
+              const pk = await Promise.race([
+                new PublicKeyGetterFactory().get(verificationMethod),
+                timeoutPromise
+              ]);
               let public_key_multibase: string | undefined;
               let public_key_jwk: any | undefined;
               let public_key_hex: string | undefined;
@@ -115,15 +123,20 @@ export class PublicKeyService {
               record = await store2.get(verificationMethod);
             } catch (e: any) {
               console.error('💥 Error resolving public key online:', e);
-              const message = (e?.message ?? '').toString().toLowerCase();
-              // If it's a network error (fetch/timeout/abort failed), throw offline dependencies error
-              if (
-                message.includes('fetch') ||
-                message.includes('network') ||
-                message.includes('failed to fetch') ||
-                message.includes('abort') ||
-                message.includes('timeout')
-              ) {
+              // Map all network-related errors to offline dependencies missing
+              const errorMsg = (e.message || '').toLowerCase();
+              const isNetworkError = 
+                errorMsg.includes('fetch') ||
+                errorMsg.includes('network') ||
+                errorMsg.includes('failed to fetch') ||
+                errorMsg.includes('timeout') ||
+                errorMsg.includes('timed out') ||
+                errorMsg.includes('request timed out') ||
+                errorMsg.includes('aborted') ||
+                errorMsg.includes('could not retrieve');
+              
+              if (isNetworkError) {
+                console.error(`❌ Network failure treated as missing offline dependencies for: ${verificationMethod}`);
                 throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
               }
               throw e;
@@ -150,9 +163,9 @@ export class PublicKeyService {
       };
     } catch (e: any) {
       console.error('💥 Error retrieving public key from cache:', e);
-      const message = (e?.message ?? '').toString();
-      if (message.includes(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING)) {
-        throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
+      // Re-throw offline dependencies error instead of returning null
+      if (e.message === CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING) {
+        throw e;
       }
       return null;
     }

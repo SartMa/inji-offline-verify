@@ -133,8 +133,12 @@ class CredentialsVerifier {
         } catch (error: any) {
             // Map offline-missing-dependencies to a clear, user-friendly error result
             const msg = (error?.message ?? '').toString();
+            const errorCode = error?.code || error?.name || '';
+            
+            // Check both message and error properties for offline dependencies
             if (msg === CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING ||
-                msg.includes(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING)) {
+                msg.includes(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING) ||
+                errorCode === CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING) {
                 return new VerificationResult(
                     false,
                     CredentialVerifierConstants.ERROR_MESSAGE_OFFLINE_DEPENDENCIES_MISSING,

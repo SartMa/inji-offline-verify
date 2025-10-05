@@ -377,8 +377,9 @@ Each test case includes both the JSON credential file and a corresponding screen
 
 ### Additional Resources
 
-- **API Documentation & Collections**: [Google Drive Documentation Hub](https://drive.google.com/drive/folders/your-api-docs-folder)
-- **Product Demo Video**: [Implementation Walkthrough](https://drive.google.com/file/d/your-demo-video)
-- **Stakeholder Presentation**: [Technical Architecture Overview](https://drive.google.com/file/d/your-presentation)
+- **API Documentation & Collections**: [Google Drive Documentation Hub](https://drive.google.com/file/d/1q3SLQngiJ2eISdTgpL5AG6DiBQ6WNK2c/view?usp=sharing)
+- **Product Demo Video**: [Implementation Walkthrough](https://youtu.be/HOshQ8VpuR8)
+- **Stakeholder Presentation**: [Technical Architecture Overview](https://docs.google.com/presentation/d/1LrUfBv5oJhmqy3MOOzcDQ19ptVMdoLVX/edit?usp=sharing&ouid=103834762058479220213&rtpof=true&sd=true)
 - **MOSIP Problem Statement**: [Official Requirements Document](https://www.mosip.io/pdf/Inji_Verify_Offline_Verification.pdf)
+- **SRS Documentation**: [SRS Document](https://drive.google.com/file/d/10hzXUci_JbqCvhk1-aJm4cGLxNMes4f0/view?usp=sharing)
 

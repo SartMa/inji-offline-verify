@@ -8,6 +8,7 @@ import { UnknownException } from './exception/index.js';
 import { OfflineDocumentLoader } from './utils/OfflineDocumentLoader.js';
 import { PublicKeyService } from './publicKey/PublicKeyService.js';
 import { buildEd25519VerificationDocuments } from './signature/ed25519Presentation.js';
+import { createSdkLogger } from '../../utils/logger.js';
 
 interface PresentationVerifyOptions {
 	challenge?: string;
@@ -16,7 +17,7 @@ interface PresentationVerifyOptions {
 }
 
 export class PresentationVerifier {
-	private readonly logger = console;
+	private readonly logger = createSdkLogger('PresentationVerifier');
 	private readonly publicKeyService = new PublicKeyService();
 
 	async verify(
@@ -28,13 +29,13 @@ export class PresentationVerifier {
 			const proof = this.extractProof(presentation);
 
 			if (proof.type !== CredentialVerifierConstants.ED25519_PROOF_TYPE_2020) {
-				this.logger.error(`❌ Unsupported presentation proof type: ${proof.type}`);
+				this.logger.debug?.(`❌ Unsupported presentation proof type: ${proof.type}`);
 				return new PresentationVerificationResult(VPVerificationStatus.INVALID, []);
 			}
 
 			const verificationMethodUrl = proof.verificationMethod;
 			if (typeof verificationMethodUrl !== 'string' || verificationMethodUrl.length === 0) {
-				this.logger.error('❌ Presentation proof is missing a verificationMethod');
+				this.logger.debug?.('❌ Presentation proof is missing a verificationMethod');
 				return new PresentationVerificationResult(VPVerificationStatus.INVALID, []);
 			}
 
@@ -42,7 +43,7 @@ export class PresentationVerifier {
 
 			const publicKeyData = await this.publicKeyService.getPublicKey(verificationMethodUrl);
 			if (!publicKeyData) {
-				this.logger.error(`❌ Unable to resolve public key for presentation VM: ${verificationMethodUrl}`);
+				this.logger.debug?.(`❌ Unable to resolve public key for presentation VM: ${verificationMethodUrl}`);
 				if (typeof navigator !== 'undefined' && !navigator.onLine) {
 					throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
 				}
@@ -111,7 +112,7 @@ export class PresentationVerifier {
 			if (message === CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING) {
 				throw error;
 			}
-			this.logger.error('💥 An unexpected error occurred during presentation verification:', message);
+			this.logger.debug?.('💥 An unexpected error occurred during presentation verification:', message);
 			throw new UnknownException(`Error during presentation verification: ${message}`);
 		}
 	}

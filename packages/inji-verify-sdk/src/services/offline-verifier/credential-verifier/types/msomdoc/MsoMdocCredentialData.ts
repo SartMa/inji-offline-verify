@@ -1,7 +1,10 @@
 import { Decoder, Encoder } from 'cbor-x';
+import { createSdkLogger } from '../../../../../utils/logger.js';
 
 const cborDecoder = new Decoder();
 const cborEncoder = new Encoder();
+
+const logger = createSdkLogger('MsoMdocCredentialData');
 
 // Type aliases (equivalent to Kotlin typealias)
 export type IssuerAuth = any[] | null;  // Array?
@@ -45,7 +48,7 @@ export function extractFieldValue(issuerSignedNamespaces: IssuerSignedNamespaces
  */
 export function extractMso(issuerAuth: IssuerAuth): any {
   if (!issuerAuth) {
-    console.error("IssuerAuth in credential is not available");
+    logger.debug?.("IssuerAuth in credential is not available");
     throw new Error("Invalid Issuer Auth");
   }
 

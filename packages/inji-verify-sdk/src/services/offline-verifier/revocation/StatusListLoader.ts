@@ -1,5 +1,6 @@
 import { getStatusListCredentialById, putStatusListCredentials } from '../cache/utils/CacheHelper';
 import { RevocationErrorCodes, RevocationMessages } from './RevocationConstants';
+import { createSdkLogger } from '../../../utils/logger.js';
 
 export interface LoadedStatusListCredential {
   id: string;
@@ -13,7 +14,7 @@ export interface LoadedStatusListCredential {
 }
 
 export class StatusListLoader {
-  private logger = console;
+  private logger = createSdkLogger('StatusListLoader');
 
   private normalizePurposes(value: any): string[] {
     if (!value) return [];
@@ -43,7 +44,7 @@ export class StatusListLoader {
     // 1. Try cache
     const cached = await getStatusListCredentialById(statusListId);
     if (cached?.full_credential) {
-      this.logger.info('[StatusListLoader] Loaded status list from cache', {
+  this.logger.debug?.('[StatusListLoader] Loaded status list from cache', {
         statusListId,
         cachedAt: cached.cachedAt,
         issuer: cached.issuer
@@ -58,7 +59,7 @@ export class StatusListLoader {
     }
 
     // 2. Fetch network as fallback
-    this.logger.warn('[StatusListLoader] Cache miss, fetching status list from network', statusListId);
+    this.logger.debug?.('[StatusListLoader] Cache miss, fetching status list from network', statusListId);
     try {
       const resp = await fetch(statusListId, { headers: { Accept: 'application/ld+json, application/json' } });
       if (!resp.ok) {
@@ -79,11 +80,11 @@ export class StatusListLoader {
           organization_id: '',
           updated_at: json.updatedAt ?? json.updated_at ?? json.issuanceDate ?? json.issuance_date,
         }]);
-        this.logger.info('[StatusListLoader] Cached status list credential', statusListIdExtracted);
+  this.logger.debug?.('[StatusListLoader] Cached status list credential', statusListIdExtracted);
       } catch {}
       return this.normalize(json);
     } catch (e) {
-      this.logger.error('[StatusListLoader] Retrieval failed:', e);
+      this.logger.debug?.('[StatusListLoader] Retrieval failed:', e);
       const err: any = new Error(RevocationMessages[RevocationErrorCodes.STATUS_RETRIEVAL_ERROR]);
       err.code = RevocationErrorCodes.STATUS_RETRIEVAL_ERROR;
       throw err;

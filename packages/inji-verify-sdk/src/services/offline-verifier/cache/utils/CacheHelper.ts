@@ -1,5 +1,8 @@
 import { CONTEXT_STORE, KEY_STORE, KEY_INDEX_CONTROLLER, STATUS_LIST_STORE } from '../constants/CacheConstants';
 import { dbService } from '../DBService'; // Import the singleton instance
+import { createSdkLogger } from '../../../../utils/logger.js';
+
+const logger = createSdkLogger('CacheHelper');
 
 export type CachedPublicKey = {
   key_id: string;                 // e.g., did:web:...#key-0
@@ -59,7 +62,7 @@ export async function replaceContextsForOrganization(organizationId: string, con
     }
     await tx3.done;
   }
-  console.log(`[CacheHelper] Replaced ${existing.length} existing contexts with ${contexts.length} new contexts for organization ${organizationId}`);
+  logger.debug?.(`[CacheHelper] Replaced ${existing.length} existing contexts with ${contexts.length} new contexts for organization ${organizationId}`);
 }
 
 export async function putPublicKeys(keys: CachedPublicKey[]): Promise<void> {
@@ -148,7 +151,7 @@ export async function replacePublicKeysForOrganization(organizationId: string, p
     await tx3.done;
   }
   
-  console.log(`[CacheHelper] Replaced ${existingKeys.length} existing public keys with ${publicKeys.length} new keys for organization ${organizationId}`);
+  logger.debug?.(`[CacheHelper] Replaced ${existingKeys.length} existing public keys with ${publicKeys.length} new keys for organization ${organizationId}`);
 }
 
 // ---------------- Status List Credential Helpers -----------------
@@ -242,7 +245,7 @@ export async function replaceStatusListCredentialsForOrganization(organizationId
     }
     await tx3.done;
   }
-  console.log(`[CacheHelper] Replaced ${existing.length} existing status list credentials with ${creds.length} new credentials for organization ${organizationId}`);
+  logger.debug?.(`[CacheHelper] Replaced ${existing.length} existing status list credentials with ${creds.length} new credentials for organization ${organizationId}`);
 }
 
 export async function getStatusListCredentialById(statusListId: string): Promise<CachedStatusListCredential | null> {

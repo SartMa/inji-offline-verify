@@ -1,3 +1,7 @@
+import { createSdkLogger } from './logger.js';
+
+const logger = createSdkLogger('api');
+
 export const vcVerification = async (credential: unknown, url: string) => {
   const body = JSON.stringify(credential);
   const requestOptions = {
@@ -13,7 +17,7 @@ export const vcVerification = async (credential: unknown, url: string) => {
     const data = await response.json();
     return data.verificationStatus;
   } catch (error) {
-    console.error(error);
+    logger.debug?.(error);
     if (error instanceof Error) {
       throw Error(error.message);
     } else {
@@ -37,7 +41,7 @@ export const vcSubmission = async (credential: unknown, url: string) => {
     const data = await response.json();
     return data.transactionId;
   } catch (error) {
-    console.error(error);
+    logger.debug?.(error);
     if (error instanceof Error) {
       throw Error(error.message);
     } else {

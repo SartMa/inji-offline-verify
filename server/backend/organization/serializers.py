@@ -128,7 +128,7 @@ INJI Offline Verifier Team"""
             sent = send_mail(subject, message, getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@example.com'), [pending.admin_email])
             delivered = sent == 1
             if not delivered:
-                logger.warning("OTP email send_mail returned %s (expected 1) for %s", sent, pending.admin_email)
+                logger.debuging("OTP email send_mail returned %s (expected 1) for %s", sent, pending.admin_email)
         except Exception as e:
             logger.exception("Failed to send OTP email to %s: %s", pending.admin_email, e)
         return {

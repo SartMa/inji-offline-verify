@@ -3,6 +3,7 @@ import { StatusListLoader } from './StatusListLoader';
 import { RevocationErrorCodes, RevocationMessages, BITSTRING_MIN_ENTRIES, BITSTRING_STATUS_ENTRY_TYPE } from './RevocationConstants';
 import { CredentialVerifierFactory } from '../credential-verifier/credentialVerifierFactory';
 import { CredentialFormat } from '../constants/CredentialFormat';
+import { createSdkLogger } from '../../../utils/logger.js';
 
 export interface RevocationCheckResult {
   valid: boolean;           // true if not revoked
@@ -15,7 +16,7 @@ export interface RevocationCheckResult {
 
 export class RevocationChecker {
   private loader = new StatusListLoader();
-  private logger = console;
+  private logger = createSdkLogger('RevocationChecker');
 
   /**
    * Performs revocation check if credential has BitstringStatusListEntry credentialStatus.
@@ -28,7 +29,7 @@ export class RevocationChecker {
 
       // Support object or array forms
       const entries = Array.isArray(statusEntry) ? statusEntry : [statusEntry];
-      this.logger.info('[RevocationChecker] Found credentialStatus entries:', entries);
+  this.logger.debug?.('[RevocationChecker] Found credentialStatus entries:', entries);
       const bitstringEntry = entries.find(e => this.isBitstringEntry(e));
       if (!bitstringEntry) return null; // different status method
 
@@ -37,7 +38,7 @@ export class RevocationChecker {
   // Raw (possibly array) purpose value present in the credential's status entry
   const statusPurpose = bitstringEntry.statusPurpose || bitstringEntry.status_purpose;
 
-      this.logger.info('[RevocationChecker] Using bitstring entry', {
+  this.logger.debug?.('[RevocationChecker] Using bitstring entry', {
         statusListCredentialUrl,
         statusListIndex: statusListIndexStr,
         statusPurpose
@@ -54,7 +55,7 @@ export class RevocationChecker {
 
       // Load status list credential (cache-first)
       const statusListVC = await this.loader.load(statusListCredentialUrl);
-      this.logger.info('[RevocationChecker] Loaded status list credential', {
+  this.logger.debug?.('[RevocationChecker] Loaded status list credential', {
         id: statusListVC.id,
         statusPurpose: statusListVC.statusPurpose,
         encodedListLength: statusListVC.encodedList?.length
@@ -78,7 +79,7 @@ export class RevocationChecker {
             throw new Error('Status list proof verification failed');
           }
         } catch (proofErr: any) {
-          this.logger.error('[RevocationChecker] Status list proof verification failed:', proofErr?.message || proofErr);
+          this.logger.debug?.('[RevocationChecker] Status list proof verification failed:', proofErr?.message || proofErr);
           throw this.error(RevocationErrorCodes.STATUS_VERIFICATION_ERROR, 'Unable to verify status list credential proof');
         }
       }
@@ -104,7 +105,7 @@ export class RevocationChecker {
 
       // Expand bitstring
       const expanded = await expandCompressedBitstring(statusListVC.encodedList);
-      this.logger.info('[RevocationChecker] Expanded bitstring length (bytes):', expanded.length);
+  this.logger.debug?.('[RevocationChecker] Expanded bitstring length (bytes):', expanded.length);
 
       // Each status is a bit (size=1). Determine minimum length requirement.
       if (expanded.length * 8 < BITSTRING_MIN_ENTRIES) {
@@ -122,7 +123,7 @@ export class RevocationChecker {
   // Generation code sets bits using (7 - bitPosition) i.e. MSB-first
   const statusBit = (byte >> (7 - bitOffset)) & 0x01; // 0=clear,1=set
 
-      this.logger.info('[RevocationChecker] Status bit evaluation', {
+  this.logger.debug?.('[RevocationChecker] Status bit evaluation', {
         statusListIndex,
         byteIndex,
         bitOffset,
@@ -168,7 +169,7 @@ export class RevocationChecker {
         return { valid: false, status: 1, purpose: 'unknown', errorCode: e.code, errorMessage: e.message };
       }
       // Unexpected error
-      this.logger.error('[RevocationChecker] Unexpected error:', e);
+      this.logger.debug?.('[RevocationChecker] Unexpected error:', e);
       return { valid: false, status: 1, purpose: 'unknown', errorCode: RevocationErrorCodes.STATUS_VERIFICATION_ERROR, errorMessage: e?.message || 'Unknown revocation error' };
     }
   }

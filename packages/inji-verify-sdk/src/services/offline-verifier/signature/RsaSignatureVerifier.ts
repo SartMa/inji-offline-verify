@@ -7,16 +7,17 @@ import {
   computeLinkedDataVerifyArtifacts,
   concatBytes,
 } from '../utils/VerificationMethodUtils.js';
+import { createSdkLogger } from '../../../utils/logger.js';
 
 export class RsaSignatureVerifier {
   constructor(
     private readonly publicKeyService: PublicKeyService,
-    private readonly logger: Console = console,
+    private readonly logger: Console = createSdkLogger('RsaSignatureVerifier'),
   ) {}
 
   async verify(vcObject: any, proof: any): Promise<boolean> {
     try {
-      this.logger.info('🔎 [RSA] Starting verification', {
+  this.logger.debug?.('🔎 [RSA] Starting verification', {
         verificationMethod: proof.verificationMethod,
         created: proof.created,
         proofPurpose: proof.proofPurpose,
@@ -30,16 +31,16 @@ export class RsaSignatureVerifier {
         proof,
         OfflineDocumentLoader.getDocumentLoader(),
       );
-      this.logger.info('🧮 [RSA] Canonicalization complete', {
+  this.logger.debug?.('🧮 [RSA] Canonicalization complete', {
         payloadBytesLength: payloadBytes.length,
       });
 
       const jws: string = proof.jws;
       if (!jws || typeof jws !== 'string') {
-        this.logger.error('❌ [RSA] Proof did not contain a valid JWS string');
+        this.logger.debug?.('❌ [RSA] Proof did not contain a valid JWS string');
         throw new Error('Invalid JWS in proof');
       }
-      this.logger.info('🔏 [RSA] Received JWS', {
+  this.logger.debug?.('🔏 [RSA] Received JWS', {
         length: jws.length,
         preview: this.maskString(jws),
       });
@@ -52,28 +53,28 @@ export class RsaSignatureVerifier {
 
       const headerJson = Base64Utils.base64UrlDecode(protectedHeaderB64);
       const header = JSON.parse(headerJson);
-      this.logger.info('🧾 [RSA] Parsed JWS header', { header });
+  this.logger.debug?.('🧾 [RSA] Parsed JWS header', { header });
 
       const alg = header.alg;
       if (alg !== CredentialVerifierConstants.JWS_RS256_SIGN_ALGO_CONST && alg !== CredentialVerifierConstants.JWS_PS256_SIGN_ALGO_CONST) {
-        this.logger.error(`❌ Unsupported RSA JWS algorithm: ${alg}`);
+        this.logger.debug?.(`❌ Unsupported RSA JWS algorithm: ${alg}`);
         return false;
       }
-      this.logger.info(`⚙️ [RSA] Using algorithm ${alg}`);
+  this.logger.debug?.(`⚙️ [RSA] Using algorithm ${alg}`);
 
       if (header.b64 !== false || !Array.isArray(header.crit) || !header.crit.includes('b64')) {
-        this.logger.warn('⚠️ RSA proof header missing detached payload flags (b64=false, crit contains b64). Proceeding cautiously.');
+        this.logger.debug?.('⚠️ RSA proof header missing detached payload flags (b64=false, crit contains b64). Proceeding cautiously.');
       }
 
       const vm = await this.publicKeyService.getPublicKey(proof.verificationMethod);
       if (!vm) {
-        this.logger.error(`❌ Could not resolve public key for: ${proof.verificationMethod}`);
+        this.logger.debug?.(`❌ Could not resolve public key for: ${proof.verificationMethod}`);
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
           throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
         }
         return false;
       }
-      this.logger.info('🔑 [RSA] Loaded verification method', {
+  this.logger.debug?.('🔑 [RSA] Loaded verification method', {
         controller: vm.controller,
         type: vm.type,
         material: this.describePublicKeyMaterial(vm),
@@ -82,7 +83,7 @@ export class RsaSignatureVerifier {
       const subtle = await this.getSubtleCrypto();
       const cryptoKey = await this.importRsaPublicKey(vm, alg, subtle);
       if (!cryptoKey) {
-        this.logger.error('❌ Unable to import RSA public key for verification');
+        this.logger.debug?.('❌ Unable to import RSA public key for verification');
         return false;
       }
 
@@ -99,7 +100,7 @@ export class RsaSignatureVerifier {
       const verifyParams = alg === CredentialVerifierConstants.JWS_PS256_SIGN_ALGO_CONST
         ? { name: 'RSA-PSS', saltLength: CredentialVerifierConstants.PSS_PARAM_SALT_LEN }
         : { name: 'RSASSA-PKCS1-v1_5' };
-      this.logger.info('🪄 [RSA] Prepared signing input and signature buffers', {
+  this.logger.debug?.('🪄 [RSA] Prepared signing input and signature buffers', {
         signingInputLength: signingBytes.length,
         signatureLength: signatureBytes.length,
         verifyParamsName: verifyParams.name,
@@ -113,13 +114,13 @@ export class RsaSignatureVerifier {
       );
 
       if (!verified) {
-        this.logger.error('❌ RSA signature verification failed');
+        this.logger.debug?.('❌ RSA signature verification failed');
       } else {
-        this.logger.info('✅ [RSA] Signature verified successfully');
+  this.logger.debug?.('✅ [RSA] Signature verified successfully');
       }
       return verified;
     } catch (error: any) {
-      this.logger.error('💥 A critical error occurred during RSA signature verification:', error?.message ?? error);
+      this.logger.debug?.('💥 A critical error occurred during RSA signature verification:', error?.message ?? error);
       if (error?.message === CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING) {
         throw error;
       }
@@ -138,7 +139,7 @@ export class RsaSignatureVerifier {
           return webcrypto.subtle as unknown as SubtleCrypto;
         }
       } catch (error) {
-        this.logger.error('⚠️ Unable to load Node.js webcrypto implementation:', error);
+        this.logger.debug?.('⚠️ Unable to load Node.js webcrypto implementation:', error);
       }
     }
     throw new Error('SubtleCrypto not available in this environment');
@@ -158,12 +159,12 @@ export class RsaSignatureVerifier {
           ext: vm.publicKeyJwk.ext ?? true,
         };
         const key = await subtle.importKey('jwk', jwk, algorithm, false, ['verify']);
-        this.logger.info('🔑 [RSA] Imported verification key from JWK', {
+  this.logger.debug?.('🔑 [RSA] Imported verification key from JWK', {
           jwkSummary: this.describeJwk(vm.publicKeyJwk),
         });
         return key;
       } catch (error) {
-        this.logger.warn('⚠️ Failed to import RSA public key from JWK, falling back to PEM if available:', error);
+        this.logger.debug?.('⚠️ Failed to import RSA public key from JWK, falling back to PEM if available:', error);
       }
     }
 
@@ -172,12 +173,12 @@ export class RsaSignatureVerifier {
         const der = parsePemToDer(vm.publicKeyPem);
         const derBytes = new Uint8Array(der);
         const key = await subtle.importKey('spki', derBytes, algorithm, false, ['verify']);
-        this.logger.info('🔑 [RSA] Imported verification key from PEM', {
+  this.logger.debug?.('🔑 [RSA] Imported verification key from PEM', {
           pemLength: vm.publicKeyPem.length,
         });
         return key;
       } catch (error) {
-        this.logger.error('💥 Failed to import RSA public key from PEM:', error);
+        this.logger.debug?.('💥 Failed to import RSA public key from PEM:', error);
       }
     }
 

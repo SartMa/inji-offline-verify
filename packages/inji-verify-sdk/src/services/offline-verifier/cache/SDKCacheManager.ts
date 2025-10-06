@@ -7,6 +7,9 @@ import { CachedPublicKey, putContexts, putPublicKeys, replacePublicKeysForOrgani
 import type { CacheBundle } from './utils/OrgResolver';
 import { PublicKeyGetterFactory } from '../publicKey/PublicKeyGetterFactory';
 import { base58btc } from 'multiformats/bases/base58';
+import { createSdkLogger } from '../../../utils/logger.js';
+
+const logger = createSdkLogger('SDKCacheManager');
 
 function unique<T>(arr: T[]) { return Array.from(new Set(arr)); }
 
@@ -76,7 +79,7 @@ export class SDKCacheManager {
       const docs: Array<{ url: string; document: any }> = [];
       for (const url of unique(bundle.contextUrls)) {
         const resp = await fetch(url, { headers: { Accept: 'application/ld+json, application/json' } });
-        if (!resp.ok) { console.warn('[SDKCacheManager] Context fetch failed:', url, resp.status); continue; }
+  if (!resp.ok) { logger.debug?.('[SDKCacheManager] Context fetch failed:', url, resp.status); continue; }
         docs.push({ url, document: await resp.json() });
       }
       if (docs.length) await putContexts(docs);
@@ -97,7 +100,7 @@ export class SDKCacheManager {
           updated_at: c.updated_at ?? c.updatedAt ?? c.full_credential?.updated_at ?? c.full_credential?.updatedAt,
         })).filter(c => !!c.status_list_id));
       } catch (e) {
-        console.warn('[SDKCacheManager] Failed to prime status list credentials:', e);
+        logger.debug?.('[SDKCacheManager] Failed to prime status list credentials:', e);
       }
     }
   }
@@ -115,7 +118,7 @@ export class SDKCacheManager {
       const docs: Array<{ url: string; document: any }> = [];
       for (const url of unique(bundle.contextUrls)) {
         const resp = await fetch(url, { headers: { Accept: 'application/ld+json, application/json' } });
-        if (!resp.ok) { console.warn('[SDKCacheManager] Context fetch failed:', url, resp.status); continue; }
+  if (!resp.ok) { logger.debug?.('[SDKCacheManager] Context fetch failed:', url, resp.status); continue; }
         docs.push({ url, document: await resp.json() });
       }
       if (docs.length) await replaceContextsForOrganization(organizationId, docs);
@@ -136,7 +139,7 @@ export class SDKCacheManager {
           updated_at: c.updated_at ?? c.updatedAt ?? c.full_credential?.updated_at ?? c.full_credential?.updatedAt,
         })).filter(c => !!c.status_list_id));
       } catch (e) {
-        console.warn('[SDKCacheManager] Failed to sync status list credentials:', e);
+        logger.debug?.('[SDKCacheManager] Failed to sync status list credentials:', e);
       }
     }
   }
@@ -188,7 +191,7 @@ export class SDKCacheManager {
       const docs: Array<{ url: string; document: any }> = [];
       for (const url of contextUrls) {
         const resp = await fetch(url, { headers: { Accept: 'application/ld+json, application/json' } });
-        if (!resp.ok) { console.warn('[SDKCacheManager] Context fetch failed:', url, resp.status); continue; }
+  if (!resp.ok) { logger.debug?.('[SDKCacheManager] Context fetch failed:', url, resp.status); continue; }
         docs.push({ url, document: await resp.json() });
       }
       if (docs.length) await putContexts(docs);

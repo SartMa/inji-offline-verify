@@ -32,6 +32,44 @@ import {
   VPVerificationStatus,
   VerificationStatus as CredentialVerificationStatus,
 } from '../../services/offline-verifier/data/data';
+import { createSdkLogger } from '../../utils/logger.js';
+
+const qrLogger = createSdkLogger('QRCodeVerification');
+
+const resolveFlag = (primary: unknown, fallback: unknown): unknown => (primary ?? fallback);
+
+const isVerboseLoggingEnabled = (): boolean => {
+  const processEnv = typeof process !== 'undefined' && process?.env ? process.env : undefined;
+
+  const importMetaEnv = (() => {
+    try {
+      // @ts-ignore
+      return typeof import.meta !== 'undefined' ? (import.meta as Record<string, any>).env : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
+
+  const flag = resolveFlag(
+    resolveFlag(processEnv?.SDK_ENABLE_QR_DEBUG, processEnv?.SDK_ENABLE_LOGS),
+    resolveFlag(importMetaEnv?.SDK_ENABLE_QR_DEBUG, importMetaEnv?.SDK_ENABLE_LOGS)
+  );
+
+  const globalFlag = resolveFlag((globalThis as any)?.SDK_ENABLE_QR_DEBUG, (globalThis as any)?.SDK_ENABLE_LOGS);
+
+  const value = resolveFlag(flag, globalFlag);
+  return value === true || value === 'true';
+};
+
+const logDebug = (...args: unknown[]) => {
+  if (!isVerboseLoggingEnabled()) return;
+  qrLogger.debug?.(...args);
+};
+
+const logError = (...args: unknown[]) => {
+  if (!isVerboseLoggingEnabled()) return;
+  qrLogger.error?.(...args);
+};
 
 export interface QRCodeVerificationProps {
   triggerElement?: React.ReactNode;
@@ -116,10 +154,10 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
   }, []);
 
   const startVideoStream = useCallback(() => {
-    console.log('QR Scanner: startVideoStream called', { isEnableScan, isCameraActive, streaming: streamingRef.current, retryCount, isStartingCamera });
+    logDebug('QR Scanner: startVideoStream called', { isEnableScan, isCameraActive, streaming: streamingRef.current, retryCount, isStartingCamera });
     
     if (!isEnableScan || isCameraActive || streamingRef.current || isStartingCamera) {
-      console.log('QR Scanner: Early return from startVideoStream - already active or starting');
+      logDebug('QR Scanner: Early return from startVideoStream - already active or starting');
       return;
     }
 
@@ -130,7 +168,7 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
     const video = videoRef.current;
     if (!video) {
       if (retryCount < 10) { // Max 10 retries (1 second total)
-        console.log(`QR Scanner: Video element not ready, retrying ${retryCount + 1}/10 in 100ms...`);
+        logDebug(`QR Scanner: Video element not ready, retrying ${retryCount + 1}/10 in 100ms...`);
         setRetryCount(prev => prev + 1);
         setTimeout(() => {
           setIsStartingCamera(false); // Reset starting state before retry
@@ -138,7 +176,7 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
         }, 100);
         return;
       } else {
-        console.error('QR Scanner: Video element never became available after 10 retries');
+        logError('QR Scanner: Video element never became available after 10 retries');
         setIsStartingCamera(false);
         onError(new Error('Video element not available - camera cannot be initialized'));
         return;
@@ -162,18 +200,18 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
       // No facingMode for fallback - use any available camera
     };
     
-    console.log('QR Scanner: Video element found! Requesting camera access with constraints:', videoConstraints);
+    logDebug('QR Scanner: Video element found! Requesting camera access with constraints:', videoConstraints);
     
     navigator.mediaDevices.getUserMedia({ video: videoConstraints })
       .then((stream) => {
-        console.log('QR Scanner: Camera stream obtained successfully');
+        logDebug('QR Scanner: Camera stream obtained successfully');
         streamingRef.current = true;
         setIsCameraActive(true);
         setIsStartingCamera(false); // Reset starting state
         streamRef.current = stream;
         const video = videoRef.current;
         if (!video) {
-          console.error('QR Scanner: Video element not found after getting stream');
+          logError('QR Scanner: Video element not found after getting stream');
           // Stop the stream if video element is not available
           stream.getTracks().forEach(track => track.stop());
           streamRef.current = null;
@@ -181,28 +219,28 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
         }
         video.srcObject = stream;
         video.onloadedmetadata = () => {
-          console.log('QR Scanner: Video metadata loaded, starting playback');
+          logDebug('QR Scanner: Video metadata loaded, starting playback');
           video.play().then(() => {
-            console.log('QR Scanner: Video playback started, beginning frame processing');
+            logDebug('QR Scanner: Video playback started, beginning frame processing');
             setTimeout(processFrame, FRAME_PROCESS_INTERVAL_MS);
           }).catch((playError) => {
-            console.error('QR Scanner: Video play error:', playError);
+            logError('QR Scanner: Video play error:', playError);
             onError(playError);
           });
         };
       }).catch((streamError) => {
-        console.error('QR Scanner: Environment camera error, trying fallback:', streamError);
+        logError('QR Scanner: Environment camera error, trying fallback:', streamError);
         // Fallback to any available camera
         navigator.mediaDevices.getUserMedia({ video: fallbackConstraints })
           .then((stream) => {
-            console.log('QR Scanner: Fallback camera stream obtained successfully');
+            logDebug('QR Scanner: Fallback camera stream obtained successfully');
             streamingRef.current = true;
             setIsCameraActive(true);
             setIsStartingCamera(false); // Reset starting state
             streamRef.current = stream;
             const video = videoRef.current;
             if (!video) {
-              console.error('QR Scanner: Video element not found in fallback');
+              logError('QR Scanner: Video element not found in fallback');
               // Stop the stream if video element is not available
               stream.getTracks().forEach(track => track.stop());
               streamRef.current = null;
@@ -210,17 +248,17 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
             }
             video.srcObject = stream;
             video.onloadedmetadata = () => {
-              console.log('QR Scanner: Fallback video metadata loaded');
+              logDebug('QR Scanner: Fallback video metadata loaded');
               video.play().then(() => {
-                console.log('QR Scanner: Fallback video playback started');
+                logDebug('QR Scanner: Fallback video playback started');
                 setTimeout(processFrame, FRAME_PROCESS_INTERVAL_MS);
               }).catch((playError) => {
-                console.error('QR Scanner: Fallback video play error:', playError);
+                logError('QR Scanner: Fallback video play error:', playError);
                 onError(playError);
               });
             };
           }).catch((fallbackError) => {
-            console.error('QR Scanner: All camera access attempts failed:', fallbackError);
+            logError('QR Scanner: All camera access attempts failed:', fallbackError);
             setIsStartingCamera(false);
             onError(fallbackError);
           });
@@ -228,7 +266,7 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
   }, [isEnableScan, isCameraActive, onError, processFrame, retryCount]);
 
   const stopVideoStream = () => {
-    console.log('QR Scanner: stopVideoStream called');
+    logDebug('QR Scanner: stopVideoStream called');
     streamingRef.current = false;
     setIsStartingCamera(false); // Reset starting state
     const video = videoRef.current;
@@ -241,6 +279,7 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
       video.srcObject = null;
     }
     setIsCameraActive(false);
+    logDebug('QR Scanner: stopVideoStream completed');
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -276,14 +315,9 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
       // Handles the initial scan (data is a string from QR code)
       if (typeof data === 'string') {
         if (data.startsWith(OvpQrHeader)) {
-          // Log the entire QR data when it starts with the OVP header
-          // Note: This may include sensitive information depending on your QR content.
-          // Remove or guard this log for production if necessary.
-          // eslint-disable-next-line no-console
-          console.log('[QRCodeVerification] OVP QR detected. Full raw data:', data);
+          logDebug('[QRCodeVerification] OVP QR detected. Full raw data:', data);
           const redirectUrl = extractRedirectUrlFromQrData(data);
-          // eslint-disable-next-line no-console
-          console.log('[QRCodeVerification] Extracted redirect URL:', redirectUrl);
+          logDebug('[QRCodeVerification] Extracted redirect URL:', redirectUrl);
           if (!redirectUrl) throw new Error("Failed to extract redirect URL from QR data");
           const encodedOrigin = encodeURIComponent(window.location.origin);
           const url = `${redirectUrl}&client_id=${encodedOrigin}&redirect_uri=${encodedOrigin}%2F#`;
@@ -442,24 +476,24 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
 
   useEffect(() => {
     if (!isEnableScan) {
-      console.log('QR Scanner: Scanning disabled, cleaning up...');
+      logDebug('QR Scanner: Scanning disabled, cleaning up...');
       return;
     }
     
     // Prevent multiple initializations
     if (isCameraActive || streamingRef.current) {
-      console.log('QR Scanner: Camera already active, skipping initialization');
+      logDebug('QR Scanner: Camera already active, skipping initialization');
       return;
     }
     
     // Add a delay to ensure the video element is mounted and DOM is ready
     const timer = setTimeout(() => {
-      console.log('QR Scanner: Starting video stream after delay...');
+      logDebug('QR Scanner: Starting video stream after delay...');
       startVideoStream();
     }, 250); // Increased delay to 250ms
 
     const sessionTimer = setTimeout(() => {
-      console.log('QR Scanner: Session expired, stopping camera');
+      logDebug('QR Scanner: Session expired, stopping camera');
       stopVideoStream();
       onError(new Error("scanSessionExpired"));
     }, ScanSessionExpiryTime);
@@ -468,7 +502,7 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
     timerRef.current = sessionTimer;
     
     return () => {
-      console.log('QR Scanner: Cleanup called');
+      logDebug('QR Scanner: Cleanup called');
       clearTimeout(timer);
       clearTimer();
       stopVideoStream();

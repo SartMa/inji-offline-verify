@@ -5,12 +5,13 @@ import { CredentialVerifierFactory } from './credential-verifier/credentialVerif
 import { VerificationResult } from './data/data.js';
 import { RevocationChecker } from './revocation/RevocationChecker';
 import { RevocationErrorCodes } from './revocation/RevocationConstants';
+import { createSdkLogger } from '../../utils/logger.js';
 
 class CredentialsVerifier {
     private logger: Console;
 
-    constructor() {
-        this.logger = console; // Using console for logging in browser environment
+    constructor(logger: Console = createSdkLogger('CredentialsVerifier')) {
+        this.logger = logger;
     }
 
     /**
@@ -20,7 +21,7 @@ class CredentialsVerifier {
      */
     async verifyCredentials(credentials: string | null | undefined): Promise<boolean> {
         if (credentials === null || credentials === undefined) {
-            this.logger.error("Error - Input credential is null");
+            this.logger.debug?.("Error - Input credential is null");
             throw new Error("Input credential is null");
         }
         
@@ -46,7 +47,7 @@ class CredentialsVerifier {
         try {
             parsedCredential = JSON.parse(credential);
         } catch (parseError) {
-            this.logger.warn('Failed to parse credential JSON for payload attachment:', parseError);
+            this.logger.debug?.('Failed to parse credential JSON for payload attachment:', parseError);
         }
 
         try {
@@ -118,7 +119,7 @@ class CredentialsVerifier {
                     return new VerificationResult(false, revErr.message, revErr.code, payload);
                 }
                 // Otherwise log and continue as success (best-effort revocation)
-                this.logger.warn('Revocation check error (non-fatal):', revErr?.message || revErr);
+                this.logger.debug?.('Revocation check error (non-fatal):', revErr?.message || revErr);
             }
 
             const successPayload = parsedCredential

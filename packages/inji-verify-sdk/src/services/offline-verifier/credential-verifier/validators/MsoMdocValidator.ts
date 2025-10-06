@@ -2,13 +2,14 @@ import { decode } from 'cbor-x';
 import { CredentialValidatorConstants } from '../../constants/CredentialValidatorConstants.js';
 import { ValidationException, UnknownException } from '../../exception/index.js';
 import { DateUtils } from '../../utils/DateUtils.js';
+import { createSdkLogger } from '../../../../utils/logger.js';
 
 /**
  * MSO mDoc Validator - EXACT equivalent of Kotlin implementation
  * This matches the Kotlin logic exactly, line by line
  */
 export class MsoMdocValidator {
-  private readonly logger = console;
+  private readonly logger = createSdkLogger('MsoMdocValidator');
 
   /**
    * Validate MSO mDoc credential - matches Kotlin signature exactly
@@ -29,7 +30,7 @@ export class MsoMdocValidator {
       const validityInfo = mso['validityInfo'];
       
       if (!validityInfo) {
-        this.logger.error("validityInfo is not available in the credential's MSO");
+        this.logger.debug?.("validityInfo is not available in the credential's MSO");
         throw new ValidationException(
           CredentialValidatorConstants.ERROR_MESSAGE_INVALID_DATE_MSO,
           CredentialValidatorConstants.ERROR_CODE_INVALID_DATE_MSO
@@ -40,7 +41,7 @@ export class MsoMdocValidator {
       const validUntil = validityInfo['validUntil'];
 
       if (!validUntil || !validFrom) {
-        this.logger.error("validUntil / validFrom is not available in the credential's MSO");
+        this.logger.debug?.("validUntil / validFrom is not available in the credential's MSO");
         throw new ValidationException(
           CredentialValidatorConstants.ERROR_MESSAGE_INVALID_DATE_MSO,
           CredentialValidatorConstants.ERROR_CODE_INVALID_DATE_MSO
@@ -65,7 +66,7 @@ export class MsoMdocValidator {
       const isValidUntilGreaterThanValidFrom = validUntilDate.getTime() > validFromDate.getTime();
 
       if (isValidFromIsFutureDate) {
-        this.logger.error("Error while doing validity verification - invalid validFrom in the MSO of the credential");
+        this.logger.debug?.("Error while doing validity verification - invalid validFrom in the MSO of the credential");
         throw new ValidationException(
           CredentialValidatorConstants.ERROR_MESSAGE_INVALID_VALID_FROM_MSO,
           CredentialValidatorConstants.ERROR_CODE_INVALID_VALID_FROM_MSO
@@ -73,7 +74,7 @@ export class MsoMdocValidator {
       }
 
       if (isValidUntilIsPastDate) {
-        this.logger.error("Error while doing validity verification - invalid validUntil in the MSO of the credential");
+        this.logger.debug?.("Error while doing validity verification - invalid validUntil in the MSO of the credential");
         throw new ValidationException(
           CredentialValidatorConstants.ERROR_MESSAGE_INVALID_VALID_UNTIL_MSO,
           CredentialValidatorConstants.ERROR_CODE_INVALID_VALID_UNTIL_MSO
@@ -81,7 +82,7 @@ export class MsoMdocValidator {
       }
 
       if (!isValidUntilGreaterThanValidFrom) {
-        this.logger.error("Error while doing validity verification - invalid validFrom / validUntil in the MSO of the credential");
+        this.logger.debug?.("Error while doing validity verification - invalid validFrom / validUntil in the MSO of the credential");
         throw new ValidationException(
           CredentialValidatorConstants.ERROR_MESSAGE_INVALID_DATE_MSO,
           CredentialValidatorConstants.ERROR_CODE_INVALID_DATE_MSO

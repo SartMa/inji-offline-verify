@@ -25,6 +25,7 @@ import {
 } from '../../utils/VerificationMethodUtils.js';
 import { RsaSignatureVerifier } from '../../signature/RsaSignatureVerifier.js';
 import { buildEcVerificationDocuments } from '../../signature/ecDataIntegrity.js';
+import { createSdkLogger } from '../../../../utils/logger.js';
 
 
 /**
@@ -41,7 +42,7 @@ import { buildEcVerificationDocuments } from '../../signature/ecDataIntegrity.js
  * a structurally valid credential by an orchestrator (like a parent CredentialVerifier).
  */
 export class LdpVerifier {
-  private readonly logger = console;
+  private readonly logger = createSdkLogger('LdpVerifier');
   private readonly publicKeyService: PublicKeyService;
   private readonly rsaVerifier: RsaSignatureVerifier;
 
@@ -62,12 +63,12 @@ export class LdpVerifier {
    */
   async verify(credential: string): Promise<boolean> {
     try {
-      this.logger.info('🔍 Starting credential verification process');
+  this.logger.debug?.('🔍 Starting credential verification process');
 
       const vcJsonLdObject = JSON.parse(credential);
       const contextList = Array.isArray(vcJsonLdObject['@context']) ? vcJsonLdObject['@context'] : [vcJsonLdObject['@context']];
       const contextUris = (contextList || []).filter((ctx: any) => typeof ctx === 'string');
-      this.logger.info('📄 Credential summary', {
+  this.logger.debug?.('📄 Credential summary', {
         id: vcJsonLdObject.id ?? 'N/A',
         issuer: vcJsonLdObject.issuer ?? 'N/A',
         proofType: vcJsonLdObject.proof?.type ?? (Array.isArray(vcJsonLdObject.proof) ? vcJsonLdObject.proof.map((p: any) => p.type) : 'N/A'),
@@ -90,17 +91,17 @@ export class LdpVerifier {
       // STEP 1: Extract the proof(s). A credential can have one or more signatures.
       const proof = vcJsonLdObject.proof;
       if (!proof) {
-        this.logger.error("❌ Cryptographic verification failed: No 'proof' field found in the credential.");
+        this.logger.debug?.("❌ Cryptographic verification failed: No 'proof' field found in the credential.");
         return false;
       }
 
       const proofs = Array.isArray(proof) ? proof : [proof];
-      this.logger.info(`🧾 Found ${proofs.length} proof(s) to verify`);
+  this.logger.debug?.(`🧾 Found ${proofs.length} proof(s) to verify`);
 
       // STEP 2: Verify EACH proof. For a credential to be valid, ALL its signatures must be valid.
       for (const singleProof of proofs) {
-        this.logger.info(`🔐 Verifying proof of type: ${singleProof.type}`);
-        this.logger.info('   Proof metadata', {
+  this.logger.debug?.(`🔐 Verifying proof of type: ${singleProof.type}`);
+  this.logger.debug?.('   Proof metadata', {
           verificationMethod: singleProof.verificationMethod,
           proofPurpose: singleProof.proofPurpose,
           created: singleProof.created,
@@ -111,16 +112,16 @@ export class LdpVerifier {
         const isProofValid = await this.verifySingleProof(vcJsonLdObject, singleProof);
 
         if (!isProofValid) {
-          this.logger.error(`❌ Proof verification FAILED for type: ${singleProof.type}. Credential is not valid.`);
+          this.logger.debug?.(`❌ Proof verification FAILED for type: ${singleProof.type}. Credential is not valid.`);
           return false; // If any proof fails, the entire credential fails.
         }
       }
 
-      this.logger.info("✅ All proofs verified successfully. Credential signature is valid!");
+  this.logger.debug?.("✅ All proofs verified successfully. Credential signature is valid!");
       return true;
 
     } catch (exception: any) {
-      this.logger.error('💥 An unexpected error occurred during signature verification:', exception.message);
+      this.logger.debug?.('💥 An unexpected error occurred during signature verification:', exception.message);
       const msg = (exception?.message ?? '').toString();
       if (msg.includes(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING)) {
         // Propagate offline-missing-deps so upper layer can map to friendly message
@@ -149,7 +150,7 @@ export class LdpVerifier {
         return this.verifyWithSuite(vcObject, proof, Ed25519Signature2018, Ed25519VerificationKey2018);
 
       case 'EcdsaSecp256k1Signature2019':
-        this.logger.info('🔐 Using noble secp256k1 verifier for EcdsaSecp256k1Signature2019');
+  this.logger.debug?.('🔐 Using noble secp256k1 verifier for EcdsaSecp256k1Signature2019');
         return this.verifyEcdsaWithNoble(vcObject, proof);
 
       case 'RsaSignature2018':
@@ -157,14 +158,14 @@ export class LdpVerifier {
 
       case 'DataIntegrityProof':
         if (proof.cryptosuite === 'ecdsa-rdfc-2019') {
-          this.logger.info('🔐 Using DataIntegrityProof verifier for ecdsa-rdfc-2019');
+          this.logger.debug?.('🔐 Using DataIntegrityProof verifier for ecdsa-rdfc-2019');
           return this.verifyDataIntegrityEcdsa(vcObject, proof);
         }
-        this.logger.error(`❌ Unsupported DataIntegrityProof cryptosuite: ${proof.cryptosuite || 'unknown'}`);
+        this.logger.debug?.(`❌ Unsupported DataIntegrityProof cryptosuite: ${proof.cryptosuite || 'unknown'}`);
         return false;
 
       default:
-        this.logger.error(`❌ Unsupported signature type: ${proof.type}`);
+        this.logger.debug?.(`❌ Unsupported signature type: ${proof.type}`);
         return false;
     }
   }
@@ -173,13 +174,13 @@ export class LdpVerifier {
     try {
       const verificationMethodUrl: string | undefined = proof?.verificationMethod;
       if (!verificationMethodUrl) {
-        this.logger.error('❌ DataIntegrityProof missing verificationMethod');
+        this.logger.debug?.('❌ DataIntegrityProof missing verificationMethod');
         return false;
       }
 
       const publicKeyData = await this.publicKeyService.getPublicKey(verificationMethodUrl);
       if (!publicKeyData) {
-        this.logger.error(`❌ Could not resolve public key for DataIntegrityProof: ${verificationMethodUrl}`);
+        this.logger.debug?.(`❌ Could not resolve public key for DataIntegrityProof: ${verificationMethodUrl}`);
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
           throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
         }
@@ -228,7 +229,7 @@ export class LdpVerifier {
       });
 
       if (verification.verified) {
-        this.logger.info('✅ DataIntegrityProof (ecdsa-rdfc-2019) verification successful');
+  this.logger.debug?.('✅ DataIntegrityProof (ecdsa-rdfc-2019) verification successful');
         return true;
       }
 
@@ -254,10 +255,10 @@ export class LdpVerifier {
         throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
       }
 
-      this.logger.error('❌ DataIntegrityProof verification failed:', verification);
+      this.logger.debug?.('❌ DataIntegrityProof verification failed:', verification);
       return false;
     } catch (error: any) {
-      this.logger.error('💥 A critical error occurred during DataIntegrityProof verification:', error?.message ?? error);
+      this.logger.debug?.('💥 A critical error occurred during DataIntegrityProof verification:', error?.message ?? error);
       if (error?.message === CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING) {
         throw error;
       }
@@ -303,12 +304,12 @@ export class LdpVerifier {
 
       const verified = secp256k1.verify(normalizedSignatureBytes, signingInputHash, publicKeyBytes);
       if (!verified) {
-        this.logger.error('❌ ES256K signature verification failed (noble.verify returned false)');
-        this.logger.error('   Possible causes: invalid signature, public key, signing input, or hash algorithm.');
+        this.logger.debug?.('❌ ES256K signature verification failed (noble.verify returned false)');
+        this.logger.debug?.('   Possible causes: invalid signature, public key, signing input, or hash algorithm.');
       }
       return verified;
     } catch (error: any) {
-      this.logger.error('💥 A critical error occurred during EcdsaSecp256k1Signature2019 verification:', error?.message ?? error);
+      this.logger.debug?.('💥 A critical error occurred during EcdsaSecp256k1Signature2019 verification:', error?.message ?? error);
       return false;
     }
   }
@@ -332,7 +333,7 @@ export class LdpVerifier {
       const verificationMethodUrl = proof.verificationMethod;
       const publicKeyData = await this.publicKeyService.getPublicKey(verificationMethodUrl);
       if (!publicKeyData) {
-        this.logger.error(`❌ Could not resolve public key for: ${verificationMethodUrl}`);
+        this.logger.debug?.(`❌ Could not resolve public key for: ${verificationMethodUrl}`);
         // If we're offline, surface a specific error so the caller can show a better message
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
           throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
@@ -371,7 +372,7 @@ export class LdpVerifier {
 
       // STEP F: Return the result.
       if (verificationResult.verified) {
-        this.logger.info(`✅ Signature verification successful for proof type ${proof.type}!`);
+  this.logger.debug?.(`✅ Signature verification successful for proof type ${proof.type}!`);
         return true;
       } else {
         const err = verificationResult.error as any;
@@ -398,12 +399,12 @@ export class LdpVerifier {
         if (errMsg.includes(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING)) {
           throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
         }
-        this.logger.error(`❌ Signature verification failed for ${proof.type}:`, verificationResult.error);
+        this.logger.debug?.(`❌ Signature verification failed for ${proof.type}:`, verificationResult.error);
         return false;
       }
 
     } catch (error: any) {
-      this.logger.error(`💥 A critical error occurred during ${proof.type} verification:`, error.message);
+      this.logger.debug?.(`💥 A critical error occurred during ${proof.type} verification:`, error.message);
       // Bubble up offline missing dependencies for higher-level handling
       if (error?.message === CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING) {
         throw error;

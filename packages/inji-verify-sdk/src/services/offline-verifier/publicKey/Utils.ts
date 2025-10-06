@@ -4,6 +4,9 @@ import { base58btc } from 'multiformats/bases/base58';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { p256 } from '@noble/curves/p256';
 import { p384 } from '@noble/curves/p384';
+import { createSdkLogger } from '../../../utils/logger.js';
+
+const logger = createSdkLogger('PublicKeyUtils');
 
 // Constants analogous to Kotlin CredentialVerifierConstants
 export const RSA_KEY_TYPE = 'RsaVerificationKey2018';
@@ -364,7 +367,7 @@ export async function fetchPublicDocument(url: string): Promise<any> {
 
     return await response.json();
   } catch (error: any) {
-    console.error(`[SDK-didFetcher] Error fetching public document from ${url}:`, error);
+    logger.debug?.(`[SDK-didFetcher] Error fetching public document from ${url}:`, error);
     // Re-throw the error so the calling function can handle it.
     throw new Error(`Could not retrieve document from ${url}. Reason: ${error.message}`);
   }

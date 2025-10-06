@@ -1,4 +1,7 @@
 import { CredentialValidatorConstants } from '../constants/CredentialValidatorConstants.js';
+import { createSdkLogger } from '../../../utils/logger.js';
+
+const logger = createSdkLogger('DateUtils');
 
 /**
  * Validation Exception interface
@@ -136,7 +139,7 @@ export class DateUtils {
   static isFutureDateWithTolerance(inputDateString: string, toleranceInMilliSeconds: number = 3000): boolean {
     const inputDate = this.parseDate(inputDateString);
     if (!inputDate) {
-      console.error('Given date is not available in supported date formats');
+      logger.debug?.('Given date is not available in supported date formats');
       return false;
     }
 

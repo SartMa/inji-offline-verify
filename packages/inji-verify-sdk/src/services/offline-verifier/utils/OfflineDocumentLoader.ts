@@ -1,5 +1,8 @@
 import { getContext, putContexts } from '../cache/utils/CacheHelper';
 import { CredentialVerifierConstants } from '../constants/CredentialVerifierConstants';
+import { createSdkLogger } from '../../../utils/logger.js';
+
+const logger = createSdkLogger('OfflineDocumentLoader');
 
 /**
  * A secure, offline-first document loader for jsonld-signatures.
@@ -17,7 +20,7 @@ export class OfflineDocumentLoader {
   }
 
   async documentLoader(url: string) {
-    console.log(`📄 [OfflineDocumentLoader] Resolving: ${url}`);
+  logger.debug?.(`📄 [OfflineDocumentLoader] Resolving: ${url}`);
 
     // 1. DID/VM resolution is explicitly NOT handled here
     if (url.startsWith('did:')) {
@@ -28,7 +31,7 @@ export class OfflineDocumentLoader {
     // The helper function no longer needs the 'db' object
     const ctx = await getContext(url);
     if (ctx) {
-      console.log(`💾 [OfflineDocumentLoader] Using cached context: ${url}`);
+  logger.debug?.(`💾 [OfflineDocumentLoader] Using cached context: ${url}`);
       return { contextUrl: undefined, document: ctx, documentUrl: url };
     }
 
@@ -38,7 +41,7 @@ export class OfflineDocumentLoader {
 
     // 3. If online (or running in an environment that supports fetch), fetch and cache once
     if (canFetch) {
-      console.log(`🌐 [OfflineDocumentLoader] Fetching exact context: ${url}`);
+  logger.debug?.(`🌐 [OfflineDocumentLoader] Fetching exact context: ${url}`);
       try {
         const resp = await fetch(url, { headers: { Accept: 'application/ld+json, application/json' }, cache: 'no-store' as RequestCache });
         if (!resp.ok) throw new Error(`Failed to fetch context: ${url} (${resp.status})`);
@@ -47,7 +50,7 @@ export class OfflineDocumentLoader {
         await putContexts([{ url, document }]);
         return { contextUrl: undefined, document, documentUrl: url };
       } catch (e: any) {
-        console.error(`[OfflineDocumentLoader] Network fetch failed for ${url}:`, e.message);
+  logger.debug?.(`[OfflineDocumentLoader] Network fetch failed for ${url}:`, e.message);
         // Treat any fetch failure (when not already cached) as missing offline dependency
         // so upstream can show a clear message and guide the user to seed the cache.
         throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);

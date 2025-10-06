@@ -13,6 +13,7 @@ import { UnknownException } from '../../exception/index.js';
 
 // Import utils
 import { Util } from '../../utils/Util.js';
+import { createSdkLogger } from '../../../../utils/logger.js';
 
 const cborDecoder = new Decoder();
 const cborEncoder = new Encoder();
@@ -20,7 +21,7 @@ const cborEncoder = new Encoder();
 const ISSUING_COUNTRY = "issuing_country";
 
 export class MsoMdocVerifier {
-  private readonly logger = console;
+  private readonly logger = createSdkLogger('MsoMdocVerifier');
   private util = new Util();
 
   /**
@@ -28,7 +29,7 @@ export class MsoMdocVerifier {
    */
   async verify(base64EncodedMdoc: string):Promise<boolean>{
     try {
-      this.logger.info("🔍 [MsoMdocVerifier] Received Credentials Verification - Start");
+  this.logger.debug?.("🔍 [MsoMdocVerifier] Received Credentials Verification - Start");
 
       // Parse credential (equivalent to MsoMdocVerifiableCredential().parse())
       const { docType, issuerSigned } = new MsoMdocVerifiableCredential().parse(base64EncodedMdoc);
@@ -45,11 +46,11 @@ export class MsoMdocVerifier {
 
       const result = certificateChainValid && countryNameValid && coseSignatureValid && valueDigestsValid && docTypeValid;
       
-      this.logger.info(`✅ [MsoMdocVerifier] Verification result: ${result}`);
+  this.logger.debug?.(`✅ [MsoMdocVerifier] Verification result: ${result}`);
       return result;
 
     } catch (exception: any) {
-      this.logger.error(`💥 [MsoMdocVerifier] Verification error:`, exception.message);
+      this.logger.debug?.(`💥 [MsoMdocVerifier] Verification error:`, exception.message);
       
       // Match Kotlin exception handling
       if (exception.name === 'SignatureVerificationException' ||
@@ -103,7 +104,7 @@ export class MsoMdocVerifier {
       return true;
 
     } catch (error: any) {
-      this.logger.error(`❌ [MsoMdocVerifier] Country name verification failed:`, error.message);
+      this.logger.debug?.(`❌ [MsoMdocVerifier] Country name verification failed:`, error.message);
       throw error;
     }
   }
@@ -116,19 +117,19 @@ export class MsoMdocVerifier {
       const docTypeInMso = mso.docType;
       
       if (docTypeInDocuments === null || docTypeInDocuments === undefined) {
-        this.logger.error("Error while doing docType property verification - docType property not found in the credential");
+        this.logger.debug?.("Error while doing docType property verification - docType property not found in the credential");
         throw new Error("Property docType not found in the credential");
       }
 
       if (docTypeInMso !== docTypeInDocuments) {
-        this.logger.error("Error while doing docType property verification - Property mismatch with docType in the credential");
+        this.logger.debug?.("Error while doing docType property verification - Property mismatch with docType in the credential");
         throw new Error("Property mismatch with docType in the credential");
       }
 
       return true;
 
     } catch (error: any) {
-      this.logger.error(`❌ [MsoMdocVerifier] DocType verification failed:`, error.message);
+      this.logger.debug?.(`❌ [MsoMdocVerifier] DocType verification failed:`, error.message);
       throw error;
     }
   }
@@ -148,7 +149,7 @@ export class MsoMdocVerifier {
       return this.verifyCoseSignature(issuerAuthBytes, issuerCertificate.publicKey);
 
     } catch (error: any) {
-      this.logger.error(`❌ [MsoMdocVerifier] COSE signature verification failed:`, error.message);
+      this.logger.debug?.(`❌ [MsoMdocVerifier] COSE signature verification failed:`, error.message);
       throw error;
     }
   }
@@ -185,7 +186,7 @@ private async verifyValueDigests(issuerSignedNamespaces: any, mso: any): Promise
 
           calculatedDigests.set(digestId, digest);
         } catch (error) {
-          this.logger.warn(`Failed to process item in namespace ${namespace}:`, error);
+          this.logger.debug?.(`Failed to process item in namespace ${namespace}:`, error);
         }
       }
 
@@ -210,7 +211,7 @@ private async verifyValueDigests(issuerSignedNamespaces: any, mso: any): Promise
       for (const [actualDigestId, actualDigest] of Array.from(actualDigests.entries())) {
         const calculatedDigest = calculatedDigests.get(actualDigestId);
         if (!calculatedDigest || !this.arraysEqual(actualDigest, calculatedDigest)) {
-          this.logger.error("Error while doing valueDigests verification - mismatch in digests found");
+          this.logger.debug?.("Error while doing valueDigests verification - mismatch in digests found");
           throw new Error(`valueDigests verification failed - mismatch in digests with ${actualDigestId}`);
         }
       }
@@ -219,7 +220,7 @@ private async verifyValueDigests(issuerSignedNamespaces: any, mso: any): Promise
     return true;
 
   } catch (error: any) {
-    this.logger.error(`❌ [MsoMdocVerifier] Value digests verification failed:`, error.message);
+    this.logger.debug?.(`❌ [MsoMdocVerifier] Value digests verification failed:`, error.message);
     throw error;
   }
 }
@@ -253,7 +254,7 @@ private async verifyValueDigests(issuerSignedNamespaces: any, mso: any): Promise
       return this.toX509Certificate(issuerCertificateBytes);
 
     } catch (error) {
-      this.logger.error('Failed to extract certificate:', error);
+      this.logger.debug?.('Failed to extract certificate:', error);
       return null;
     }
   }
@@ -297,7 +298,7 @@ private async verifyValueDigests(issuerSignedNamespaces: any, mso: any): Promise
     try {
       // COSE signature verification (equivalent to CoseSignatureVerifierImpl)
       if (!('n' in publicKey && 'e' in publicKey)) {
-        this.logger.error('Invalid RSA public key');
+        this.logger.debug?.('Invalid RSA public key');
         return false;
       }
 
@@ -317,7 +318,7 @@ private async verifyValueDigests(issuerSignedNamespaces: any, mso: any): Promise
       return true;
 
     } catch (error) {
-      this.logger.error('COSE signature verification failed:', error);
+      this.logger.debug?.('COSE signature verification failed:', error);
       return false;
     }
   }

@@ -1,5 +1,8 @@
 import { base58btc } from 'multiformats/bases/base58';
 import { base64url } from 'multiformats/bases/base64';
+import { createSdkLogger } from '../../../utils/logger.js';
+
+const logger = createSdkLogger('BitstringExpansion');
 
 // GZIP decompression - rely on browser CompressionStream / DecompressionStream if available, otherwise fallback to pako (not added yet)
 async function gunzip(data: Uint8Array): Promise<Uint8Array> {
@@ -23,7 +26,7 @@ export async function expandCompressedBitstring(compressed: string): Promise<Uin
   }
   const prefix = compressed[0];
   let decoded: Uint8Array;
-  console.info('[BitstringExpansion] Decoding bitstring', { prefix, length: compressed.length });
+  logger.debug?.('[BitstringExpansion] Decoding bitstring', { prefix, length: compressed.length });
   try {
     if (prefix === 'z') {
       decoded = base58btc.decode(compressed);
@@ -38,10 +41,10 @@ export async function expandCompressedBitstring(compressed: string): Promise<Uin
       }
     }
   } catch (e) {
-    console.error('[BitstringExpansion] Multibase decode failed', e);
+    logger.debug?.('[BitstringExpansion] Multibase decode failed', e);
     throw new Error('Invalid multibase encoding for status list');
   }
   const expanded = await gunzip(decoded);
-  console.info('[BitstringExpansion] Gzip expanded length', expanded.length);
+  logger.debug?.('[BitstringExpansion] Gzip expanded length', expanded.length);
   return expanded;
 }

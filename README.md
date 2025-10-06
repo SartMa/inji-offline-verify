@@ -97,7 +97,6 @@ All mandatory requirements from the MOSIP Inji Verify problem statement have bee
 - **Ed25519Signature2018** - Legacy Ed25519 signatures  
 - **Ed25519Signature2020** - Modern Ed25519 implementation for VCs
 - **RsaSignature2018** - RSA-based signatures for VCs
-- **JsonWebSignature2020** - JWS-based RSA signatures
 - **EcdsaSecp256k1Signature2019** - Secp256k1 curve signatures using noble crypto
 - **DataIntegrityProof** - With ecdsa-rdfc-2019 cryptosuite
 
@@ -381,7 +380,7 @@ Each test case includes both the JSON credential file and a corresponding screen
 
 - **API Documentation & Collections**: [Google Drive Documentation Hub](https://drive.google.com/file/d/1q3SLQngiJ2eISdTgpL5AG6DiBQ6WNK2c/view?usp=sharing)
 - **Product Demo Video**: [Implementation Walkthrough](https://youtu.be/HOshQ8VpuR8)
-- **Stakeholder Presentation**: [Technical Architecture Overview](https://docs.google.com/presentation/d/1LrUfBv5oJhmqy3MOOzcDQ19ptVMdoLVX/edit?usp=sharing&ouid=103834762058479220213&rtpof=true&sd=true)
+- **Stakeholder Presentation**: [Technical Architecture Overview](https://docs.google.com/presentation/d/1h4c3Q2Kkh8_B2vDnFeAWz1vBw93U4mRz/edit?usp=sharing&ouid=103834762058479220213&rtpof=true&sd=true)
 - **MOSIP Problem Statement**: [Official Requirements Document](https://www.mosip.io/pdf/Inji_Verify_Offline_Verification.pdf)
 - **SRS Documentation**: [SRS Document](https://drive.google.com/file/d/10hzXUci_JbqCvhk1-aJm4cGLxNMes4f0/view?usp=sharing)
 

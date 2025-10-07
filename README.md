@@ -124,6 +124,7 @@ All mandatory requirements from the MOSIP Inji Verify problem statement have bee
    ```bash
    git clone https://github.com/SartMa/inji-offline-verify.git
    cd inji-offline-verify
+   git switch docker
    cp .env.example .env
    ```
 

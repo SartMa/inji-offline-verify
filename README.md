@@ -358,7 +358,7 @@ Intelligent synchronization system that handles both automatic background sync a
 | **Inji Verify SDK** | [SDKREADME.md](./packages/inji-verify-sdk/SDKREADME.md) | Core verification engine documentation |
 | **Bitstring Status List** | [RevocationHandling.md](./packages/inji-verify-sdk/BITSTRING_STATUS_LIST.md) | W3C BitstringStatusList implementation guide |
 | **Performance Engineering** | [Performance Benchmark Report](./apps/worker-pwa/performance_benchmarking/docs/performance-benchmark-2025-09-27.md) | Detailed performance analysis |
-| **App README** | [AppREADME.md](./README.md) | Proof of Concept App Documentation |
+| **App README** | [AppREADME.md](https://github.com/SartMa/inji-offline-app/blob/master/README.md) | Proof of Concept App Documentation |
 
 ### Test Cases
 

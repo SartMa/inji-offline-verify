@@ -96,7 +96,7 @@ All mandatory requirements from the MOSIP Inji Verify problem statement have bee
 - **Ed25519Signature2020** - Primary signature suite for VPs
 - **Ed25519Signature2018** - Legacy Ed25519 signatures  
 - **Ed25519Signature2020** - Modern Ed25519 implementation for VCs
-- **RsaSignature2018** - RSA-based signatures for VCs
+- **RsaSignature2018** - RSA-based signatures for VCs (currently online verification)
 - **EcdsaSecp256k1Signature2019** - Secp256k1 curve signatures using noble crypto
 - **DataIntegrityProof** - With ecdsa-rdfc-2019 cryptosuite
 

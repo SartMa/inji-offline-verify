@@ -214,6 +214,24 @@ What happens under the hood:
 - After decoding, the payload is passed to `CredentialsVerifier` or `PresentationVerifier` depending on whether a VP or a VC was scanned.
 - The verifier automatically checks revocation status via `isVCRevoked` when the credential includes an `id`.
 
+### Preloading the ZXing WASM module
+
+The first call to `readBarcodes` downloads and instantiates the `zxing_full.wasm` binary. To keep the scanner responsive, you can prefetch the module as soon as your session becomes authenticated (for example, directly after login):
+
+```ts
+import { warmUpZXingModule } from '@mosip/react-inji-verify-sdk';
+
+await warmUpZXingModule(); // resolves once the WASM runtime is ready
+```
+
+If you host the `.wasm` asset yourself, supply a base URL so the loader can rewrite `locateFile` for you:
+
+```ts
+warmUpZXingModule({ baseUrl: `${window.location.origin}/wasm` });
+```
+
+Subsequent calls return the same in-flight promise, so it is safe to invoke this helper from both your login flow and the scanner component. On failure the cached promise resets, allowing retries.
+
 ## Offline toolkit recipes
 
 ### Programmatic credential verification

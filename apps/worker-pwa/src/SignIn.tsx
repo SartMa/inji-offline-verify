@@ -22,6 +22,7 @@ import { useAuth } from './context/AuthContext.tsx';
 import { login } from './services/authService';
 import { WorkerCacheService } from './services/WorkerCacheService';
 import { NetworkManager } from './network/NetworkManager';
+import { warmUpZXingModule } from '@mosip/react-inji-verify-sdk';
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -136,6 +137,11 @@ export default function SignIn(props: {
 
       // Use the auth context signIn method to update the global state
       await signIn(username, password);
+
+      // Kick off ZXing WASM warm-up so the scanner is instant for the next navigation
+      warmUpZXingModule().catch((zxError: unknown) => {
+        console.warn('ZXing warm-up failed:', zxError);
+      });
       
       // Redirect to dashboard after successful login
       navigate('/dashboard');

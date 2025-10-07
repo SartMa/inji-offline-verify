@@ -6,6 +6,7 @@
     "target": "ES5",
     "allowJs": false,
     "module": "ESNext",
+    "lib": ["ES2017", "DOM"],
     "rootDir": "src",
     "declaration": true,
     "declarationMap": true,
@@ -20,8 +21,7 @@
     "strict": true,
     "skipLibCheck": true,
     "noEmit": false,
-    "jsx": "react-jsx",
-    "composite": true
+    "jsx": "react-jsx"
   },
   "include": [
     "src"

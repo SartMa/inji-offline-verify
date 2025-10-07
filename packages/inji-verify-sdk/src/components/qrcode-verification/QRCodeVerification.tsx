@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { scanResult } from "./QRCodeVerification.types";
 import { scanFilesForQr, doFileChecks } from "../../utils/uploadQRCodeUtils";
+import { warmUpZXingModule } from "../../utils/zxingModuleLoader";
 import {
   acceptedFileTypes,
   CONSTRAINTS_IDEAL_FRAME_RATE,
@@ -112,6 +113,12 @@ export default function QRCodeVerification(props: QRCodeVerificationProps) {
   const lastErrorRef = useRef<string | null>(null);
 
   const shouldEnableZoom = isEnableZoom && isMobile;
+
+  useEffect(() => {
+    warmUpZXingModule().catch((error) => {
+      logError('ZXing warm-up failed', error);
+    });
+  }, []);
 
   const clearTimer = () => {
     if (timerRef.current) {

@@ -17,7 +17,7 @@ export interface Ed25519VerificationDocuments {
 export function buildEd25519VerificationDocuments(
   publicKeyData: CachedEd25519Key,
   verificationMethodUrl: string,
-  logger: Pick<Console, 'error'>
+  logger: Pick<Console, 'error'> & Partial<Pick<Console, 'debug'>>
 ): Ed25519VerificationDocuments | null {
   let publicKeyMultibase = publicKeyData?.publicKeyMultibase;
 
@@ -29,7 +29,7 @@ export function buildEd25519VerificationDocuments(
         publicKeyMultibase = ed25519RawToMultibase(raw);
       }
     } catch (error: any) {
-      logger.error('⚠️ Failed to derive multibase key from JWK:', error?.message ?? error);
+      logger.debug?.('⚠️ Failed to derive multibase key from JWK:', error?.message ?? error);
     }
   }
 
@@ -47,7 +47,7 @@ export function buildEd25519VerificationDocuments(
 
   const normalizedMultibase = normalized?.publicKeyMultibase;
   if (!normalizedMultibase) {
-    logger.error('❌ Unable to derive Ed25519 public key material from cached verification method');
+  logger.debug?.('❌ Unable to derive Ed25519 public key material from cached verification method');
     return null;
   }
 

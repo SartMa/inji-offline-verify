@@ -4,6 +4,9 @@ import { PublicKeyGetterFactory } from './PublicKeyGetterFactory';
 import { putPublicKeys } from '../cache/utils/CacheHelper';
 import { bytesToHex, spkiToRawEd25519, ed25519RawToMultibase, parsePemToDer, base64UrlDecode } from './Utils';
 import { CredentialVerifierConstants } from '../constants/CredentialVerifierConstants';
+import { createSdkLogger } from '../../../utils/logger.js';
+
+const logger = createSdkLogger('PublicKeyService');
 
 export class PublicKeyService {
   /**
@@ -30,13 +33,13 @@ export class PublicKeyService {
       };
 
       if (!record || isIncomplete(record)) {
-          console.warn(`⚠️ Public key not found in cache: ${verificationMethod}`);
+          logger.debug?.(`⚠️ Public key not found in cache: ${verificationMethod}`);
           
           // Check if we're offline before attempting network fetch
           const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
           
           if (isOffline) {
-            console.error(`❌ Cannot resolve public key while offline: ${verificationMethod}`);
+            logger.debug?.(`❌ Cannot resolve public key while offline: ${verificationMethod}`);
             throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
           }
           
@@ -114,7 +117,7 @@ export class PublicKeyService {
               const store2 = tx2.objectStore(KEY_STORE);
               record = await store2.get(verificationMethod);
             } catch (e: any) {
-              console.error('💥 Error resolving public key online:', e);
+              logger.debug?.('💥 Error resolving public key online:', e);
               // If it's a network error (fetch failed), throw offline dependencies error
               if (e.message?.includes('fetch') || e.message?.includes('network') || e.message?.includes('Failed to fetch')) {
                 throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
@@ -127,7 +130,7 @@ export class PublicKeyService {
           }
       }
       if (record.is_active === false) {
-        console.warn(`⚠️ Public key is marked as inactive: ${verificationMethod}`);
+  logger.debug?.(`⚠️ Public key is marked as inactive: ${verificationMethod}`);
         return null;
       }
 
@@ -142,7 +145,7 @@ export class PublicKeyService {
         publicKeyPem: record.public_key_pem,
       };
     } catch (e: any) {
-      console.error('💥 Error retrieving public key from cache:', e);
+  logger.debug?.('💥 Error retrieving public key from cache:', e);
       return null;
     }
   }

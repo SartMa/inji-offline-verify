@@ -12,4 +12,5 @@ export { SDKCacheManager } from './services/offline-verifier/cache/SDKCacheManag
 export { OrgResolver } from './services/offline-verifier/cache/utils/OrgResolver';
 export type { CacheBundle } from './services/offline-verifier/cache/utils/OrgResolver';
 export { replacePublicKeysForOrganization } from './services/offline-verifier/cache/utils/CacheHelper';
+export { warmUpZXingModule } from './utils/zxingModuleLoader';
 // ...existing code...

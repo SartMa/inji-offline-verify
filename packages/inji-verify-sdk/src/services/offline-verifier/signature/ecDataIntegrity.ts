@@ -17,12 +17,12 @@ export interface EcVerificationDocuments {
 export function buildEcVerificationDocuments(
   publicKeyData: CachedEcKey,
   verificationMethodUrl: string,
-  logger: Pick<Console, 'error'>
+  logger: Pick<Console, 'error'> & Partial<Pick<Console, 'debug'>>
 ): EcVerificationDocuments | null {
   const jwk = extractEcJwk(publicKeyData, logger);
   const hasMultibase = publicKeyData.type === 'Multikey' && publicKeyData.publicKeyMultibase;
   if (!jwk && !hasMultibase) {
-    logger.error('❌ Unable to derive EC key material (expected P-256 or P-384) from cached public key');
+  logger.debug?.('❌ Unable to derive EC key material (expected P-256 or P-384) from cached public key');
     return null;
   }
 
@@ -66,7 +66,7 @@ export function buildEcVerificationDocuments(
 
 export function extractEcJwk(
   publicKeyData: CachedEcKey,
-  logger: Pick<Console, 'error'>
+  logger: Pick<Console, 'error'> & Partial<Pick<Console, 'debug'>>
 ): JsonWebKey | null {
   const jwk = publicKeyData?.publicKeyJwk;
   const crv = jwk?.crv?.toUpperCase?.();
@@ -114,7 +114,7 @@ export function extractEcJwk(
         };
       }
     } catch (e) {
-      logger.error('⚠️ Failed to derive EC JWK from hex encoding:', (e as Error).message);
+  logger.debug?.('⚠️ Failed to derive EC JWK from hex encoding:', (e as Error).message);
     }
   }
 

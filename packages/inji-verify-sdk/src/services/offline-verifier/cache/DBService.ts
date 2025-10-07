@@ -1,12 +1,15 @@
 import { openDB, IDBPDatabase } from 'idb'      ;
 import { DB_NAME, DB_VERSION, CONTEXT_STORE, KEY_STORE, STATUS_LIST_STORE } from './constants/CacheConstants';
+import { createSdkLogger } from '../../../utils/logger.js';
+
+const logger = createSdkLogger('DBService');
 
 class DBService {
   private static instance: DBService;
   private dbPromise: Promise<IDBPDatabase<any>>;
 
   private constructor() {
-    console.log("DBService singleton initializing...");
+  logger.debug?.("DBService singleton initializing...");
     this.dbPromise = openDB(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion, newVersion, tx) {
         if (!db.objectStoreNames.contains(CONTEXT_STORE)) {

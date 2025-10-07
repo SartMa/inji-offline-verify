@@ -20,6 +20,9 @@ export default defineConfig(({ mode }) => {
     
     // Point to the root .env file
     envDir: '../../',
+    esbuild: {
+      drop: mode === 'production' ? ['console', 'debugger'] : []
+    },
 
     server:{
       port: PORT,

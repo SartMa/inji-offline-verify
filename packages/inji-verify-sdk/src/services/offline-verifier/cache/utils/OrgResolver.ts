@@ -10,6 +10,9 @@ import { base58btc } from 'multiformats/bases/base58';
 import type { CachedPublicKey } from './CacheHelper';
 import { Base64Utils } from '../../utils/Base64Utils.js';
 import { bytesToHex } from '../../publicKey/Utils.js';
+import { createSdkLogger } from '../../../../utils/logger.js';
+
+const logger = createSdkLogger('OrgResolver');
 
 export type CacheBundle = {
   publicKeys?: CachedPublicKey[];
@@ -240,8 +243,7 @@ export class OrgResolver {
           bundle.contexts.push({ url, document: doc });
         } catch (e) {
           // Non-fatal; worker can still fetch later if online
-          // eslint-disable-next-line no-console
-          console.warn('[OrgResolver] Context fetch skipped:', url, e);
+          logger.debug?.('[OrgResolver] Context fetch skipped:', url, e);
         }
       }
     }
@@ -271,7 +273,7 @@ export class OrgResolver {
           const doc = await fetchContext(url);
           bundle.contexts.push({ url, document: doc });
         } catch (e) {
-          console.warn('[OrgResolver] Context fetch skipped:', url, e);
+          logger.debug?.('[OrgResolver] Context fetch skipped:', url, e);
         }
       }
     }
@@ -289,7 +291,7 @@ export class OrgResolver {
     if (!vp || typeof vp !== 'object' || !vp.type?.includes('VerifiablePresentation')) {
       throw new Error('buildBundleFromVP: Input is not a valid Verifiable Presentation');
     }
-    console.log('[OrgResolver] Building bundle from VP...');
+  logger.debug?.('[OrgResolver] Building bundle from VP...');
 
     const allBundles: CacheBundle[] = [];
 
@@ -310,7 +312,7 @@ export class OrgResolver {
         const vcBundle = await this.buildBundleFromVC(vc, fetchFullContexts);
         allBundles.push(vcBundle);
       } catch (e) {
-        console.warn('[OrgResolver] Skipping a VC inside the VP due to an error.', e);
+  logger.debug?.('[OrgResolver] Skipping a VC inside the VP due to an error.', e);
       }
     }
 

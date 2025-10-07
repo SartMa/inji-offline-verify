@@ -7,8 +7,11 @@ import { ValidationStatus } from '../../../data/data.js';
 import { getProperty, getElement } from './MsoMdocCredentialData.js';
 import { MsoMdocValidator } from '../../validators/MsoMdocValidator.js';
 import { VerifiableCredential } from '../../verifiableCredential.js';
+import { createSdkLogger } from '../../../../../utils/logger.js';
 
 const cborDecoder = new Decoder();
+
+const logger = createSdkLogger('MsoMdocVerifiableCredential');
 
 
 
@@ -61,7 +64,7 @@ export class MsoMdocVerifiableCredential extends VerifiableCredential {
     try {
       decodedData = Base64Utils.base64UrlDecodeToBytes(credential);
     } catch (exception: any) {
-      console.error("Error occurred while base64Url decoding the credential: " + exception.message);
+      logger.debug?.("Error occurred while base64Url decoding the credential: " + exception.message);
       throw new Error("Error on decoding base64Url encoded data: " + exception.message);
     }
 
@@ -71,7 +74,7 @@ export class MsoMdocVerifiableCredential extends VerifiableCredential {
       const decoded = cborDecoder.decode(decodedData);
       cbors = Array.isArray(decoded) ? decoded : [decoded];
     } catch (exception: any) {
-      console.error("Error occurred while CBOR decoding the credential: " + exception.message);
+      logger.debug?.("Error occurred while CBOR decoding the credential: " + exception.message);
       throw new Error("Error on decoding CBOR encoded data: " + exception.message);
     }
 

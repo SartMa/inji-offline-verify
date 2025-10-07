@@ -145,7 +145,8 @@ All mandatory requirements from the MOSIP Inji Verify problem statement have bee
    - **API Backend**: [http://localhost:8012](http://localhost:8012)
 
 
-
+> 💡 **Note:** The OTP verification email is sent via **SendGrid**.  
+> It may occasionally appear in your **Spam** or **Promotions** folder — please **check there** if you don’t see it in your inbox.
 
 ### Useful Commands
 
@@ -225,7 +226,7 @@ inji-offline-verify/
   - Organization settings
   
 - **Technology**: React 19, Material-UI, TypeScript
-- **Documentation**: [Organization Portal Guide](./apps/organization-portal/README.md) (Refer this for Detailed Readme of Organization Portal)
+- **Documentation**: [Organization Portal Guide](./apps/organization-portal/OrgREADME.md) (Refer this for Detailed Readme of Organization Portal)
 
 ### Worker PWA  
 - **Purpose**: Field worker interface for credential verification
@@ -240,7 +241,7 @@ inji-offline-verify/
   - Export verification logs (CSV/JSON)
   - Performance monitoring and diagnostics
 - **Technology**: React 19, Vite, PWA, IndexedDB, Service Worker
-- **Documentation**: [Worker PWA Guide](./apps/worker-pwa/README.md) (Refer this for Detailed Readme of Worker PWA)
+- **Documentation**: [Worker PWA Guide](./apps/worker-pwa/WorkerREADME.md) (Refer this for Detailed Readme of Worker PWA)
 
 
 ### Django Backend
@@ -252,7 +253,7 @@ inji-offline-verify/
   - Organization and user management APIs
   - Health checks and monitoring endpoints
 - **Technology**: Django 4.2, Django REST Framework, PostgreSQL
-- **Documentation**: [Backend Guide](./server/README.md) (Refer this for Detailed Readme of Backend)
+- **Documentation**: [Backend Guide](./server/ServerREADME.md) (Refer this for Detailed Readme of Backend)
 
 ### Inji Verify SDK
 - **Purpose**: Core cryptographic verification engine for offline credential validation
@@ -267,7 +268,7 @@ inji-offline-verify/
   - Performance-optimized verification (74ms average)
   - Extensible architecture for future credential formats
 - **Technology**: TypeScript, Digital Bazaar libraries, Noble crypto, CBOR-X
-- **Documentation**: [SDK Guide](./packages/inji-verify-sdk/README.md) (Refer this for Detailed Readme of Verify SDK)
+- **Documentation**: [SDK Guide](./packages/inji-verify-sdk/SDKREADME.md) (Refer this for Detailed Readme of Verify SDK)
 
 ### Shared Packages
 - **@inji-offline-verify/shared-ui**: Common UI components  
@@ -349,10 +350,10 @@ Intelligent synchronization system that handles both automatic background sync a
 
 | Component | Documentation | Description |
 |-----------|---------------|-------------|
-| **Organization Portal** | [OrgREADME.md](./apps/organization-portal/README.md) | Admin interface setup and usage |
-| **Worker PWA** | [WorkerREADME.md](./apps/worker-pwa/README.md) | PWA architecture and offline capabilities |
-| **Backend Server** | [ServerREADME.md](./server/README.md) | Django REST API and authentication |
-| **Inji Verify SDK** | [SDKREADME.md](./packages/inji-verify-sdk/README.md) | Core verification engine documentation |
+| **Organization Portal** | [OrgREADME.md](./apps/organization-portal/OrgREADME.md) | Admin interface setup and usage |
+| **Worker PWA** | [WorkerREADME.md](./apps/worker-pwa/WorkerREADME.md) | PWA architecture and offline capabilities |
+| **Backend Server** | [ServerREADME.md](./server/ServerREADME.md) | Django REST API and authentication |
+| **Inji Verify SDK** | [SDKREADME.md](./packages/inji-verify-sdk/SDKREADME.md) | Core verification engine documentation |
 | **Bitstring Status List** | [RevocationHandling.md](./packages/inji-verify-sdk/BITSTRING_STATUS_LIST.md) | W3C BitstringStatusList implementation guide |
 | **Performance Engineering** | [Performance Benchmark Report](./apps/worker-pwa/performance_benchmarking/docs/performance-benchmark-2025-09-27.md) | Detailed performance analysis |
 | **App README** | [AppREADME.md](./README.md) | Proof of Concept App Documentation |

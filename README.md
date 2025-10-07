@@ -364,6 +364,9 @@ Intelligent synchronization system that handles both automatic background sync a
 
 The repository includes comprehensive test cases for validating different credential formats and signature types. These test cases cover various scenarios including valid credentials, invalid credentials, expired credentials, and revocation status testing.
 
+> ⚠️ **Important Note**: The test cases in this repository  sourced from the **MOSIP Inji Collaboration Guide** https://docs.inji.io/inji-verify/functional-overview/releases-1/inji-verify-collab-guide are referenced using 
+"**inji-number**" identifiers. Previously, the valid test cases worked correctly on the official Inji Verify website https://injiverify.collab.mosip.net/scan. However, they may no longer function properly on the official site as well as ours, possibly due to recent changes in the DID document or public key by your side. Please verify the current status of these test cases against the latest MOSIP documentation before using them for testing in our website.While shooting the video they were working in the official inji verify website as well as our website.The invalid and the expired are still working.
+
 | Test Category | Description | Sample Count |
 |---------------|-------------|--------------|
 | **Ed25519-2018 Signatures** | Legacy Ed25519 signature validation test cases | 1 sample |

@@ -6,10 +6,9 @@ This guide provides comprehensive instructions for testing both the frontend and
 
 ## Table of Contents
 - [Prerequisites](#prerequisites)
-- [Quick Start - Run the Application](#quick-start---run-the-application)
+- [Quick Start - Running the Full Application](#quick-start---running-the-full-application)
 - [Backend Testing (Python/Django)](#backend-testing-pythondjango)
 - [Frontend Testing](#frontend-testing)
-- [Video Demonstration](#video-demonstration)
 
 ---
 
@@ -25,21 +24,28 @@ Before you begin, ensure you have the following installed on your system:
 
 ---
 
-## Quick Start - Run the Application
+## Quick Start - Running the Full Application
 
-### Step 1: Clone the Repository
+> **Note:** To run the complete application with frontend and backend services and see the feature and implementation details, please refer to the main [README.md](./README.md) file.
+> 
+> Full application setup requires building all services (frontend + backend) which takes significantly longer. This guide focuses on **backend testing only** for faster setup.
+
+---
+
+## Backend Testing (Python/Django)
+
+### Prerequisites Setup
+
+Before running tests, clone the repository and configure environment variables:
 
 ```bash
-git clone https://github.com/SartMa/inji-offline-verify.git #switch was not there
-git switch SE_project
+# Step 1: Clone the repository
+git clone https://github.com/SartMa/inji-offline-verify.git
 cd inji-offline-verify
-```
+git switch SE_project
 
-### Step 2: Configure Environment Variables
 
-Create a `.env` file in the root directory:
-
-```bash
+# Step 2: Configure environment variables
 # On Windows (PowerShell)
 Copy-Item .env.example .env
 
@@ -48,86 +54,56 @@ cp .env.example .env
 ```
 
 Edit the `.env` file with your configuration:
-#
+
 ```env
-# Database Configuration
-DATABASE_URL=postgresql://postgres:postgres@db:5432/inji_verify_db 
+POSTGRES_DB=inji_verify
+POSTGRES_USER=inji_user
+POSTGRES_PASSWORD=secure_database_password_here
+POSTGRES_PORT=5432
 
-# Django Settings
-DJANGO_SECRET_KEY=your-secret-key-here-change-in-production
-DJANGO_DEBUG=True
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+DJANGO_SECRET_KEY=your-super-secret-django-key-minimum-50-characters-long
+JWT_SECRET_KEY=your-jwt-secret-key-for-token-signing-minimum-32-chars
 
-# Email Configuration (SendGrid)
-EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
-EMAIL_HOST=smtp.sendgrid.net
-EMAIL_PORT=587
-EMAIL_USE_TLS=True
-EMAIL_HOST_USER=apikey
-EMAIL_HOST_PASSWORD=your-sendgrid-api-key-here
-DEFAULT_FROM_EMAIL=noreply@yourdomain.com
+# Application settings
+DEBUG=False
+ALLOWED_HOSTS=localhost,127.0.0.1,your-domain.com,backend
+BACKEND_PORT=8012
 
-# CORS Settings
-CORS_ALLOWED_ORIGINS=http://localhost:3011,http://localhost:5173
+# CORS and CSRF settings for frontend communication
+# CORS_ALLOW_ALL_ORIGINS=True
+CORS_ALLOWED_ORIGINS=http://localhost:3017,http://localhost:3011
+CSRF_TRUSTED_ORIGINS=http://localhost:3017,http://localhost:3011
 
-# Frontend URLs
-VITE_API_BASE_URL=http://localhost:8012
-VITE_ORG_API_BASE_URL=http://localhost:8012/organization/api
-VITE_WORKER_API_BASE_URL=http://localhost:8012/worker/api
+VITE_API_HOST=http://localhost:8012
+VITE_ORGANIZATION_PREFIX=/organization/api
+VITE_WORKER_PREFIX=/worker/api
+# Optional shared prefix (rarely used)
+VITE_SHARED_PREFIX=/api
+
+# Back-compat: some legacy code may still read this; will be ignored by new config
+VITE_API_BASE_URL=http://localhost:8000/api
+
+# Port configuration
+ORGANIZATION_PORTAL_PORT=3011
+WORKER_PWA_PORT=3017
+
+SECURE_SSL_REDIRECT=False
+
+EMAIL_BACKEND=anymail.backends.sendgrid.EmailBackend
+DEFAULT_FROM_EMAIL=injiverify@gmail.com
+EMAIL_TIMEOUT=30
+
+SENDGRID_API_KEY=your-sendgrid-api-key-here
+
 ```
 
-> **Important:** For email functionality to work (OTP verification), you need a valid SendGrid API key. Sign up at [SendGrid](https://sendgrid.com/) to get one for free.
-
-### Step 3: Build and Start All Services
-
-Ensure Docker Desktop is running, then execute:
-
-```bash
-docker compose up --build
-```
-
-This command will:
-1. Build Docker images for all services
-2. Start PostgreSQL database
-3. Start Django backend API
-4. Start Organization Portal (React frontend)
-5. Start Worker PWA (React PWA)
-
-**Wait for all services to start.** You'll see logs indicating services are ready:
-- `api_1` → Backend server started
-- `organization-portal_1` → Frontend dev server ready
-- `worker-pwa_1` → PWA dev server ready
-
-### Step 4: Run Database Migrations
-
-In a **new terminal** window (while Docker services are running):
-
-```bash
-# Run database migrations
-docker compose exec api python manage.py migrate
-
-# Create a superuser (optional, for Django admin access)
-docker compose exec api python manage.py createsuperuser
-```
-
-### Step 5: Access the Applications
-
-Once everything is running, open your browser and navigate to:
-
-| Service | URL | Description |
-|---------|-----|-------------|
-| **Organization Portal** | [http://localhost:3011](http://localhost:3011) | Admin interface for supervisors |
-| **Worker PWA** | [http://localhost:5173](http://localhost:5173) | Field worker verification interface |
-| **Backend API** | [http://localhost:8012](http://localhost:8012) | Django REST API |
-| **Django Admin** | [http://localhost:8012/admin](http://localhost:8012/admin) | Django admin panel |
+> **Important:** Replace `your-sendgrid-api-key-here` with your actual SendGrid API key. You can get a free API key at [SendGrid](https://sendgrid.com/).
 
 ---
 
-## Backend Testing (Python/Django)
+### Test Coverage
 
 We use **pytest** for comprehensive backend testing with Django REST Framework integration.
-
-### Test Coverage
 
 Our backend test suite includes:
 
@@ -141,13 +117,14 @@ Our backend test suite includes:
 ### Running Backend Tests Only
 
 To run only the backend tests without building the frontend services:
+(Make sure Docker Desktop is running)
 
 ```bash
 # Step 1: Build and start only database and backend services
 # This will build the backend Docker image (first time: ~2-3 minutes, subsequent: faster with cache)
 docker compose up -d --build database backend
 
-# Step 2: Once backend shows "Application startup complete", run tests (Ctrl+C to exit logs)
+# Step 2: Once backend shows "Application startup complete", run tests
 docker compose exec backend pytest
 
 # or run with verbose output
@@ -194,26 +171,6 @@ When you run the tests, you'll see output like this:
 
 ![Backend Test Results](docs/images/pytest-results.png)
 
-```bash
-========================== test session starts ==========================
-platform win32 -- Python 3.12.2, pytest-9.0.1, pluggy-1.6.0
-django: version: 5.2.6, settings: backend.settings (from ini)
-rootdir: C:\...\inji-offline-verify\server
-configfile: pytest.ini
-testpaths: backend
-plugins: cov-7.0.0, django-4.11.1
-collected 23 items
-
-backend\api\tests\test_auth.py ........                           [ 34%]
-backend\api\tests\test_auth_edges.py ....                         [ 52%]
-backend\organization\tests\test_org_registration.py ...           [ 65%]
-backend\worker\tests\test_sync_logs.py ..                         [ 73%]
-backend\worker\tests\test_worker_auth.py ......                   [100%]
-
-========================== 23 passed, 23 warnings in 12.94s ==========================
-```
-
-
 **Test Results:**
 - **23 passed** = All tests successful
 - **23 warnings** = Non-critical deprecation notices from dependencies (safe to ignore)
@@ -243,26 +200,7 @@ Watch our comprehensive video demonstration showing the complete platform functi
 
 ---
 
-## Video Demonstration
-
-Watch our comprehensive video demonstration showing:
-- Complete setup walkthrough
-- Organization registration and admin login
-- Worker registration and QR code scanning
-- Online and offline verification scenarios
-- Revocation checking with StatusList
-- Verification log synchronization
-- Dashboard analytics
-
-### 📺 YouTube Demo Videos
-
-**Full Platform Demo (30 minutes):**
-[Watch on YouTube →](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
-
-
-
 ## Testing Checklist
-
 ### Backend Tests ✅
 - [ ] All 23 pytest tests pass
 - [ ] No critical errors in logs

@@ -7,6 +7,8 @@ export { CredentialFormat } from './services/offline-verifier/constants/Credenti
 export { VerificationResult } from './services/offline-verifier/data/data';
 export { PresentationVerifier } from './services/offline-verifier/PresentationVerifier';
 export { PublicKeyService } from './services/offline-verifier/publicKey/PublicKeyService';
+// Export visitor pattern interfaces and implementations
+export { ProofVisitor, DefaultProofVisitor, VerificationVisitor, Ed25519VerificationVisitor, ErrorVisitor, MessageCollectorVisitor } from './services/offline-verifier/visitors/index';
 // ...existing code...
 export { SDKCacheManager } from './services/offline-verifier/cache/SDKCacheManager';
 export { OrgResolver } from './services/offline-verifier/cache/utils/OrgResolver';

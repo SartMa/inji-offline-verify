@@ -1,14 +1,11 @@
 import * as vc from '@digitalbazaar/vc';
-import { Ed25519VerificationKey2020 } from '@digitalbazaar/ed25519-verification-key-2020';
-import { Ed25519Signature2020 } from '@digitalbazaar/ed25519-signature-2020';
 
 import { CredentialVerifierConstants } from './constants/CredentialVerifierConstants.js';
-import { PresentationVerificationResult, VCResult, VerificationStatus, VPVerificationStatus } from './data/data.js';
+import { PresentationVerificationResult, VPVerificationStatus } from './data/data.js';
 import { UnknownException } from './exception/index.js';
-import { OfflineDocumentLoader } from './utils/OfflineDocumentLoader.js';
 import { PublicKeyService } from './publicKey/PublicKeyService.js';
-import { buildEd25519VerificationDocuments } from './signature/ed25519Presentation.js';
 import { createSdkLogger } from '../../utils/logger.js';
+import { DefaultProofVisitor, Ed25519VerificationVisitor, ProofVisitor, VerificationVisitor } from './visitors/index.js';
 
 interface PresentationVerifyOptions {
 	challenge?: string;
@@ -19,6 +16,16 @@ interface PresentationVerifyOptions {
 export class PresentationVerifier {
 	private readonly logger = createSdkLogger('PresentationVerifier');
 	private readonly publicKeyService = new PublicKeyService();
+	private readonly proofVisitor: ProofVisitor;
+	private readonly verificationVisitor: VerificationVisitor;
+
+	constructor(
+		proofVisitor?: ProofVisitor,
+		verificationVisitor?: VerificationVisitor
+	) {
+		this.proofVisitor = proofVisitor ?? new DefaultProofVisitor(this.publicKeyService, this.logger);
+		this.verificationVisitor = verificationVisitor ?? new Ed25519VerificationVisitor();
+	}
 
 	async verify(
 		presentationInput: string | Record<string, any>,
@@ -33,78 +40,23 @@ export class PresentationVerifier {
 				return new PresentationVerificationResult(VPVerificationStatus.INVALID, []);
 			}
 
-			const verificationMethodUrl = proof.verificationMethod;
-			if (typeof verificationMethodUrl !== 'string' || verificationMethodUrl.length === 0) {
-				this.logger.debug?.('❌ Presentation proof is missing a verificationMethod');
-				return new PresentationVerificationResult(VPVerificationStatus.INVALID, []);
-			}
-
 			const expectedChallenge = this.resolveChallenge(presentation, proof, options);
 
-			const publicKeyData = await this.publicKeyService.getPublicKey(verificationMethodUrl);
-			if (!publicKeyData) {
-				this.logger.debug?.(`❌ Unable to resolve public key for presentation VM: ${verificationMethodUrl}`);
-				if (typeof navigator !== 'undefined' && !navigator.onLine) {
-					throw new Error(CredentialVerifierConstants.ERROR_CODE_OFFLINE_DEPENDENCIES_MISSING);
-				}
-				return new PresentationVerificationResult(VPVerificationStatus.INVALID, []);
-			}
-
-			const docs = buildEd25519VerificationDocuments(publicKeyData, verificationMethodUrl, this.logger);
-			if (!docs) {
-				return new PresentationVerificationResult(VPVerificationStatus.INVALID, []);
-			}
-
-			const keyPair = await Ed25519VerificationKey2020.from({
-				id: docs.verificationMethodDoc.id,
-				controller: docs.verificationMethodDoc.controller,
-				publicKeyMultibase: docs.verificationMethodDoc.publicKeyMultibase
-			});
-
-			const suite = new Ed25519Signature2020({
-				key: keyPair,
-				verificationMethod: docs.verificationMethodDoc.id
-			});
-
-			const baseLoader = OfflineDocumentLoader.getDocumentLoader();
-			const controllerId = docs.controllerDoc.id;
-			const documentLoader = async (url: string) => {
-				if (url === verificationMethodUrl) {
-					return {
-						contextUrl: null,
-						documentUrl: url,
-						document: docs.verificationMethodDoc
-					};
-				}
-				if (controllerId && url === controllerId) {
-					return {
-						contextUrl: null,
-						documentUrl: url,
-						document: docs.controllerDoc
-					};
-				}
-				return baseLoader(url);
-			};
-
-			const verificationOptions: any = {
+			const proofResult = await this.proofVisitor.visitEd25519Proof(
+				proof,
 				presentation,
-				suite,
-				documentLoader,
-				unsignedPresentation: options.unsignedPresentation ?? false
-			};
+				{ ...options, challenge: expectedChallenge }
+			);
 
-			if (typeof expectedChallenge !== 'undefined') {
-				verificationOptions.challenge = expectedChallenge;
-			}
-			if (options.domain) {
-				verificationOptions.domain = options.domain;
+			if (!proofResult) {
+				return new PresentationVerificationResult(VPVerificationStatus.INVALID, []);
 			}
 
 			const vcLib = vc as any;
-			const verification = await vcLib.verify(verificationOptions);
+			const verification = await vcLib.verify(proofResult.verificationOptions);
 
-			const proofStatus = this.mapPresentationStatus(verification);
-			const vcResults = this.mapCredentialResults(verification, presentation);
+			const proofStatus = this.verificationVisitor.visitPresentationStatus(verification);
+			const vcResults = this.verificationVisitor.visitCredentialResults(verification, presentation);
 
 			return new PresentationVerificationResult(proofStatus, vcResults);
 		} catch (error: any) {
@@ -154,94 +106,5 @@ export class PresentationVerifier {
 		}
 
 		throw new Error('A challenge must be supplied or embedded in the presentation proof.');
-	}
-
-	private mapPresentationStatus(verification: any): VPVerificationStatus {
-		if (verification?.verified) {
-			return VPVerificationStatus.VALID;
-		}
-
-		const messages = this.collectMessages(verification?.error);
-		if (messages.some((m) => m.toLowerCase().includes('expired'))) {
-			return VPVerificationStatus.EXPIRED;
-		}
-
-		return VPVerificationStatus.INVALID;
-	}
-
-	private mapCredentialResults(verification: any, presentation: Record<string, any>): VCResult[] {
-		const vcResults: VCResult[] = [];
-		const credentialResults = Array.isArray(verification?.credentialResults)
-			? verification.credentialResults
-			: [];
-
-		const embeddedCredentials = Array.isArray(presentation?.verifiableCredential)
-			? presentation.verifiableCredential
-			: [];
-
-		if (credentialResults.length > 0) {
-			credentialResults.forEach((result: any, index: number) => {
-				const vcId = result?.credential?.id
-					|| result?.credentialId
-					|| this.extractCredentialId(embeddedCredentials[index])
-					|| `vc-${index + 1}`;
-				const status = result?.verified
-					? VerificationStatus.SUCCESS
-					: this.deriveCredentialStatusFromErrors(result?.error);
-				vcResults.push(new VCResult(vcId, status));
-			});
-			return vcResults;
-		}
-
-		embeddedCredentials.forEach((vc: any, index: number) => {
-			const vcId = this.extractCredentialId(vc) || `vc-${index + 1}`;
-			const status = verification?.verified ? VerificationStatus.SUCCESS : VerificationStatus.INVALID;
-			vcResults.push(new VCResult(vcId, status));
-		});
-
-		return vcResults;
-	}
-
-	private extractCredentialId(vc: any): string | undefined {
-		if (!vc) return undefined;
-		if (typeof vc === 'string') {
-			try {
-				const parsed = JSON.parse(vc);
-				return parsed?.id;
-			} catch {
-				return undefined;
-			}
-		}
-		if (typeof vc === 'object') {
-			return vc?.id;
-		}
-		return undefined;
-	}
-
-	private deriveCredentialStatusFromErrors(error: any): VerificationStatus {
-		const messages = this.collectMessages(error);
-		if (messages.some((m) => m.toLowerCase().includes('expired'))) {
-			return VerificationStatus.EXPIRED;
-		}
-		return VerificationStatus.INVALID;
-	}
-
-	private collectMessages(error: any): string[] {
-		if (!error) return [];
-		const messages: string[] = [];
-		const walk = (err: any) => {
-			if (!err) return;
-			if (typeof err.message === 'string') {
-				messages.push(err.message);
-			}
-			if (Array.isArray(err.errors)) {
-				err.errors.forEach(walk);
-			}
-			if (Array.isArray(err.details)) {
-				err.details.forEach(walk);
-			}
-		};
-		walk(error);
-		return messages;
 	}
 }

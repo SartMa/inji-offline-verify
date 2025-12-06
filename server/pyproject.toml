@@ -23,4 +23,7 @@ dependencies = [
     "google-auth>=2.35.0",
     "cryptography>=42.0.0",
     "whitenoise>=6.7.0",
+    "pytest>=9.0.1",
+    "pytest-django>=4.11.1",
+    "pytest-cov>=7.0.0",
 ]

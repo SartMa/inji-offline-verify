@@ -223,3 +223,13 @@ Watch our comprehensive video demonstration showing the complete platform functi
 - [ ] Frontend can communicate with backend API
 - [ ] Database connections work
 - [ ] Email sending works (OTP received)
+
+---
+
+## Team Members
+
+- **Bojja Sunhith Reddy** - IMT2023113
+- **Harsh Mohta** - IMT2023106
+- **C Chandrahas Reddy** - IMT2023037
+- **Sartak Maheshwari** - IMT2023014
+

@@ -196,7 +196,7 @@ We provide a comprehensive collection of test cases with sample Verifiable Crede
 
 Watch our comprehensive video demonstration showing the complete platform functionality including credential verification, online/offline mode, and revocation checking.
 
-**📺 [Watch Demo on YouTube →](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)**
+**📺 [Watch Demo on YouTube →](https://youtu.be/HOshQ8VpuR8)**
 
 ---
 

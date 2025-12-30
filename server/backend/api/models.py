@@ -58,6 +58,28 @@ class VerificationLog(models.Model):
         help_text="The user who performed this verification"
     )
 
+    class VerificationMethod(models.TextChoices):
+        OFFLINE_QR = "offline_qr", "Offline QR"
+        OPENID4VP = "openid4vp", "OpenID4VP"
+
+    # Method used for verification
+    verification_method = models.CharField(
+        max_length=20,
+        choices=VerificationMethod.choices,
+        default=VerificationMethod.OFFLINE_QR,
+        help_text="Method used for credential verification"
+    )
+
+    # Reference to OpenID4VP session if applicable
+    openid4vp_session = models.ForeignKey(
+        'openid4vp.OpenID4VPSession',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="verification_logs",
+        help_text="OpenID4VP session associated with this verification (if applicable)"
+    )
+
     # A server-generated timestamp to track when the record was synced.
     synced_at = models.DateTimeField(auto_now_add=True)
 

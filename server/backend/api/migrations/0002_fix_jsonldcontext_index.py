@@ -30,7 +30,7 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'JSON-LD Context',
                 'verbose_name_plural': 'JSON-LD Contexts',
-                'indexes': [models.Index(fields=['url'], name='idx_ctx_url')],
+                'indexes': [models.Index(fields=['url'], name='idx_ctx_url_api')],  # Use different name
             },
         ),
     ]

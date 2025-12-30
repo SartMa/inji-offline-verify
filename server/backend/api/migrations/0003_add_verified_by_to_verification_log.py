@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("api", "0002_verificationlog_organization_jsonldcontext"),
+        ("api", "0002_fix_jsonldcontext_index"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

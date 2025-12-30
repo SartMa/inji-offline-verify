@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Auto Test Creation",
+  "description": "Automatically creates basic test files for new TypeScript/JavaScript source files when they don't already have corresponding test files",
+  "version": "1",
+  "when": {
+    "type": "fileCreated",
+    "patterns": [
+      "*.ts",
+      "*.tsx",
+      "*.js",
+      "*.jsx"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A new source file has been created. Check if a corresponding test file exists (with .test., .spec., or __tests__/ patterns). If no test file exists, create a basic test file with:\n1. Proper imports for the source file\n2. Basic test structure using the appropriate testing framework (Jest for SDK, Vitest for apps)\n3. At least one placeholder test that can be expanded\n4. Follow the existing test patterns in the codebase\n5. Place the test file in the appropriate location based on the project structure\n\nOnly create the test file if one doesn't already exist for this source file."
+  }
+}

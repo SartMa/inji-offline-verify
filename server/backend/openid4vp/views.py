@@ -10,6 +10,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .models import OpenID4VPSession
 import json
+import logging
 
 
 class CreateSessionView(APIView):
@@ -183,6 +184,10 @@ class PresentationSubmissionView(APIView):
     """
     permission_classes = []  # Public endpoint for wallet access
     
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.logger = logging.getLogger(__name__)
+    
     def post(self, request, session_id):
         """Accept and process verifiable presentation submission."""
         from .services import OpenID4VPSessionService
@@ -274,6 +279,25 @@ class PresentationSubmissionView(APIView):
                     error_message=f"Presentation validation failed: {'; '.join(validation_result['errors'])}"
                 )
                 
+                # Create verification log entry for failed validation
+                from api.services import VerificationLogService
+                try:
+                    log_verification_result = {
+                        'valid': False,
+                        'status': 'failed',
+                        'error_message': f"Presentation validation failed: {'; '.join(validation_result['errors'])}",
+                        'verification_method': 'openid4vp'
+                    }
+                    
+                    VerificationLogService.create_openid4vp_log(
+                        session=session,
+                        verification_result=log_verification_result,
+                        verified_by=session.created_by
+                    )
+                    
+                except Exception as log_error:
+                    self.logger.error(f"Failed to create verification log for failed validation: {str(log_error)}")
+                
                 return Response({
                     'error': 'verification_failed',
                     'error_description': 'Presentation validation failed',
@@ -299,6 +323,28 @@ class PresentationSubmissionView(APIView):
                 result=verification_result
             )
             
+            # Create verification log entry
+            from api.services import VerificationLogService
+            try:
+                # Create a simplified verification result for logging
+                log_verification_result = {
+                    'valid': True,  # Since validation passed
+                    'status': 'success',
+                    'credentials': [presentation_data],  # Store the presentation data
+                    'verification_method': 'openid4vp'
+                }
+                
+                # Create the verification log
+                VerificationLogService.create_openid4vp_log(
+                    session=session,
+                    verification_result=log_verification_result,
+                    verified_by=session.created_by
+                )
+                
+            except Exception as log_error:
+                # Log the error but don't fail the verification
+                self.logger.error(f"Failed to create verification log: {str(log_error)}")
+            
             return Response({
                 'status': 'accepted',
                 'message': 'Presentation received and processed',
@@ -313,6 +359,26 @@ class PresentationSubmissionView(APIView):
                     'error',
                     error_message=f'Presentation submission failed: {str(e)}'
                 )
+                
+                # Create verification log entry for system error
+                from api.services import VerificationLogService
+                try:
+                    log_verification_result = {
+                        'valid': False,
+                        'status': 'failed',
+                        'error_message': f'Presentation submission failed: {str(e)}',
+                        'verification_method': 'openid4vp'
+                    }
+                    
+                    VerificationLogService.create_openid4vp_log(
+                        session=session,
+                        verification_result=log_verification_result,
+                        verified_by=session.created_by
+                    )
+                    
+                except Exception as log_error:
+                    self.logger.error(f"Failed to create verification log for system error: {str(log_error)}")
+                    
             except:
                 pass  # Ignore errors in error handling
             

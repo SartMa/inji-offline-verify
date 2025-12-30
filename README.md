@@ -14,7 +14,7 @@
 
 ## Overview
 
-The **Inji Offline Verify Platform** is a comprehensive solution for verifiable credential verification that operates seamlessly both online and offline. Built in alignment with the [MOSIP Inji Verify problem statement](https://www.mosip.io/pdf/Inji_Verify_Offline_Verification.pdf), this monorepo delivers enterprise-grade verification capabilities for organizations managing field operations where network connectivity is unreliable.
+The **Inji Offline Verify Platform** is a comprehensive solution for verifiable credential verification that operates seamlessly both online and offline. This monorepo delivers enterprise-grade verification capabilities for organizations managing field operations where network connectivity is unreliable.
 ### How It Works - Complete Process Flow
 
 **Organization Setup & Management:**
@@ -52,9 +52,7 @@ The **Inji Offline Verify Platform** is a comprehensive solution for verifiable 
 
 ## Key Features
 
-### Mandatory Tasks - All Delivered
 
-All mandatory requirements from the MOSIP Inji Verify problem statement have been successfully implemented and are production-ready:
 
 | **Task** | **Description** |
 |----------|-----------------|
@@ -66,21 +64,12 @@ All mandatory requirements from the MOSIP Inji Verify problem statement have bee
 | **Synchronization Mechanism** | Automatic background upload of stored logs to Django backend when connectivity restored |
 | **Error Handling** | Clear user feedback for invalid VCs, scanning errors, sync failures with detailed error messaging |
 | **Basic Security** | Input validation, secure data handling, JWT authentication, and encrypted evidence storage |
-
-### Good-to-Have Tasks - All Completed
-| **Task** | **Description** |
-|----------|-----------------|
 | **Revocation Handling (Pre-cached)** | Pre-cached revocation lists with whitelist/blacklist of known revoked VCs and issuers for offline checks. Includes W3C BitstringStatusList implementation ([IMPLEMENTATION GUIDE](./packages/inji-verify-sdk/BITSTRING_STATUS_LIST.md)) |
 | **Configurable Sync Endpoint** | Configurable backend endpoints through environment variables and organization settings |
 | **Filtering/Searching Logs** | Advanced filtering and search capabilities through verification history with date ranges and status filters |
 | **Export Logs** | Export functionality for local logs in CSV/JSON formats with comprehensive data export |
 | **Multi-VC Scanning** | Sequential scanning of multiple VCs with batch processing and individual result tracking |
 | **Dockerization** | Complete Docker Compose setup for all deployable components with production configurations |
-
-### Bonus Tasks - All Delivered
-
-| **Task** | **Description** |
-|----------|-----------------|
 | **DID Resolution (Limited Offline)** | Advanced caching strategies for DIDs enabling offline resolution for frequently used issuers |
 | **Proof-of-Concept Native Mobile** | PWA provides native-like mobile experience with installability and offline capabilities on Android/iOS ([NATIVE APP README](https://github.com/SartMa/inji-offline-app/blob/master/README.md)) |
 | **Performance Benchmarking** | Comprehensive performance measurement of offline verification (74ms average) and sync processes with 1,500+ sample analysis |
@@ -384,8 +373,5 @@ Each test case includes both the JSON credential file and a corresponding screen
 ### Additional Resources
 
 - **API Documentation & Collections**: [Google Drive Documentation Hub](https://drive.google.com/file/d/1q3SLQngiJ2eISdTgpL5AG6DiBQ6WNK2c/view?usp=sharing)
-- **Product Demo Video**: [Implementation Walkthrough](https://youtu.be/HOshQ8VpuR8)
-- **Stakeholder Presentation**: [Technical Architecture Overview](https://docs.google.com/presentation/d/1h4c3Q2Kkh8_B2vDnFeAWz1vBw93U4mRz/edit?usp=sharing&ouid=103834762058479220213&rtpof=true&sd=true)
-- **MOSIP Problem Statement**: [Official Requirements Document](https://www.mosip.io/pdf/Inji_Verify_Offline_Verification.pdf)
 - **SRS Documentation**: [SRS Document](https://drive.google.com/file/d/10hzXUci_JbqCvhk1-aJm4cGLxNMes4f0/view?usp=sharing)
 

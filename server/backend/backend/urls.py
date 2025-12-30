@@ -22,6 +22,7 @@ urlpatterns = [
     path('api/', include('api.urls')),  # Include the API URLs
     path('organization/', include('organization.urls')),  # Organization-specific URLs
     path('worker/', include('worker.urls')),  # Worker-specific URLs
+    path('api/openid4vp/', include('openid4vp.urls')),  # OpenID4VP endpoints
     path('auth/', include('dj_rest_auth.urls')),
     path('auth/registration/', include('dj_rest_auth.registration.urls')),
 ]

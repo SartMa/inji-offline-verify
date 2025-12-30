@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'api',
     'organization',  # organization app
     'worker',        # worker app
+    'openid4vp',     # OpenID4VP integration app
     'corsheaders',
     'rest_framework',
     'django.contrib.sites',

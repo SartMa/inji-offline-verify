@@ -1,0 +1,1 @@
+# OpenID4VP Django app for verifiable presentation protocol integration

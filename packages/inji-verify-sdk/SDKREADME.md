@@ -65,7 +65,7 @@ Whether you are scanning credentials inside a kiosk or embedding the verifier in
 | `mso_mdoc` | COSE `ES256` (COSE_Sign1) | ECDSA with P-256 curve in COSE format | Custom COSE implementation<br/>Browser Web Crypto API | Works offline when COSE payload is provided; signature verification parity still under review. | ⚠️ Ported from Kotlin; **manual production testing pending**. |
 | Verifiable Presentation | `Ed25519Signature2020` | Ed25519 elliptic curve digital signatures | `@digitalbazaar/vc`<br/>`@digitalbazaar/ed25519-signature-2020`<br/>`@digitalbazaar/ed25519-verification-key-2020` | Requires cached contexts and keys. Fails gracefully with `ERR_OFFLINE_DEPENDENCIES_MISSING` when prerequisites are absent. | ⚠️ **Limited testing** - Only Ed25519Signature2020 VP examples verified.|
 
-*Detached JWS (`b64=false`, `crit:["b64"]`); supports `RS256` / `PS256` and offline canonicalisation via `https://w3id.org/security/v2`.
+*Detached JWS (`b64=false`, `crit:["b64"]`); supports `RS256` / `PS256` and canonicalisation via `https://w3id.org/security/v2`.
 
 The TypeScript implementation mirrors MOSIP's Kotlin verifier while adding IndexedDB caching, granular error mapping, and optional online fallbacks for missing artefacts.
 

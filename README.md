@@ -131,10 +131,12 @@ All mandatory requirements from the MOSIP Inji Verify problem statement have bee
 2. **Edit `.env` file** with your configuration:
    ```env
    DJANGO_SECRET_KEY=your-secret-key-here
+   DEFAULT_FROM_EMAIL=injiverify@gmail.com (change your default email that you verified with sendgrid)
    SENDGRID_API_KEY=your-sendgrid-key
    ```
 
 3. **Launch the stack**:
+  Ensure Docker Desktop is up and running if in Windows. 
    ```bash
    docker compose build
    docker compose up -d

@@ -23,4 +23,7 @@ dependencies = [
     "google-auth>=2.35.0",
     "cryptography>=42.0.0",
     "whitenoise>=6.7.0",
+    "pyld>=2.0.3",
+    "py-multibase>=1.0.3",
+    "base58>=2.1.1",
 ]

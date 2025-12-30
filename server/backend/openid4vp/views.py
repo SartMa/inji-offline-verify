@@ -323,49 +323,44 @@ class PresentationSubmissionView(APIView):
     
     def _process_verification(self, presentation_data, session, presentation_definition):
         """
-        Process verification of the submitted presentation.
-        This is a simplified implementation - in production this would be handled
-        by a background worker using the existing SDK verification logic.
+        Process verification of the submitted presentation using the OpenID4VPVerificationService.
         """
-        from django.utils import timezone
+        from .services import OpenID4VPVerificationService
+        import asyncio
         
         try:
-            # Basic verification simulation
-            # In production, this would use the existing PresentationVerifier from the SDK
+            # Use the comprehensive verification service
+            verification_service = OpenID4VPVerificationService()
             
-            verification_result = {
-                'verified': True,  # Simplified - assume verification passes
-                'presentation': presentation_data,
+            # Run the async verification in a sync context
+            # In production, this should be handled by a background task queue
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                verification_result = loop.run_until_complete(
+                    verification_service.verify_presentation(
+                        presentation_data, session, presentation_definition
+                    )
+                )
+            finally:
+                loop.close()
+            
+            return verification_result
+            
+        except Exception as e:
+            self.logger.error(f"Error in presentation verification: {str(e)}")
+            from django.utils import timezone
+            
+            return {
+                'verified': False,
+                'error': str(e),
                 'session_id': str(session.session_id),
                 'verified_at': timezone.now().isoformat(),
                 'verification_method': 'openid4vp',
                 'organization_id': session.organization.id,
                 'verified_by': session.created_by.id,
-                'credential_count': len(presentation_data.get('verifiableCredential', [])),
-                'credentials': []
-            }
-            
-            # Extract credential information
-            credentials = presentation_data.get('verifiableCredential', [])
-            for i, credential in enumerate(credentials):
-                credential_info = {
-                    'index': i,
-                    'type': credential.get('type', []),
-                    'issuer': credential.get('issuer'),
-                    'subject': credential.get('credentialSubject', {}),
-                    'issuance_date': credential.get('issuanceDate'),
-                    'expiration_date': credential.get('expirationDate'),
-                    'verified': True  # Simplified - assume all credentials verify
-                }
-                verification_result['credentials'].append(credential_info)
-            
-            return verification_result
-            
-        except Exception as e:
-            return {
-                'verified': False,
-                'error_message': f'Verification failed: {str(e)}',
-                'verified_at': timezone.now().isoformat()
+                'credential_count': 0,
+                'error_details': [f"Verification service error: {str(e)}"]
             }
 
 

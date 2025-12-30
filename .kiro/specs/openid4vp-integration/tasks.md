@@ -72,14 +72,14 @@ This implementation plan breaks down the OpenID4VP integration into discrete cod
     - **Property 4: OpenID4VP Endpoint Validation**
     - **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5**
 
-- [ ] 5. Integrate presentation verification logic
-  - [ ] 5.1 Create OpenID4VPVerificationService class
+- [x] 5. Integrate presentation verification logic
+  - [x] 5.1 Create OpenID4VPVerificationService class
     - Integrate with existing PresentationVerifier from SDK
     - Implement signature validation for presentations and credentials
     - Add revocation status checking
     - _Requirements: 4.1, 4.2, 4.3_
 
-  - [ ] 5.2 Implement presentation-definition matching validation
+  - [x] 5.2 Implement presentation-definition matching validation
     - Validate submitted presentations against requested definitions
     - Ensure all required credentials and fields are present
     - _Requirements: 4.4_

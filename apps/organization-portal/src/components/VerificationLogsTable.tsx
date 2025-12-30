@@ -30,8 +30,10 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import BlockIcon from '@mui/icons-material/Block';
 import PauseCircleIcon from '@mui/icons-material/PauseCircle';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import QrCodeIcon from '@mui/icons-material/QrCode';
+import SecurityIcon from '@mui/icons-material/Security';
 import { useLogs } from '../hooks/useVerificationLogs';
-import { VerificationLog, VerificationStatus } from '../services/logsService';
+import { VerificationLog, VerificationStatus, VerificationMethod } from '../services/logsService';
 
 
 interface VerificationLogsTableProps {
@@ -51,12 +53,14 @@ export default function VerificationLogsTable({
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<VerificationStatus | ''>('');
+  const [methodFilter, setMethodFilter] = useState<VerificationMethod | ''>('');
   const [showFilters, setShowFilters] = useState(false);
 
   const { data, loading, error } = useLogs({
     orgId,
     userId,
     status: statusFilter || undefined,
+    method: methodFilter || undefined,
     search: search || undefined,
     page: page + 1, // Backend uses 1-based pagination
     pageSize,
@@ -78,6 +82,11 @@ export default function VerificationLogsTable({
 
   const handleStatusFilterChange = useCallback((event: any) => {
     setStatusFilter(event.target.value);
+    setPage(0); // Reset to first page on filter change
+  }, []);
+
+  const handleMethodFilterChange = useCallback((event: any) => {
+    setMethodFilter(event.target.value);
     setPage(0); // Reset to first page on filter change
   }, []);
 
@@ -216,21 +225,36 @@ export default function VerificationLogsTable({
           />
           
           {showFilters && (
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel>Status</InputLabel>
-              <Select
-                value={statusFilter}
-                label="Status"
-                onChange={handleStatusFilterChange}
-              >
-                <MenuItem value="">All</MenuItem>
-                <MenuItem value="SUCCESS">Success</MenuItem>
-                <MenuItem value="FAILED">Failed</MenuItem>
-                <MenuItem value="EXPIRED">Expired</MenuItem>
-                <MenuItem value="REVOKED">Revoked</MenuItem>
-                <MenuItem value="SUSPENDED">Suspended</MenuItem>
-              </Select>
-            </FormControl>
+            <>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Status"
+                  onChange={handleStatusFilterChange}
+                >
+                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="SUCCESS">Success</MenuItem>
+                  <MenuItem value="FAILED">Failed</MenuItem>
+                  <MenuItem value="EXPIRED">Expired</MenuItem>
+                  <MenuItem value="REVOKED">Revoked</MenuItem>
+                  <MenuItem value="SUSPENDED">Suspended</MenuItem>
+                </Select>
+              </FormControl>
+              
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Method</InputLabel>
+                <Select
+                  value={methodFilter}
+                  label="Method"
+                  onChange={handleMethodFilterChange}
+                >
+                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="offline_qr">Offline QR</MenuItem>
+                  <MenuItem value="openid4vp">OpenID4VP</MenuItem>
+                </Select>
+              </FormControl>
+            </>
           )}
         </Stack>
 
@@ -268,6 +292,7 @@ export default function VerificationLogsTable({
           <TableHead>
             <TableRow>
               <TableCell>Status</TableCell>
+              <TableCell>Method</TableCell>
               <TableCell>Verified At</TableCell>
               <TableCell>Credential Subject</TableCell>
               <TableCell>VC Hash</TableCell>
@@ -282,6 +307,7 @@ export default function VerificationLogsTable({
               Array.from({ length: pageSize }).map((_, index) => (
                 <TableRow key={index}>
                   <TableCell><Skeleton width={80} /></TableCell>
+                  <TableCell><Skeleton width={100} /></TableCell>
                   <TableCell><Skeleton width={150} /></TableCell>
                   <TableCell><Skeleton width={200} /></TableCell>
                   <TableCell><Skeleton width={100} /></TableCell>
@@ -300,6 +326,15 @@ export default function VerificationLogsTable({
                       color={getStatusColor(log.verification_status) as any}
                       size="small"
                       variant="outlined"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      icon={getMethodIcon(log.verification_method)}
+                      label={formatMethodLabel(log.verification_method)}
+                      color={getMethodColor(log.verification_method) as any}
+                      size="small"
+                      variant="filled"
                     />
                   </TableCell>
                   <TableCell>
@@ -364,7 +399,7 @@ export default function VerificationLogsTable({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={showUserColumn ? 7 : 6} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={showUserColumn ? 8 : 7} align="center" sx={{ py: 4 }}>
                   <Typography variant="body2" color="text.secondary">
                     No verification logs found
                   </Typography>

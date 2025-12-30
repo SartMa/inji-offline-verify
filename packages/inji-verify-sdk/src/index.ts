@@ -1,6 +1,19 @@
 export { default as OpenID4VPVerification } from '././components/openid4vp-verification/OpenID4VPVerification';
 export { default as QRCodeVerification } from '././components/qrcode-verification/QRCodeVerification';
 
+// Export OpenID4VP API utilities
+export {
+  createOpenID4VPSession,
+  getOpenID4VPSessionStatus,
+  getPresentationDefinition,
+} from './utils/openid4vp-api';
+export type {
+  OpenID4VPSessionRequest,
+  OpenID4VPSessionResponse,
+  OpenID4VPStatusResponse,
+  VerificationResult as OpenID4VPVerificationResult,
+} from './utils/openid4vp-api';
+
 // Export offline verification services
 export { CredentialsVerifier } from './services/offline-verifier/CredentialsVerifier';
 export { CredentialFormat } from './services/offline-verifier/constants/CredentialFormat';

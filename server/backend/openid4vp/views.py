@@ -117,33 +117,32 @@ class PresentationDefinitionView(APIView):
         from django.utils import timezone
         
         try:
-            # Get session
+            # Check if session can be used (implements reuse prevention)
+            can_use, reason = OpenID4VPSessionService.can_session_be_used(str(session_id))
+            if not can_use:
+                if "not found" in reason.lower():
+                    return Response({
+                        'error': 'invalid_session',
+                        'error_description': reason
+                    }, status=status.HTTP_404_NOT_FOUND)
+                elif "expired" in reason.lower():
+                    return Response({
+                        'error': 'expired_session',
+                        'error_description': reason
+                    }, status=status.HTTP_410_GONE)
+                elif "completed" in reason.lower() or "reused" in reason.lower():
+                    return Response({
+                        'error': 'session_already_used',
+                        'error_description': reason
+                    }, status=status.HTTP_409_CONFLICT)
+                else:
+                    return Response({
+                        'error': 'invalid_session',
+                        'error_description': reason
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Get session (we know it exists and is valid from the check above)
             session = OpenID4VPSessionService.get_session(str(session_id))
-            if not session:
-                return Response({
-                    'error': 'invalid_session',
-                    'error_description': 'Session not found'
-                }, status=status.HTTP_404_NOT_FOUND)
-            
-            # Check if session is expired
-            if session.is_expired():
-                # Update session status to expired
-                OpenID4VPSessionService.update_session_status(
-                    str(session_id), 
-                    'expired',
-                    error_message='Session has expired'
-                )
-                return Response({
-                    'error': 'expired_session',
-                    'error_description': 'The verification session has expired'
-                }, status=status.HTTP_410_GONE)
-            
-            # Check if session is not in pending status
-            if session.status != 'pending':
-                return Response({
-                    'error': 'invalid_session',
-                    'error_description': f'Session is not active (status: {session.status})'
-                }, status=status.HTTP_400_BAD_REQUEST)
             
             # Get organization configuration (if any)
             organization_config = None
@@ -196,32 +195,32 @@ class PresentationSubmissionView(APIView):
         import json
         
         try:
-            # Get session
+            # Check if session can be used (implements reuse prevention)
+            can_use, reason = OpenID4VPSessionService.can_session_be_used(str(session_id))
+            if not can_use:
+                if "not found" in reason.lower():
+                    return Response({
+                        'error': 'invalid_session',
+                        'error_description': reason
+                    }, status=status.HTTP_404_NOT_FOUND)
+                elif "expired" in reason.lower():
+                    return Response({
+                        'error': 'expired_session',
+                        'error_description': reason
+                    }, status=status.HTTP_410_GONE)
+                elif "completed" in reason.lower() or "reused" in reason.lower():
+                    return Response({
+                        'error': 'session_already_used',
+                        'error_description': reason
+                    }, status=status.HTTP_409_CONFLICT)
+                else:
+                    return Response({
+                        'error': 'invalid_session',
+                        'error_description': reason
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Get session (we know it exists and is valid from the check above)
             session = OpenID4VPSessionService.get_session(str(session_id))
-            if not session:
-                return Response({
-                    'error': 'invalid_session',
-                    'error_description': 'Session not found'
-                }, status=status.HTTP_404_NOT_FOUND)
-            
-            # Check if session is expired
-            if session.is_expired():
-                OpenID4VPSessionService.update_session_status(
-                    str(session_id), 
-                    'expired',
-                    error_message='Session has expired'
-                )
-                return Response({
-                    'error': 'expired_session',
-                    'error_description': 'The verification session has expired'
-                }, status=status.HTTP_410_GONE)
-            
-            # Check if session is not in pending status
-            if session.status != 'pending':
-                return Response({
-                    'error': 'invalid_session',
-                    'error_description': f'Session is not active (status: {session.status})'
-                }, status=status.HTTP_400_BAD_REQUEST)
             
             # Get presentation data
             presentation_data = request.data.get('vp_token')
@@ -272,7 +271,7 @@ class PresentationSubmissionView(APIView):
             )
             
             if not validation_result['valid']:
-                # Update session with validation error
+                # Update session with validation error (prevents reuse)
                 OpenID4VPSessionService.update_session_status(
                     str(session_id),
                     'error',
@@ -316,12 +315,19 @@ class PresentationSubmissionView(APIView):
                 'validation_details': validation_result
             }
             
-            # Update session status to indicate presentation received
-            OpenID4VPSessionService.update_session_status(
+            # Update session status to completed (prevents reuse)
+            update_success = OpenID4VPSessionService.update_session_status(
                 str(session_id),
-                'completed',  # Mark as completed for now
+                'completed',
                 result=verification_result
             )
+            
+            if not update_success:
+                # This should not happen given our earlier checks, but handle it gracefully
+                return Response({
+                    'error': 'session_already_used',
+                    'error_description': 'Session has already been completed and cannot be reused'
+                }, status=status.HTTP_409_CONFLICT)
             
             # Create verification log entry
             from api.services import VerificationLogService
@@ -352,7 +358,7 @@ class PresentationSubmissionView(APIView):
             }, status=status.HTTP_202_ACCEPTED)
             
         except Exception as e:
-            # Update session with error if possible
+            # Update session with error if possible (prevents reuse)
             try:
                 OpenID4VPSessionService.update_session_status(
                     str(session_id),
@@ -466,6 +472,7 @@ class SessionStatusView(APIView):
             
             # Check if session is expired and update status if needed
             if session.is_expired() and session.status == 'pending':
+                # Update session status to expired (prevents reuse)
                 OpenID4VPSessionService.update_session_status(
                     str(session_id), 
                     'expired',

@@ -37,6 +37,8 @@ class VerificationLogSerializer(serializers.ModelSerializer):
             'organization',
             'verified_by',
             'verified_by_info',
+            'verification_method',
+            'openid4vp_session',
             'synced_at',
         ]
 

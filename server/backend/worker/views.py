@@ -497,6 +497,7 @@ def get_organization_logs(request, org_id):
         # Get query parameters for filtering and pagination
         user_id = request.GET.get('user_id', None)
         status_filter = request.GET.get('status', None)  # 'SUCCESS' or 'FAILED'
+        method_filter = request.GET.get('method', None)  # 'offline_qr' or 'openid4vp'
         search = request.GET.get('search', None)
         date_from = request.GET.get('date_from', None)
         date_to = request.GET.get('date_to', None)
@@ -522,6 +523,10 @@ def get_organization_logs(request, org_id):
         valid_statuses = set(VerificationLog.VerificationStatus.values)
         if status_filter and status_filter in valid_statuses:
             queryset = queryset.filter(verification_status=status_filter)
+        
+        valid_methods = set(VerificationLog.VerificationMethod.values)
+        if method_filter and method_filter in valid_methods:
+            queryset = queryset.filter(verification_method=method_filter)
         
         if search:
             queryset = queryset.filter(

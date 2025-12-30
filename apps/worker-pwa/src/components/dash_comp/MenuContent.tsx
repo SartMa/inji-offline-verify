@@ -20,7 +20,7 @@ const mainListItems = [
   { text: 'VC Verification', icon: <VerifiedUserIcon />, path: null, clickable: true, scrollTo: 'vc-verification' },
   { text: 'Sync Status', icon: <SyncIcon />, path: null, clickable: true, scrollTo: 'statistics' },
   { text: 'Statistics', icon: <AssessmentIcon />, path: null, clickable: true, scrollTo: 'sync-status' },
-  { text: 'VP Verification', icon: <QrCodeScannerIcon />, path: '/vp-verification', clickable: false, scrollTo: null },
+  { text: 'VP Verification', icon: <QrCodeScannerIcon />, path: '/vp-verification', clickable: true, scrollTo: null },
 ];
 
 const secondaryListItems = [

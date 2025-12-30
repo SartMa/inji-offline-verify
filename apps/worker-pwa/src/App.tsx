@@ -41,11 +41,11 @@ function WorkerDashboard() {
   );
 }
 
-// Settings wrapper component with VCStorageProvider
-function WorkerSettings() {
+// VPVerification wrapper component with VCStorageProvider
+function WorkerVPVerification() {
   return (
     <VCStorageProvider>
-      <Settings />
+      <VPVerification />
     </VCStorageProvider>
   );
 }
@@ -105,7 +105,7 @@ function AppContent() {
         path="/vp-verification" 
         element={
           <ProtectedRoute>
-            <VPVerification />
+            <WorkerVPVerification />
           </ProtectedRoute>
         } 
       />

@@ -92,6 +92,38 @@ class OpenID4VPSessionService:
         return None
     
     @staticmethod
+    def can_session_be_used(session_id: str) -> tuple[bool, str]:
+        """
+        Check if a session can be used for presentation submission or definition retrieval.
+        Implements session reuse prevention logic.
+        
+        Args:
+            session_id: UUID string of the session
+            
+        Returns:
+            tuple: (can_be_used: bool, reason: str)
+        """
+        session = OpenID4VPSessionService.get_session(session_id)
+        if not session:
+            return False, "Session not found"
+        
+        # Check if session is expired
+        if session.is_expired():
+            return False, "Session has expired"
+        
+        # Check session status - only pending sessions can be used
+        if session.status == 'completed':
+            return False, "Session has already been completed and cannot be reused"
+        elif session.status == 'error':
+            return False, "Session is in error state and cannot be reused"
+        elif session.status == 'expired':
+            return False, "Session has expired"
+        elif session.status != 'pending':
+            return False, f"Session is not active (status: {session.status})"
+        
+        return True, "Session is active and can be used"
+    
+    @staticmethod
     def update_session_status(
         session_id: str, 
         status: str, 
@@ -100,6 +132,7 @@ class OpenID4VPSessionService:
     ) -> bool:
         """
         Update session status and verification result.
+        Implements session reuse prevention by ensuring completed sessions cannot be reused.
         
         Args:
             session_id: UUID string of the session
@@ -113,6 +146,22 @@ class OpenID4VPSessionService:
         session = OpenID4VPSessionService.get_session(session_id)
         if not session:
             return False
+        
+        # Prevent reuse of completed or error sessions
+        if session.status in ['completed', 'error'] and status in ['completed', 'error']:
+            # Session is already in a final state, don't allow further updates
+            # unless we're just updating the error message or result details
+            if session.status == status:
+                # Allow updating result or error message for the same status
+                if result is not None:
+                    session.verification_result = result
+                if error_message is not None:
+                    session.error_message = error_message
+                session.save()
+                return True
+            else:
+                # Don't allow changing from one final state to another
+                return False
         
         session.status = status
         if result is not None:

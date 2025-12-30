@@ -2,6 +2,7 @@
 import { getAccessToken, refreshAccessToken, getWorkerApiUrl } from '@inji-offline-verify/shared-auth';
 
 export type VerificationStatus = 'SUCCESS' | 'FAILED' | 'EXPIRED' | 'REVOKED' | 'SUSPENDED';
+export type VerificationMethod = 'offline_qr' | 'openid4vp';
 
 export interface VerificationLog {
   id: string;
@@ -18,6 +19,8 @@ export interface VerificationLog {
     full_name: string;
     email: string;
   };
+  verification_method: VerificationMethod;
+  openid4vp_session?: string;
   synced_at: string;
 }
 
@@ -51,6 +54,7 @@ export interface GetLogsParams {
   orgId?: string;
   userId?: string;
   status?: VerificationStatus;
+  method?: VerificationMethod;
   search?: string;
   page?: number;
   pageSize?: number;
@@ -138,12 +142,13 @@ class LogsService {
   }
 
   async getOrganizationLogs(params: GetLogsParams): Promise<VerificationLogsResponse> {
-    const { orgId, userId, status, search, page = 1, pageSize = 20, dateFrom, dateTo } = params;
+    const { orgId, userId, status, method, search, page = 1, pageSize = 20, dateFrom, dateTo } = params;
     
     // Build query parameters
     const queryParams = new URLSearchParams();
     if (userId) queryParams.append('user_id', userId);
     if (status) queryParams.append('status', status);
+    if (method) queryParams.append('method', method);
     if (search) queryParams.append('search', search);
     if (dateFrom) queryParams.append('date_from', dateFrom);
     if (dateTo) queryParams.append('date_to', dateTo);

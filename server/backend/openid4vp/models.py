@@ -95,5 +95,17 @@ class OpenID4VPSession(models.Model):
         """Check if the session is active (not expired and status is pending)."""
         return self.status == 'pending' and not self.is_expired()
     
+    def is_completed(self):
+        """Check if the session has been completed successfully."""
+        return self.status == 'completed'
+    
+    def is_final_state(self):
+        """Check if the session is in a final state (completed, error, or expired)."""
+        return self.status in ['completed', 'error', 'expired']
+    
+    def can_be_reused(self):
+        """Check if the session can be reused for another verification attempt."""
+        return not self.is_final_state() and not self.is_expired()
+    
     def __str__(self):
         return f"OpenID4VP Session {self.session_id} - {self.status}"
